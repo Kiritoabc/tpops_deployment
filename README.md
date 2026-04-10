@@ -39,10 +39,11 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 
 ## 远程执行命令
 
-在主机配置的部署根目录下执行（与 `appctl.sh` 同级读取 `manifest.yaml`）：
+在主机配置的部署根目录下执行；进度文件与脚本中 `CONFIG_HOME` 一致：
 
 - 预检查：`bash appctl.sh precheck install <target>`
 - 安装：`bash appctl.sh install <target>`
+- Manifest：`<部署根>/config/gaussdb/manifest.yaml`（轮询解析层状态 `*_status` 与各层服务列表）
 
 ## 项目结构（摘要）
 

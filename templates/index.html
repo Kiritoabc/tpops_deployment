@@ -231,7 +231,7 @@
                     </el-form-item>
                     <el-form-item label="部署根目录">
                       <el-input v-model="hostForm.docker_service_root" placeholder="/data/docker-service" />
-                      <div class="hint">与远程服务器上 <code>appctl.sh</code> 所在目录一致（例如 <code>/data/docker-service</code>），脚本将在此目录执行：<code>bash appctl.sh ...</code>，同目录下读取 <code>manifest.yaml</code>。</div>
+                      <div class="hint">与远程 <code>appctl.sh</code> 所在目录一致（如 <code>/data/docker-service</code>）。执行：<code>cd &lt;目录&gt; && bash appctl.sh ...</code>。进度文件：<code>&lt;目录&gt;/config/gaussdb/manifest.yaml</code>。</div>
                     </el-form-item>
                     <el-form-item>
                       <el-button type="primary" @click="saveHost" :loading="loading">保存</el-button>
@@ -288,6 +288,31 @@
 
             <el-row :gutter="16">
               <el-col :xs="24" :lg="14">
+                <el-card v-if="manifestSummary && manifestSummary.services_total != null" shadow="never" style="margin-bottom:16px;">
+                  <template #header><span style="font-weight:600">整体进度</span></template>
+                  <el-row :gutter="12">
+                    <el-col :span="8">
+                      <div style="font-size:12px;color:#909399;">层（按 manifest 聚合状态）</div>
+                      <div style="font-size:20px;font-weight:600;color:#1890ff;">
+                        <span v-text="manifestSummary.levels_done || 0"></span> / <span v-text="manifestSummary.levels_total || 8"></span> <span style="font-size:13px;font-weight:400;color:#606266;">已完成</span>
+                      </div>
+                    </el-col>
+                    <el-col :span="8">
+                      <div style="font-size:12px;color:#909399;">服务项</div>
+                      <div style="font-size:20px;font-weight:600;color:#52c41a;">
+                        <span v-text="manifestSummary.services_done || 0"></span> / <span v-text="manifestSummary.services_total || 0"></span> <span style="font-size:13px;font-weight:400;color:#606266;">done</span>
+                      </div>
+                    </el-col>
+                    <el-col :span="8">
+                      <div style="font-size:12px;color:#909399;">层状态速览</div>
+                      <div style="margin-top:4px;">
+                        <el-tag v-if="manifestSummary.levels_running" size="small" type="warning" style="margin:2px;">running: <span v-text="manifestSummary.levels_running"></span></el-tag>
+                        <el-tag v-if="manifestSummary.levels_error" size="small" type="danger" style="margin:2px;">error: <span v-text="manifestSummary.levels_error"></span></el-tag>
+                        <el-tag v-if="manifestSummary.levels_none" size="small" type="info" style="margin:2px;">none: <span v-text="manifestSummary.levels_none"></span></el-tag>
+                      </div>
+                    </el-col>
+                  </el-row>
+                </el-card>
                 <el-card shadow="never">
                   <template #header><span style="font-weight:600">部署流程（Manifest）</span></template>
                   <el-tree
@@ -301,6 +326,9 @@
                       <span :class="'status-' + (data.status || 'none')">
                         <span v-text="data.label"></span>
                         <el-tag v-if="data.status" size="small" style="margin-left:8px" v-text="data.status"></el-tag>
+                        <span v-if="data.meta && data.meta.finish_execute_time" style="margin-left:8px;font-size:12px;color:#909399;">
+                          耗时: <span v-text="data.meta.finish_execute_time"></span>
+                        </span>
                       </span>
                     </template>
                   </el-tree>
@@ -383,6 +411,7 @@
         const deployForm = reactive({ host: null, action: 'precheck', target: 'gaussdb' });
         const logText = ref('');
         const treeRoots = ref([]);
+        const manifestSummary = ref(null);
         const taskStatus = ref('');
         const currentTaskId = ref(null);
         let socket = null;
@@ -447,7 +476,10 @@
             let msg;
             try { msg = JSON.parse(ev.data); } catch { return; }
             if (msg.type === 'log' && msg.data) logText.value += msg.data;
-            if (msg.type === 'manifest' && msg.data && msg.data.roots) treeRoots.value = msg.data.roots;
+            if (msg.type === 'manifest' && msg.data) {
+              if (msg.data.roots) treeRoots.value = msg.data.roots;
+              manifestSummary.value = msg.data.summary || null;
+            }
             if (msg.type === 'status') taskStatus.value = msg.data;
             if (msg.type === 'done') taskStatus.value = 'finished:' + msg.exit_code;
             if (msg.type === 'hello') taskStatus.value = msg.status;
@@ -486,6 +518,7 @@
           localStorage.removeItem('user');
           logText.value = '';
           treeRoots.value = [];
+          manifestSummary.value = null;
         };
 
         const resetHostForm = () => {
@@ -526,6 +559,7 @@
           loading.value = true;
           logText.value = '';
           treeRoots.value = [];
+          manifestSummary.value = null;
           activeMenu.value = 'deploy';
           try {
             const { data } = await api.post('/deployment/tasks/', {
@@ -548,6 +582,7 @@
           taskStatus.value = row.status;
           logText.value = '';
           treeRoots.value = [];
+          manifestSummary.value = null;
           activeMenu.value = 'deploy';
           openSocket(row.id);
         };
@@ -562,7 +597,7 @@
         return {
           token, user, loading, activeMenu, breadcrumbTitle, runningCount, onMenuSelect,
           hosts, tasks, showRegister, loginForm, regForm, hostForm, deployForm,
-          logText, treeRoots, taskStatus, currentTaskId,
+          logText, treeRoots, manifestSummary, taskStatus, currentTaskId,
           doLogin, doRegister, logout, saveHost, resetHostForm, editHost, testHost, startDeploy, attachTask,
         };
       }

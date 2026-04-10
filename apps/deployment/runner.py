@@ -28,8 +28,8 @@ def _remote_manifest_path(host) -> str:
     root = (host.docker_service_root or "").strip().rstrip("/")
     if not root:
         root = "/data/docker-service"
-    # manifest 与 appctl.sh 同位于部署根目录（无 autoChangeInterface 子目录）
-    return "%s/manifest.yaml" % root
+    # 与脚本中 CONFIG_HOME 一致：部署根目录下的 config/gaussdb/manifest.yaml
+    return "%s/config/gaussdb/manifest.yaml" % root
 
 
 def _poll_manifest_loop(task_id: int, host_id: int, secret: str, stop_event: threading.Event):

@@ -23,7 +23,7 @@ class Host(models.Model):
         max_length=512,
         blank=True,
         verbose_name="部署根目录",
-        help_text="远程主机上 appctl.sh 所在目录，例如 /data/docker-service",
+        help_text="远程 appctl.sh 所在目录（如 /data/docker-service）；manifest 读取 config/gaussdb/manifest.yaml",
     )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
