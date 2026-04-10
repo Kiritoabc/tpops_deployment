@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TPOPS 白屏化部署</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus@2.4.4/dist/index.css" />
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #f5f7fa; }
+    .page { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    .log-box { background: #1e1e1e; color: #d4d4d4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; height: 320px; overflow: auto; padding: 8px; border-radius: 4px; white-space: pre-wrap; }
+    .status-none { color: #909399; }
+    .status-running { color: #e6a23c; }
+    .status-done { color: #67c23a; }
+    .status-error { color: #f56c6c; }
+    .status-null { color: #b37feb; }
+    .status-retrying { color: #ff9800; }
+  </style>
+</head>
+<body>
+  <div id="app" class="page">
+    <el-container direction="vertical">
+      <el-header style="display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #ebeef5;">
+        <div style="font-weight:600;">TPOPS 白屏化部署 (MVP)</div>
+        <div v-if="token">
+          <el-tag type="success">{{ user.username }}</el-tag>
+          <el-button link type="danger" @click="logout">退出</el-button>
+        </div>
+      </el-header>
+      <el-main>
+        <el-card v-if="!token" shadow="never">
+          <template #header>登录</template>
+          <el-form :model="loginForm" label-width="90px" style="max-width:420px">
+            <el-form-item label="用户名">
+              <el-input v-model="loginForm.username" autocomplete="username" />
+            </el-form-item>
+            <el-form-item label="密码">
+              <el-input v-model="loginForm.password" type="password" autocomplete="current-password" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="doLogin" :loading="loading">登录</el-button>
+              <el-button @click="showRegister = true">注册</el-button>
+            </el-form-item>
+          </el-form>
+        </el-card>
+
+        <template v-else>
+          <el-tabs v-model="activeTab">
+            <el-tab-pane label="服务器" name="hosts">
+              <el-row :gutter="12">
+                <el-col :span="10">
+                  <el-card shadow="never">
+                    <template #header>添加 / 编辑服务器</template>
+                    <el-form :model="hostForm" label-width="120px" size="small">
+                      <el-form-item label="名称"><el-input v-model="hostForm.name" /></el-form-item>
+                      <el-form-item label="地址"><el-input v-model="hostForm.hostname" /></el-form-item>
+                      <el-form-item label="SSH 端口"><el-input-number v-model="hostForm.port" :min="1" :max="65535" /></el-form-item>
+                      <el-form-item label="SSH 用户"><el-input v-model="hostForm.username" /></el-form-item>
+                      <el-form-item label="认证方式">
+                        <el-radio-group v-model="hostForm.auth_method">
+                          <el-radio label="password">密码</el-radio>
+                          <el-radio label="key">私钥</el-radio>
+                        </el-radio-group>
+                      </el-form-item>
+                      <el-form-item v-if="hostForm.auth_method==='password'" label="密码">
+                        <el-input v-model="hostForm.password" type="password" show-password />
+                      </el-form-item>
+                      <el-form-item v-else label="私钥 PEM">
+                        <el-input v-model="hostForm.private_key" type="textarea" :rows="4" />
+                      </el-form-item>
+                      <el-form-item label="docker-service 根目录">
+                        <el-input v-model="hostForm.docker_service_root" placeholder="远程路径，含 autoChangeInterface" />
+                      </el-form-item>
+                      <el-form-item>
+                        <el-button type="primary" @click="saveHost" :loading="loading">保存</el-button>
+                        <el-button @click="resetHostForm">清空</el-button>
+                      </el-form-item>
+                    </el-form>
+                  </el-card>
+                </el-col>
+                <el-col :span="14">
+                  <el-card shadow="never">
+                    <template #header>服务器列表</template>
+                    <el-table :data="hosts" size="small" stripe>
+                      <el-table-column prop="name" label="名称" />
+                      <el-table-column prop="hostname" label="地址" />
+                      <el-table-column prop="docker_service_root" label="docker-service" show-overflow-tooltip />
+                      <el-table-column label="操作" width="220">
+                        <template #default="{ row }">
+                          <el-button link type="primary" @click="editHost(row)">编辑</el-button>
+                          <el-button link @click="testHost(row)" :loading="row._testing">连通性</el-button>
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </el-card>
+                </el-col>
+              </el-row>
+            </el-tab-pane>
+
+            <el-tab-pane label="部署" name="deploy">
+              <el-card shadow="never">
+                <template #header>发起任务</template>
+                <el-form inline>
+                  <el-form-item label="服务器">
+                    <el-select v-model="deployForm.host" placeholder="选择" style="width:220px">
+                      <el-option v-for="h in hosts" :key="h.id" :label="h.name" :value="h.id" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="操作">
+                    <el-select v-model="deployForm.action" style="width:160px">
+                      <el-option label="预检查 install gaussdb" value="precheck" />
+                      <el-option label="install gaussdb" value="install" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="目标">
+                    <el-input v-model="deployForm.target" style="width:140px" />
+                  </el-form-item>
+                  <el-form-item>
+                    <el-button type="primary" @click="startDeploy" :loading="loading">执行</el-button>
+                  </el-form-item>
+                </el-form>
+              </el-card>
+
+              <el-row :gutter="12" style="margin-top:12px;">
+                <el-col :span="14">
+                  <el-card shadow="never">
+                    <template #header>Manifest 树（WebSocket 推送）</template>
+                    <el-tree
+                      v-if="treeRoots.length"
+                      :data="treeRoots"
+                      :props="{ label: 'label', children: 'children' }"
+                      node-key="id"
+                      default-expand-all
+                    >
+                      <template #default="{ data }">
+                        <span :class="'status-' + (data.status || 'none')">
+                          {{ data.label }}
+                          <el-tag v-if="data.status" size="small" style="margin-left:8px">{{ data.status }}</el-tag>
+                        </span>
+                      </template>
+                    </el-tree>
+                    <el-empty v-else description="启动任务后将显示 manifest 解析树" />
+                  </el-card>
+                </el-col>
+                <el-col :span="10">
+                  <el-card shadow="never">
+                    <template #header>实时日志</template>
+                    <div class="log-box">{{ logText }}</div>
+                    <div style="margin-top:8px;color:#909399;font-size:12px;">
+                      任务状态：{{ taskStatus || '-' }} 
+                      <span v-if="currentTaskId">#{{ currentTaskId }}</span>
+                    </div>
+                  </el-card>
+                </el-col>
+              </el-row>
+
+              <el-card shadow="never" style="margin-top:12px;">
+                <template #header>历史任务</template>
+                <el-table :data="tasks" size="small">
+                  <el-table-column prop="id" label="ID" width="70" />
+                  <el-table-column prop="host_name" label="服务器" />
+                  <el-table-column prop="action" label="操作" />
+                  <el-table-column prop="target" label="目标" />
+                  <el-table-column prop="status" label="状态" />
+                  <el-table-column prop="exit_code" label="退出码" width="90" />
+                  <el-table-column label="WS" width="100">
+                    <template #default="{ row }">
+                      <el-button link type="primary" @click="attachTask(row)">订阅</el-button>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </el-card>
+            </el-tab-pane>
+          </el-tabs>
+        </template>
+      </el-main>
+    </el-container>
+
+    <el-dialog v-model="showRegister" title="注册" width="420px">
+      <el-form :model="regForm" label-width="90px">
+        <el-form-item label="用户名"><el-input v-model="regForm.username" /></el-form-item>
+        <el-form-item label="邮箱"><el-input v-model="regForm.email" /></el-form-item>
+        <el-form-item label="密码"><el-input v-model="regForm.password" type="password" /></el-form-item>
+        <el-form-item label="确认密码"><el-input v-model="regForm.password_confirm" type="password" /></el-form-item>
+        <el-form-item label="角色">
+          <el-select v-model="regForm.role" style="width:100%">
+            <el-option label="只读" value="viewer" />
+            <el-option label="操作员" value="operator" />
+            <el-option label="管理员" value="admin" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showRegister=false">取消</el-button>
+        <el-button type="primary" @click="doRegister" :loading="loading">注册</el-button>
+      </template>
+    </el-dialog>
+  </div>
+
+  <script src="https://unpkg.com/vue@3.3.11/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/element-plus@2.4.4/dist/index.full.min.js"></script>
+  <script src="https://unpkg.com/axios@1.6.5/dist/axios.min.js"></script>
+  <script>
+    const { createApp, ref, reactive, onMounted, onUnmounted } = Vue;
+    const api = axios.create({ baseURL: '/api' });
+    createApp({
+      setup() {
+        const token = ref(localStorage.getItem('access') || '');
+        const refresh = ref(localStorage.getItem('refresh') || '');
+        const user = ref(JSON.parse(localStorage.getItem('user') || '{}'));
+        const loading = ref(false);
+        const activeTab = ref('hosts');
+        const hosts = ref([]);
+        const tasks = ref([]);
+        const showRegister = ref(false);
+        const loginForm = reactive({ username: '', password: '' });
+        const regForm = reactive({ username: '', email: '', password: '', password_confirm: '', role: 'viewer' });
+        const hostForm = reactive({ id: null, name: '', hostname: '', port: 22, username: 'root', auth_method: 'password', password: '', private_key: '', docker_service_root: '' });
+        const deployForm = reactive({ host: null, action: 'precheck', target: 'gaussdb' });
+        const logText = ref('');
+        const treeRoots = ref([]);
+        const taskStatus = ref('');
+        const currentTaskId = ref(null);
+        let socket = null;
+
+        const setAuth = (access, refToken, u) => {
+          token.value = access || '';
+          refresh.value = refToken || '';
+          if (access) localStorage.setItem('access', access); else localStorage.removeItem('access');
+          if (refToken) localStorage.setItem('refresh', refToken); else localStorage.removeItem('refresh');
+          if (u) { user.value = u; localStorage.setItem('user', JSON.stringify(u)); }
+        };
+
+        api.interceptors.request.use(cfg => {
+          if (token.value) cfg.headers.Authorization = 'Bearer ' + token.value;
+          return cfg;
+        });
+
+        api.interceptors.response.use(r => r, async err => {
+          const orig = err.config;
+          if (err.response && err.response.status === 401 && refresh.value && !orig._retry) {
+            orig._retry = true;
+            try {
+              const { data } = await axios.post('/api/auth/token/refresh/', { refresh: refresh.value });
+              setAuth(data.access, refresh.value, user.value);
+              orig.headers.Authorization = 'Bearer ' + token.value;
+              return api(orig);
+            } catch (e) {
+              setAuth('', '', null);
+            }
+          }
+          return Promise.reject(err);
+        });
+
+        const fetchHosts = async () => {
+          const { data } = await api.get('/hosts/');
+          hosts.value = data;
+        };
+        const fetchTasks = async () => {
+          const { data } = await api.get('/deployment/tasks/');
+          tasks.value = data;
+        };
+
+        const closeSocket = () => {
+          if (socket) { socket.close(); socket = null; }
+        };
+
+        const openSocket = (taskId) => {
+          closeSocket();
+          const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+          const url = `${proto}://${location.host}/ws/deploy/${taskId}/?token=${encodeURIComponent(token.value)}`;
+          socket = new WebSocket(url);
+          socket.onmessage = (ev) => {
+            let msg;
+            try { msg = JSON.parse(ev.data); } catch { return; }
+            if (msg.type === 'log' && msg.data) logText.value += msg.data;
+            if (msg.type === 'manifest' && msg.data && msg.data.roots) treeRoots.value = msg.data.roots;
+            if (msg.type === 'status') taskStatus.value = msg.data;
+            if (msg.type === 'done') taskStatus.value = 'finished:' + msg.exit_code;
+            if (msg.type === 'hello') taskStatus.value = msg.status;
+          };
+          socket.onerror = () => ElementPlus.ElMessage.error('WebSocket 错误');
+        };
+
+        const doLogin = async () => {
+          loading.value = true;
+          try {
+            const { data } = await api.post('/auth/login/', loginForm);
+            setAuth(data.token.access, data.token.refresh, data.user);
+            ElementPlus.ElMessage.success('登录成功');
+            await fetchHosts();
+            await fetchTasks();
+          } catch (e) {
+            ElementPlus.ElMessage.error(e.response?.data?.detail || '登录失败');
+          } finally { loading.value = false; }
+        };
+
+        const doRegister = async () => {
+          loading.value = true;
+          try {
+            await api.post('/auth/register/', regForm);
+            ElementPlus.ElMessage.success('注册成功，请登录');
+            showRegister.value = false;
+          } catch (e) {
+            ElementPlus.ElMessage.error('注册失败');
+          } finally { loading.value = false; }
+        };
+
+        const logout = () => {
+          closeSocket();
+          setAuth('', '', null);
+          localStorage.removeItem('user');
+          logText.value = '';
+          treeRoots.value = [];
+        };
+
+        const resetHostForm = () => {
+          Object.assign(hostForm, { id: null, name: '', hostname: '', port: 22, username: 'root', auth_method: 'password', password: '', private_key: '', docker_service_root: '' });
+        };
+
+        const saveHost = async () => {
+          loading.value = true;
+          try {
+            if (hostForm.id) {
+              await api.patch('/hosts/' + hostForm.id + '/', hostForm);
+            } else {
+              await api.post('/hosts/', hostForm);
+            }
+            ElementPlus.ElMessage.success('已保存');
+            resetHostForm();
+            await fetchHosts();
+          } catch (e) {
+            ElementPlus.ElMessage.error('保存失败');
+          } finally { loading.value = false; }
+        };
+
+        const editHost = (row) => {
+          Object.assign(hostForm, { ...row, password: '', private_key: '' });
+        };
+
+        const testHost = async (row) => {
+          row._testing = true;
+          try {
+            const { data } = await api.post('/hosts/' + row.id + '/test_connection/');
+            if (data.ok) ElementPlus.ElMessage.success(data.message);
+            else ElementPlus.ElMessage.error(data.message);
+          } finally { row._testing = false; }
+        };
+
+        const startDeploy = async () => {
+          if (!deployForm.host) return ElementPlus.ElMessage.warning('请选择服务器');
+          loading.value = true;
+          logText.value = '';
+          treeRoots.value = [];
+          try {
+            const { data } = await api.post('/deployment/tasks/', {
+              host: deployForm.host,
+              action: deployForm.action,
+              target: deployForm.target,
+            });
+            currentTaskId.value = data.id;
+            taskStatus.value = data.status;
+            openSocket(data.id);
+            await fetchTasks();
+            ElementPlus.ElMessage.success('任务已创建');
+          } catch (e) {
+            ElementPlus.ElMessage.error('创建任务失败');
+          } finally { loading.value = false; }
+        };
+
+        const attachTask = (row) => {
+          currentTaskId.value = row.id;
+          taskStatus.value = row.status;
+          logText.value = '';
+          treeRoots.value = [];
+          openSocket(row.id);
+        };
+
+        onMounted(async () => {
+          if (token.value) {
+            try { await fetchHosts(); await fetchTasks(); } catch {}
+          }
+        });
+        onUnmounted(closeSocket);
+
+        return {
+          token, user, loading, activeTab, hosts, tasks, showRegister, loginForm, regForm, hostForm, deployForm,
+          logText, treeRoots, taskStatus, currentTaskId,
+          doLogin, doRegister, logout, saveHost, resetHostForm, editHost, testHost, startDeploy, attachTask,
+        };
+      }
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>
