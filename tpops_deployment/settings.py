@@ -124,7 +124,7 @@ SIMPLE_JWT = {
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOW_CREDENTIALS = True
 
-# Local path to docker-service repo (override via env)
+# 可选：本机参考路径（MVP 主要使用「主机」里填的远程部署根目录）
 DOCKER_SERVICE_ROOT = os.environ.get(
     "DOCKER_SERVICE_ROOT",
     str(BASE_DIR.parent / "docker-service"),

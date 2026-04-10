@@ -3,181 +3,345 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TPOPS 白屏化部署</title>
+  <title>TPOPS 部署平台</title>
   <link rel="stylesheet" href="https://unpkg.com/element-plus@2.4.4/dist/index.css" />
   <style>
-    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #f5f7fa; }
-    .page { max-width: 1200px; margin: 0 auto; padding: 16px; }
-    .log-box { background: #1e1e1e; color: #d4d4d4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; height: 320px; overflow: auto; padding: 8px; border-radius: 4px; white-space: pre-wrap; }
+    :root {
+      --ob-sidebar: #0b1f3a;
+      --ob-sidebar-active: #1890ff;
+      --ob-header-h: 56px;
+      --ob-bg: #f0f2f5;
+    }
+    * { box-sizing: border-box; }
+    html, body, #app { height: 100%; margin: 0; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+      background: var(--ob-bg);
+      color: #303133;
+    }
+    .login-wrap {
+      min-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0b1f3a 0%, #1a3a5c 45%, #243b55 100%);
+      padding: 24px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 12px 48px rgba(0,0,0,.25);
+    }
+    .login-card .banner {
+      background: linear-gradient(90deg, #132f4c, #1890ff);
+      color: #fff;
+      padding: 28px 32px;
+    }
+    .login-card .banner h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: .5px; }
+    .login-card .banner p { margin: 8px 0 0; opacity: .9; font-size: 13px; }
+    .login-card .body { padding: 28px 32px 32px; background: #fff; }
+    .layout-root { height: 100%; }
+    .ob-aside {
+      background: var(--ob-sidebar);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .ob-logo {
+      height: var(--ob-header-h);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      font-weight: 600;
+      font-size: 16px;
+      color: #fff;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      white-space: nowrap;
+    }
+    .ob-logo span { color: #69c0ff; margin-right: 8px; font-size: 20px; }
+    .ob-menu { border-right: none !important; flex: 1; background: transparent !important; }
+    .ob-menu.el-menu--dark { --el-menu-bg-color: transparent; --el-menu-hover-bg-color: rgba(255,255,255,.08); }
+    .ob-header {
+      height: var(--ob-header-h) !important;
+      background: #fff;
+      border-bottom: 1px solid #e8e8e8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      box-shadow: 0 1px 4px rgba(0,21,41,.08);
+    }
+    .ob-breadcrumb { font-size: 14px; color: #606266; }
+    .ob-breadcrumb strong { color: #303133; }
+    .ob-main { padding: 20px 24px 32px; background: var(--ob-bg); overflow: auto; }
+    .ob-page-title { font-size: 16px; font-weight: 600; color: #303133; margin: 0 0 16px; }
+    .stat-card { border-radius: 4px; }
+    .stat-card .num { font-size: 28px; font-weight: 600; color: #1890ff; line-height: 1.2; }
+    .stat-card .lab { font-size: 13px; color: #909399; margin-top: 4px; }
+    .log-box {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      height: 360px;
+      overflow: auto;
+      padding: 12px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      border: 1px solid #303030;
+    }
     .status-none { color: #909399; }
     .status-running { color: #e6a23c; }
     .status-done { color: #67c23a; }
     .status-error { color: #f56c6c; }
     .status-null { color: #b37feb; }
     .status-retrying { color: #ff9800; }
+    .hint { font-size: 12px; color: #909399; margin-top: 4px; line-height: 1.5; }
   </style>
 </head>
 <body>
-  <div id="app" class="page">
-    <el-container direction="vertical">
-      <el-header style="display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #ebeef5;">
-        <div style="font-weight:600;">TPOPS 白屏化部署 (MVP)</div>
-        <div v-if="token">
-          <el-tag type="success">{{ user.username }}</el-tag>
-          <el-button link type="danger" @click="logout">退出</el-button>
+  <div id="app">
+    <!-- 登录（OceanBase 类控制台登录区） -->
+    <div v-if="!token" class="login-wrap">
+      <div class="login-card">
+        <div class="banner">
+          <h1>TPOPS 部署平台</h1>
+          <p>集群部署 · 预检查 · 安装 · 进度与日志</p>
         </div>
-      </el-header>
-      <el-main>
-        <el-card v-if="!token" shadow="never">
-          <template #header>登录</template>
-          <el-form :model="loginForm" label-width="90px" style="max-width:420px">
+        <div class="body">
+          <el-form :model="loginForm" label-position="top" @keyup.enter="doLogin">
             <el-form-item label="用户名">
-              <el-input v-model="loginForm.username" autocomplete="username" />
+              <el-input v-model="loginForm.username" size="large" autocomplete="username" placeholder="请输入用户名" />
             </el-form-item>
             <el-form-item label="密码">
-              <el-input v-model="loginForm.password" type="password" autocomplete="current-password" />
+              <el-input v-model="loginForm.password" size="large" type="password" show-password autocomplete="current-password" placeholder="请输入密码" />
             </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="doLogin" :loading="loading">登录</el-button>
-              <el-button @click="showRegister = true">注册</el-button>
+            <el-form-item style="margin-bottom: 12px;">
+              <el-button type="primary" size="large" style="width:100%" @click="doLogin" :loading="loading">登 录</el-button>
             </el-form-item>
+            <div style="text-align:center;">
+              <el-button link type="primary" @click="showRegister = true">注册账号</el-button>
+            </div>
           </el-form>
-        </el-card>
+        </div>
+      </div>
+    </div>
 
-        <template v-else>
-          <el-tabs v-model="activeTab">
-            <el-tab-pane label="服务器" name="hosts">
-              <el-row :gutter="12">
-                <el-col :span="10">
-                  <el-card shadow="never">
-                    <template #header>添加 / 编辑服务器</template>
-                    <el-form :model="hostForm" label-width="120px" size="small">
-                      <el-form-item label="名称"><el-input v-model="hostForm.name" /></el-form-item>
-                      <el-form-item label="地址"><el-input v-model="hostForm.hostname" /></el-form-item>
-                      <el-form-item label="SSH 端口"><el-input-number v-model="hostForm.port" :min="1" :max="65535" /></el-form-item>
-                      <el-form-item label="SSH 用户"><el-input v-model="hostForm.username" /></el-form-item>
-                      <el-form-item label="认证方式">
-                        <el-radio-group v-model="hostForm.auth_method">
-                          <el-radio label="password">密码</el-radio>
-                          <el-radio label="key">私钥</el-radio>
-                        </el-radio-group>
-                      </el-form-item>
-                      <el-form-item v-if="hostForm.auth_method==='password'" label="密码">
-                        <el-input v-model="hostForm.password" type="password" show-password />
-                      </el-form-item>
-                      <el-form-item v-else label="私钥 PEM">
-                        <el-input v-model="hostForm.private_key" type="textarea" :rows="4" />
-                      </el-form-item>
-                      <el-form-item label="docker-service 根目录">
-                        <el-input v-model="hostForm.docker_service_root" placeholder="远程路径，含 autoChangeInterface" />
-                      </el-form-item>
-                      <el-form-item>
-                        <el-button type="primary" @click="saveHost" :loading="loading">保存</el-button>
-                        <el-button @click="resetHostForm">清空</el-button>
-                      </el-form-item>
-                    </el-form>
-                  </el-card>
-                </el-col>
-                <el-col :span="14">
-                  <el-card shadow="never">
-                    <template #header>服务器列表</template>
-                    <el-table :data="hosts" size="small" stripe>
-                      <el-table-column prop="name" label="名称" />
-                      <el-table-column prop="hostname" label="地址" />
-                      <el-table-column prop="docker_service_root" label="docker-service" show-overflow-tooltip />
-                      <el-table-column label="操作" width="220">
-                        <template #default="{ row }">
-                          <el-button link type="primary" @click="editHost(row)">编辑</el-button>
-                          <el-button link @click="testHost(row)" :loading="row._testing">连通性</el-button>
-                        </template>
-                      </el-table-column>
-                    </el-table>
-                  </el-card>
-                </el-col>
-              </el-row>
-            </el-tab-pane>
+    <!-- 主布局：侧栏 + 顶栏 + 内容区 -->
+    <el-container v-else class="layout-root">
+      <el-aside width="220px" class="ob-aside">
+        <div class="ob-logo"><span>◆</span> TPOPS 部署</div>
+        <el-menu
+          class="ob-menu"
+          :default-active="activeMenu"
+          background-color="transparent"
+          text-color="rgba(255,255,255,.75)"
+          active-text-color="#fff"
+          @select="onMenuSelect"
+        >
+          <el-menu-item index="overview">
+            <span>概览</span>
+          </el-menu-item>
+          <el-menu-item index="hosts">
+            <span>主机管理</span>
+          </el-menu-item>
+          <el-menu-item index="deploy">
+            <span>部署任务</span>
+          </el-menu-item>
+        </el-menu>
+      </el-aside>
+      <el-container direction="vertical">
+        <el-header class="ob-header">
+          <div class="ob-breadcrumb">
+            控制台 / <strong v-text="breadcrumbTitle"></strong>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <el-tag effect="plain" type="info" v-text="user.username || '-'"></el-tag>
+            <el-button type="danger" link @click="logout">退出登录</el-button>
+          </div>
+        </el-header>
+        <el-main class="ob-main">
+          <!-- 概览 -->
+          <template v-if="activeMenu === 'overview'">
+            <h2 class="ob-page-title">概览</h2>
+            <el-row :gutter="16" style="margin-bottom:20px;">
+              <el-col :xs="24" :sm="8">
+                <el-card shadow="hover" class="stat-card">
+                  <div class="num" v-text="hosts.length"></div>
+                  <div class="lab">已配置主机</div>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :sm="8">
+                <el-card shadow="hover" class="stat-card">
+                  <div class="num" v-text="tasks.length"></div>
+                  <div class="lab">历史任务数</div>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :sm="8">
+                <el-card shadow="hover" class="stat-card">
+                  <div class="num" style="color:#52c41a;" v-text="runningCount"></div>
+                  <div class="lab">进行中任务</div>
+                </el-card>
+              </el-col>
+            </el-row>
+            <el-card shadow="never">
+              <template #header><span style="font-weight:600">快速开始</span></template>
+              <el-steps :active="3" align-center finish-status="success">
+                <el-step title="主机管理" description="填写 SSH 与部署根目录（appctl.sh 所在路径）" />
+                <el-step title="预检查" description="precheck install 目标组件" />
+                <el-step title="安装" description="install 并查看日志与流程树" />
+              </el-steps>
+            </el-card>
+          </template>
 
-            <el-tab-pane label="部署" name="deploy">
-              <el-card shadow="never">
-                <template #header>发起任务</template>
-                <el-form inline>
-                  <el-form-item label="服务器">
-                    <el-select v-model="deployForm.host" placeholder="选择" style="width:220px">
-                      <el-option v-for="h in hosts" :key="h.id" :label="h.name" :value="h.id" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="操作">
-                    <el-select v-model="deployForm.action" style="width:160px">
-                      <el-option label="预检查 install gaussdb" value="precheck" />
-                      <el-option label="install gaussdb" value="install" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="目标">
-                    <el-input v-model="deployForm.target" style="width:140px" />
-                  </el-form-item>
-                  <el-form-item>
-                    <el-button type="primary" @click="startDeploy" :loading="loading">执行</el-button>
-                  </el-form-item>
-                </el-form>
-              </el-card>
-
-              <el-row :gutter="12" style="margin-top:12px;">
-                <el-col :span="14">
-                  <el-card shadow="never">
-                    <template #header>Manifest 树（WebSocket 推送）</template>
-                    <el-tree
-                      v-if="treeRoots.length"
-                      :data="treeRoots"
-                      :props="{ label: 'label', children: 'children' }"
-                      node-key="id"
-                      default-expand-all
-                    >
-                      <template #default="{ data }">
-                        <span :class="'status-' + (data.status || 'none')">
-                          {{ data.label }}
-                          <el-tag v-if="data.status" size="small" style="margin-left:8px">{{ data.status }}</el-tag>
-                        </span>
+          <!-- 主机管理 -->
+          <template v-else-if="activeMenu === 'hosts'">
+            <h2 class="ob-page-title">主机管理</h2>
+            <el-row :gutter="16">
+              <el-col :xs="24" :lg="9">
+                <el-card shadow="never">
+                  <template #header><span style="font-weight:600">添加 / 编辑主机</span></template>
+                  <el-form :model="hostForm" label-width="112px" size="default">
+                    <el-form-item label="显示名称">
+                      <el-input v-model="hostForm.name" placeholder="如：生产节点-1" />
+                    </el-form-item>
+                    <el-form-item label="IP / 域名">
+                      <el-input v-model="hostForm.hostname" placeholder="SSH 地址" />
+                    </el-form-item>
+                    <el-form-item label="SSH 端口">
+                      <el-input-number v-model="hostForm.port" :min="1" :max="65535" style="width:100%" />
+                    </el-form-item>
+                    <el-form-item label="SSH 用户">
+                      <el-input v-model="hostForm.username" placeholder="如 root" />
+                    </el-form-item>
+                    <el-form-item label="认证方式">
+                      <el-radio-group v-model="hostForm.auth_method">
+                        <el-radio label="password">密码</el-radio>
+                        <el-radio label="key">私钥</el-radio>
+                      </el-radio-group>
+                    </el-form-item>
+                    <el-form-item v-if="hostForm.auth_method==='password'" label="密码">
+                      <el-input v-model="hostForm.password" type="password" show-password placeholder="保存时写入" />
+                    </el-form-item>
+                    <el-form-item v-else label="私钥 PEM">
+                      <el-input v-model="hostForm.private_key" type="textarea" :rows="5" placeholder="-----BEGIN ... KEY-----" />
+                    </el-form-item>
+                    <el-form-item label="部署根目录">
+                      <el-input v-model="hostForm.docker_service_root" placeholder="/data/docker-service" />
+                      <div class="hint">与远程服务器上 <code>appctl.sh</code> 所在目录一致（例如 <code>/data/docker-service</code>），脚本将在此目录执行：<code>bash appctl.sh ...</code>，同目录下读取 <code>manifest.yaml</code>。</div>
+                    </el-form-item>
+                    <el-form-item>
+                      <el-button type="primary" @click="saveHost" :loading="loading">保存</el-button>
+                      <el-button @click="resetHostForm">清空表单</el-button>
+                    </el-form-item>
+                  </el-form>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :lg="15">
+                <el-card shadow="never">
+                  <template #header><span style="font-weight:600">主机列表</span></template>
+                  <el-table :data="hosts" stripe style="width:100%">
+                    <el-table-column prop="name" label="名称" min-width="100" />
+                    <el-table-column prop="hostname" label="地址" min-width="120" />
+                    <el-table-column prop="docker_service_root" label="部署根目录" min-width="160" show-overflow-tooltip />
+                    <el-table-column label="操作" width="200" fixed="right">
+                      <template #default="{ row }">
+                        <el-button link type="primary" @click="editHost(row)">编辑</el-button>
+                        <el-button link @click="testHost(row)" :loading="row._testing">连通性</el-button>
                       </template>
-                    </el-tree>
-                    <el-empty v-else description="启动任务后将显示 manifest 解析树" />
-                  </el-card>
-                </el-col>
-                <el-col :span="10">
-                  <el-card shadow="never">
-                    <template #header>实时日志</template>
-                    <div class="log-box">{{ logText }}</div>
-                    <div style="margin-top:8px;color:#909399;font-size:12px;">
-                      任务状态：{{ taskStatus || '-' }} 
-                      <span v-if="currentTaskId">#{{ currentTaskId }}</span>
-                    </div>
-                  </el-card>
-                </el-col>
-              </el-row>
+                    </el-table-column>
+                  </el-table>
+                </el-card>
+              </el-col>
+            </el-row>
+          </template>
 
-              <el-card shadow="never" style="margin-top:12px;">
-                <template #header>历史任务</template>
-                <el-table :data="tasks" size="small">
-                  <el-table-column prop="id" label="ID" width="70" />
-                  <el-table-column prop="host_name" label="服务器" />
-                  <el-table-column prop="action" label="操作" />
-                  <el-table-column prop="target" label="目标" />
-                  <el-table-column prop="status" label="状态" />
-                  <el-table-column prop="exit_code" label="退出码" width="90" />
-                  <el-table-column label="WS" width="100">
-                    <template #default="{ row }">
-                      <el-button link type="primary" @click="attachTask(row)">订阅</el-button>
+          <!-- 部署任务 -->
+          <template v-else-if="activeMenu === 'deploy'">
+            <h2 class="ob-page-title">部署任务</h2>
+            <el-card shadow="never" style="margin-bottom:16px;">
+              <template #header><span style="font-weight:600">发起任务</span></template>
+              <el-form :inline="true">
+                <el-form-item label="目标主机">
+                  <el-select v-model="deployForm.host" placeholder="请选择主机" style="width:240px" clearable>
+                    <el-option v-for="h in hosts" :key="h.id" :label="h.name + ' (' + h.hostname + ')'" :value="h.id" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="操作类型">
+                  <el-select v-model="deployForm.action" style="width:200px">
+                    <el-option label="预检查 (precheck install)" value="precheck" />
+                    <el-option label="安装 (install)" value="install" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="目标组件">
+                  <el-input v-model="deployForm.target" style="width:140px" placeholder="gaussdb" />
+                </el-form-item>
+                <el-form-item>
+                  <el-button type="primary" @click="startDeploy" :loading="loading">执行</el-button>
+                </el-form-item>
+              </el-form>
+              <div class="hint">远程命令：<code>cd &lt;部署根目录&gt; && bash appctl.sh precheck install &lt;目标&gt;</code> 或 <code>bash appctl.sh install &lt;目标&gt;</code></div>
+            </el-card>
+
+            <el-row :gutter="16">
+              <el-col :xs="24" :lg="14">
+                <el-card shadow="never">
+                  <template #header><span style="font-weight:600">部署流程（Manifest）</span></template>
+                  <el-tree
+                    v-if="treeRoots.length"
+                    :data="treeRoots"
+                    :props="{ label: 'label', children: 'children' }"
+                    node-key="id"
+                    default-expand-all
+                  >
+                    <template #default="{ data }">
+                      <span :class="'status-' + (data.status || 'none')">
+                        <span v-text="data.label"></span>
+                        <el-tag v-if="data.status" size="small" style="margin-left:8px" v-text="data.status"></el-tag>
+                      </span>
                     </template>
-                  </el-table-column>
-                </el-table>
-              </el-card>
-            </el-tab-pane>
-          </el-tabs>
-        </template>
-      </el-main>
+                  </el-tree>
+                  <el-empty v-else description="创建任务后将通过 WebSocket 推送解析结果" />
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :lg="10">
+                <el-card shadow="never">
+                  <template #header><span style="font-weight:600">实时输出</span></template>
+                  <div class="log-box" v-text="logText"></div>
+                  <div style="margin-top:10px;font-size:13px;color:#606266;">
+                    任务状态：<span v-text="taskStatus || '-'"></span>
+                    <span v-if="currentTaskId"> · #<span v-text="currentTaskId"></span></span>
+                  </div>
+                </el-card>
+              </el-col>
+            </el-row>
+
+            <el-card shadow="never" style="margin-top:16px;">
+              <template #header><span style="font-weight:600">任务历史</span></template>
+              <el-table :data="tasks" stripe>
+                <el-table-column prop="id" label="ID" width="72" />
+                <el-table-column prop="host_name" label="主机" min-width="100" />
+                <el-table-column prop="action" label="操作" width="100" />
+                <el-table-column prop="target" label="目标" width="100" />
+                <el-table-column prop="status" label="状态" width="110" />
+                <el-table-column prop="exit_code" label="退出码" width="88" />
+                <el-table-column label="订阅日志" width="100" fixed="right">
+                  <template #default="{ row }">
+                    <el-button link type="primary" @click="attachTask(row)">订阅</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-card>
+          </template>
+        </el-main>
+      </el-container>
     </el-container>
 
-    <el-dialog v-model="showRegister" title="注册" width="420px">
-      <el-form :model="regForm" label-width="90px">
+    <el-dialog v-model="showRegister" title="注册账号" width="440px">
+      <el-form :model="regForm" label-width="88px">
         <el-form-item label="用户名"><el-input v-model="regForm.username" /></el-form-item>
         <el-form-item label="邮箱"><el-input v-model="regForm.email" /></el-form-item>
         <el-form-item label="密码"><el-input v-model="regForm.password" type="password" /></el-form-item>
@@ -201,7 +365,7 @@
   <script src="https://unpkg.com/element-plus@2.4.4/dist/index.full.min.js"></script>
   <script src="https://unpkg.com/axios@1.6.5/dist/axios.min.js"></script>
   <script>
-    const { createApp, ref, reactive, onMounted, onUnmounted } = Vue;
+    const { createApp, ref, reactive, computed, onMounted, onUnmounted } = Vue;
     const api = axios.create({ baseURL: '/api' });
     createApp({
       setup() {
@@ -209,19 +373,28 @@
         const refresh = ref(localStorage.getItem('refresh') || '');
         const user = ref(JSON.parse(localStorage.getItem('user') || '{}'));
         const loading = ref(false);
-        const activeTab = ref('hosts');
+        const activeMenu = ref('overview');
         const hosts = ref([]);
         const tasks = ref([]);
         const showRegister = ref(false);
         const loginForm = reactive({ username: '', password: '' });
         const regForm = reactive({ username: '', email: '', password: '', password_confirm: '', role: 'viewer' });
-        const hostForm = reactive({ id: null, name: '', hostname: '', port: 22, username: 'root', auth_method: 'password', password: '', private_key: '', docker_service_root: '' });
+        const hostForm = reactive({ id: null, name: '', hostname: '', port: 22, username: 'root', auth_method: 'password', password: '', private_key: '', docker_service_root: '/data/docker-service' });
         const deployForm = reactive({ host: null, action: 'precheck', target: 'gaussdb' });
         const logText = ref('');
         const treeRoots = ref([]);
         const taskStatus = ref('');
         const currentTaskId = ref(null);
         let socket = null;
+
+        const breadcrumbTitle = computed(() => {
+          const m = { overview: '概览', hosts: '主机管理', deploy: '部署任务' };
+          return m[activeMenu.value] || '';
+        });
+
+        const runningCount = computed(() => tasks.value.filter(t => t.status === 'running').length);
+
+        const onMenuSelect = (key) => { activeMenu.value = key; };
 
         const setAuth = (access, refToken, u) => {
           token.value = access || '';
@@ -288,6 +461,7 @@
             const { data } = await api.post('/auth/login/', loginForm);
             setAuth(data.token.access, data.token.refresh, data.user);
             ElementPlus.ElMessage.success('登录成功');
+            activeMenu.value = 'overview';
             await fetchHosts();
             await fetchTasks();
           } catch (e) {
@@ -315,7 +489,7 @@
         };
 
         const resetHostForm = () => {
-          Object.assign(hostForm, { id: null, name: '', hostname: '', port: 22, username: 'root', auth_method: 'password', password: '', private_key: '', docker_service_root: '' });
+          Object.assign(hostForm, { id: null, name: '', hostname: '', port: 22, username: 'root', auth_method: 'password', password: '', private_key: '', docker_service_root: '/data/docker-service' });
         };
 
         const saveHost = async () => {
@@ -348,10 +522,11 @@
         };
 
         const startDeploy = async () => {
-          if (!deployForm.host) return ElementPlus.ElMessage.warning('请选择服务器');
+          if (!deployForm.host) return ElementPlus.ElMessage.warning('请选择目标主机');
           loading.value = true;
           logText.value = '';
           treeRoots.value = [];
+          activeMenu.value = 'deploy';
           try {
             const { data } = await api.post('/deployment/tasks/', {
               host: deployForm.host,
@@ -373,6 +548,7 @@
           taskStatus.value = row.status;
           logText.value = '';
           treeRoots.value = [];
+          activeMenu.value = 'deploy';
           openSocket(row.id);
         };
 
@@ -384,7 +560,8 @@
         onUnmounted(closeSocket);
 
         return {
-          token, user, loading, activeTab, hosts, tasks, showRegister, loginForm, regForm, hostForm, deployForm,
+          token, user, loading, activeMenu, breadcrumbTitle, runningCount, onMenuSelect,
+          hosts, tasks, showRegister, loginForm, regForm, hostForm, deployForm,
           logText, treeRoots, taskStatus, currentTaskId,
           doLogin, doRegister, logout, saveHost, resetHostForm, editHost, testHost, startDeploy, attachTask,
         };

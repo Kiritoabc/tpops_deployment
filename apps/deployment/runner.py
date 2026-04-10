@@ -28,7 +28,8 @@ def _remote_manifest_path(host) -> str:
     root = (host.docker_service_root or "").strip().rstrip("/")
     if not root:
         root = "/data/docker-service"
-    return "%s/autoChangeInterface/manifest.yaml" % root
+    # manifest 与 appctl.sh 同位于部署根目录（无 autoChangeInterface 子目录）
+    return "%s/manifest.yaml" % root
 
 
 def _poll_manifest_loop(task_id: int, host_id: int, secret: str, stop_event: threading.Event):
@@ -65,7 +66,7 @@ def _build_appctl_command(host, action: str, target: str) -> str:
         raise ValueError("未知操作")
     return (
         "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
-        "cd %s && bash autoChangeInterface/appctl.sh %s" % (root, sub)
+        "cd %s && bash appctl.sh %s" % (root, sub)
     )
 
 

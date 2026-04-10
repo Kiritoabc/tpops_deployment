@@ -22,8 +22,8 @@ class Host(models.Model):
     docker_service_root = models.CharField(
         max_length=512,
         blank=True,
-        verbose_name="docker-service 根目录",
-        help_text="远程主机上包含 autoChangeInterface 的目录，例如 /opt/docker-service",
+        verbose_name="部署根目录",
+        help_text="远程主机上 appctl.sh 所在目录，例如 /data/docker-service",
     )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

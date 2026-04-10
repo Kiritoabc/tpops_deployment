@@ -25,8 +25,8 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 浏览器访问 `http://localhost:8000/`：
 
 1. 注册 / 登录获取 JWT  
-2. 在「服务器」页填写远程 **docker-service 根目录**（包含 `autoChangeInterface`）及 SSH 凭证  
-3. 在「部署」页执行 **预检查** 或 **install**（默认 `gaussdb`），通过 WebSocket 查看日志与 manifest 树  
+2. 在「主机管理」填写远程 **部署根目录**（`appctl.sh` 所在目录，如 `/data/docker-service`）及 SSH 凭证  
+3. 在「部署任务」执行 **预检查** 或 **安装**，通过 WebSocket 查看日志与 manifest 树  
 
 ### 环境变量
 
@@ -39,10 +39,10 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 
 ## 远程执行命令
 
-在主机配置的 `docker_service_root` 目录下执行：
+在主机配置的部署根目录下执行（与 `appctl.sh` 同级读取 `manifest.yaml`）：
 
-- 预检查：`bash autoChangeInterface/appctl.sh precheck install <target>`
-- 安装：`bash autoChangeInterface/appctl.sh install <target>`
+- 预检查：`bash appctl.sh precheck install <target>`
+- 安装：`bash appctl.sh install <target>`
 
 ## 项目结构（摘要）
 
