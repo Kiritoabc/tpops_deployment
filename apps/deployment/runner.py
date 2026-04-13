@@ -318,7 +318,6 @@ def _run_task(task_id: int):
 
     stop_poll = threading.Event()
     poller = None
-    manifest_poll_started = False
     init_needle = "init manifest successful"
 
     if not _should_poll_manifest(task.action):
@@ -331,18 +330,46 @@ def _run_task(task_id: int):
             },
         )
     else:
+        # install/upgrade：不依赖 stdout 里是否出现固定文案（现场脚本可能改文案、
+        # 或 PTY/缓冲导致检测不到）；appctl 未结束时即开始轮询，文件就绪后 UI 即有 manifest。
         _emit(
             task_id,
             {
                 "type": "phase",
-                "phase": "wait_init_in_stdout",
-                "message": "等待 appctl 输出中出现 init manifest successful 后再拉取 manifest…",
+                "phase": "manifest_polling",
+                "message": "安装/升级流程：已开始轮询远程 manifest（就绪后即推送流水线）",
+                "paths": manifest_paths,
             },
         )
+        try:
+            tried = _poll_manifest_once(task_id, task.host_id, secret, manifest_paths)
+            _emit(
+                task_id,
+                {
+                    "type": "log",
+                    "data": "[manifest] 轮询路径: %s\n"
+                    % (", ".join(tried) if tried else "(无路径)"),
+                },
+            )
+        except Exception as exc:
+            _emit(
+                task_id,
+                {
+                    "type": "manifest_error",
+                    "message": "首次拉取 manifest 失败: %s" % exc,
+                },
+            )
+        poller = threading.Thread(
+            target=_poll_manifest_loop,
+            args=(task_id, task.host_id, secret, stop_poll, manifest_paths),
+            daemon=True,
+        )
+        poller.start()
 
     exit_code = None
     buffer = ""
     stream_for_init_scan = ""
+    init_stdout_hinted = False
     try:
         for chunk in run_remote_command(
             h.hostname,
@@ -352,46 +379,26 @@ def _run_task(task_id: int):
             secret,
             cmd,
             timeout=86400,
+            get_pty=False,
         ):
             buffer += chunk
-            if _should_poll_manifest(task.action) and not manifest_poll_started:
-                stream_for_init_scan += chunk
-                if init_needle in stream_for_init_scan.lower():
-                    manifest_poll_started = True
-                    _emit(
-                        task_id,
-                        {
-                            "type": "phase",
-                            "phase": "init_manifest_ready",
-                            "message": "已检测到 init manifest successful，开始拉取 manifest",
-                        },
-                    )
-                    try:
-                        tried = _poll_manifest_once(
-                            task_id, task.host_id, secret, manifest_paths
-                        )
-                        _emit(
-                            task_id,
-                            {
-                                "type": "log",
-                                "data": "[manifest] 首次尝试读取: %s\n"
-                                % (", ".join(tried) if tried else "(无路径)"),
-                            },
-                        )
-                    except Exception as exc:
-                        _emit(
-                            task_id,
-                            {
-                                "type": "manifest_error",
-                                "message": "首次拉取 manifest 失败: %s" % exc,
-                            },
-                        )
-                    poller = threading.Thread(
-                        target=_poll_manifest_loop,
-                        args=(task_id, task.host_id, secret, stop_poll, manifest_paths),
-                        daemon=True,
-                    )
-                    poller.start()
+            stream_for_init_scan += chunk
+            if len(stream_for_init_scan) > 8192:
+                stream_for_init_scan = stream_for_init_scan[-4096:]
+            if (
+                _should_poll_manifest(task.action)
+                and not init_stdout_hinted
+                and init_needle in stream_for_init_scan.lower()
+            ):
+                init_stdout_hinted = True
+                _emit(
+                    task_id,
+                    {
+                        "type": "phase",
+                        "phase": "init_manifest_ready",
+                        "message": "appctl 输出中已出现 init manifest successful（manifest 轮询已在进行）",
+                    },
+                )
             m = re.search(r"__EXIT_CODE__:(-?\d+)", buffer)
             if m:
                 exit_code = int(m.group(1))
@@ -405,15 +412,6 @@ def _run_task(task_id: int):
                 buffer = ""
         if buffer:
             _emit(task_id, {"type": "log", "data": buffer})
-        if _should_poll_manifest(task.action) and not manifest_poll_started:
-            _emit(
-                task_id,
-                {
-                    "type": "phase",
-                    "phase": "manifest_skipped",
-                    "message": "未在 appctl 输出中检测到 init manifest successful，未启动 manifest 轮询",
-                },
-            )
     except Exception as exc:
         task.status = DeploymentTask.STATUS_FAILED
         task.error_message = str(exc)

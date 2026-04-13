@@ -1180,8 +1180,19 @@ use_import_ca = no
             }
             if (msg.type === 'phase') {
               phaseBanner.value = msg.message || '';
-              phaseHint.value = (msg.paths_tried && msg.paths_tried.length) ? ('检测: ' + msg.paths_tried.join(', ')) : (msg.command || '');
+              if (msg.paths && msg.paths.length) {
+                phaseHint.value = '轮询: ' + msg.paths.join(', ');
+              } else if (msg.paths_tried && msg.paths_tried.length) {
+                phaseHint.value = '检测: ' + msg.paths_tried.join(', ');
+              } else {
+                phaseHint.value = msg.command || '';
+              }
               if (msg.phase === 'run_appctl') { flowS1.value = 'active'; }
+              if (msg.phase === 'manifest_polling') {
+                flowS1.value = 'active';
+                flowS3.value = 'active';
+                flowS4.value = 'pending';
+              }
               if (msg.phase === 'wait_init_in_stdout') {
                 flowS1.value = 'active';
                 flowS3.value = 'pending';

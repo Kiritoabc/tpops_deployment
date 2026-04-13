@@ -69,10 +69,14 @@ def run_remote_command(
     secret: str,
     command: str,
     timeout: int = 3600,
+    get_pty: bool = True,
 ):
     """
     流式输出 stdout/stderr（小块及时 yield，便于 WebSocket 实时推送）。
     末尾追加 __EXIT_CODE__:N
+
+    get_pty: 长时间跑脚本（如 appctl）建议 False，避免 PTY 下部分环境合并/延迟
+    stderr，或与第二条并发 SSH 信道互相影响；短命令可 True。
     """
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -92,7 +96,7 @@ def run_remote_command(
     client.connect(**connect_kwargs)
     try:
         stdin, stdout, stderr = client.exec_command(
-            command, get_pty=True, timeout=timeout
+            command, get_pty=get_pty, timeout=timeout
         )
         stdin.close()
         ch = stdout.channel
@@ -136,12 +140,20 @@ def run_remote_command_output(
     secret: str,
     command: str,
     timeout: int = 120,
+    get_pty: bool = False,
 ):
     """Run remote command and return (stdout+stderr text without marker, exit_code)."""
     buf = []
     exit_code = -1
     for chunk in run_remote_command(
-        hostname, port, username, auth_method, secret, command, timeout=timeout
+        hostname,
+        port,
+        username,
+        auth_method,
+        secret,
+        command,
+        timeout=timeout,
+        get_pty=get_pty,
     ):
         if "__EXIT_CODE__:" in chunk:
             parts = chunk.split("__EXIT_CODE__:")
@@ -166,7 +178,14 @@ def remote_cat_file(hostname, port, username, auth_method, secret, remote_path, 
     )
     cmd = "sh -c %s" % shlex.quote(inner)
     return run_remote_command_output(
-        hostname, port, username, auth_method, secret, cmd, timeout=timeout
+        hostname,
+        port,
+        username,
+        auth_method,
+        secret,
+        cmd,
+        timeout=timeout,
+        get_pty=False,
     )
 
 
