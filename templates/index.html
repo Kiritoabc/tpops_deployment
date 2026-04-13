@@ -494,9 +494,9 @@
                     <span class="hint" v-if="selectedLogHint" style="margin-left:8px;" v-text="selectedLogHint"></span>
                   </template>
                   <div style="font-size:12px;color:#909399;margin-bottom:8px;">appctl 标准输出</div>
-                  <div class="log-box log-deploy-main" v-text="logText"></div>
+                  <div ref="logAppctlEl" class="log-box log-deploy-main" v-text="logText"></div>
                   <div style="font-size:12px;color:#909399;margin:12px 0 6px;">文件日志 <span class="hint" v-text="logTailLabel"></span></div>
-                  <div class="log-box log-deploy-sub" v-text="logTailText"></div>
+                  <div ref="logFileEl" class="log-box log-deploy-sub" v-text="logTailText"></div>
                   <div style="margin-top:10px;font-size:13px;color:#606266;">
                     任务状态：<span v-text="taskStatus || '-'"></span>
                     <span v-if="currentTaskId"> · #<span v-text="currentTaskId"></span></span>
@@ -552,7 +552,7 @@
   <script src="https://unpkg.com/element-plus@2.4.4/dist/index.full.min.js"></script>
   <script src="https://unpkg.com/axios@1.6.5/dist/axios.min.js"></script>
   <script>
-    const { createApp, ref, reactive, computed, watch, onMounted, onUnmounted } = Vue;
+    const { createApp, ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } = Vue;
     const api = axios.create({ baseURL: '/api' });
     createApp({
       setup() {
@@ -607,6 +607,8 @@ use_import_ca = no
         });
         const logText = ref('');
         const logTailText = ref('');
+        const logAppctlEl = ref(null);
+        const logFileEl = ref(null);
         const logTailLabel = ref('（点击左侧步骤或 precheck/install 标签）');
         const treeRoots = ref([]);
         const manifestPayload = ref(null);
@@ -726,6 +728,18 @@ use_import_ca = no
           tasks.value = data;
         };
 
+        const scrollLogEl = (elRef) => {
+          nextTick(() => {
+            const el = elRef && elRef.value;
+            if (el && typeof el.scrollTop === 'number') {
+              el.scrollTop = el.scrollHeight;
+            }
+          });
+        };
+
+        watch(logText, () => scrollLogEl(logAppctlEl));
+        watch(logTailText, () => scrollLogEl(logFileEl));
+
         const resetFlow = () => {
           flowS1.value = 'pending';
           flowS2.value = 'pending';
@@ -757,7 +771,10 @@ use_import_ca = no
           logSocket.onmessage = (ev) => {
             let msg;
             try { msg = JSON.parse(ev.data); } catch { return; }
-            if (msg.type === 'chunk' && msg.data) logTailText.value += msg.data;
+            if (msg.type === 'chunk' && msg.data) {
+              logTailText.value += msg.data;
+              scrollLogEl(logFileEl);
+            }
             if (msg.type === 'meta') logTailLabel.value = (msg.path || '') + ' (' + (msg.kind || '') + ')';
             if (msg.type === 'error') ElementPlus.ElMessage.error(msg.message || '日志错误');
           };
@@ -775,7 +792,10 @@ use_import_ca = no
           logSocket.onmessage = (ev) => {
             let msg;
             try { msg = JSON.parse(ev.data); } catch { return; }
-            if (msg.type === 'chunk' && msg.data) logTailText.value += msg.data;
+            if (msg.type === 'chunk' && msg.data) {
+              logTailText.value += msg.data;
+              scrollLogEl(logFileEl);
+            }
             if (msg.type === 'meta') logTailLabel.value = (msg.path || '') + (hint ? ' · ' + hint : '');
             if (msg.type === 'error') ElementPlus.ElMessage.error(msg.message || '日志错误');
           };
@@ -1015,7 +1035,7 @@ use_import_ca = no
         return {
           token, user, loading, activeMenu, breadcrumbTitle, runningCount, successCount, failedCount, lastTasks, onMenuSelect,
           hosts, tasks, showRegister, loginForm, regForm, hostForm, deployForm, deployStep,
-          logText, logTailText, logTailLabel, treeRoots, manifestSummary, manifestPaths, manifestPayload, taskStatus, currentTaskId,
+          logText, logTailText, logTailLabel, logAppctlEl, logFileEl, treeRoots, manifestSummary, manifestPaths, manifestPayload, taskStatus, currentTaskId,
           showManifestTree, pipelineRows, selectedPipelineKey, selectedLogHint, phaseHint, phaseBanner, flowS1, flowS2, flowS3, flowS4,
           openLogTail, openLogTailRel, onPipelineStepClick, onPipelineSubClick,
           isHostDisabledForNode1, isHostDisabledTriple, goDeployStep2, fillUserEditTemplate,
