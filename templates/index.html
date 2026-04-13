@@ -101,6 +101,9 @@
     .status-retrying { color: #ff9800; }
     .hint { font-size: 12px; color: #909399; margin-top: 4px; line-height: 1.5; }
     .mono-ta textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+    .deploy-action-rg { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: 100%; }
+    .deploy-action-rg .el-radio-button { margin: 0 !important; }
+    .deploy-action-rg .el-radio-button__inner { width: 100%; text-align: left; white-space: normal; height: auto; line-height: 1.45; padding: 12px 14px; }
   </style>
 </head>
 <body>
@@ -380,12 +383,12 @@
                 <el-divider content-position="left"><span style="font-weight:600;color:#303133;">下发操作</span></el-divider>
                 <el-form label-width="120px" style="max-width:720px;">
                   <el-form-item label="操作类型">
-                    <el-select v-model="deployForm.action" style="width:100%">
-                      <el-option label="安装前置检查 — sh appctl.sh precheck install" value="precheck_install" />
-                      <el-option label="升级前置检查 — sh appctl.sh precheck upgrade" value="precheck_upgrade" />
-                      <el-option label="安装操作 — sh appctl.sh installl" value="installl" />
-                      <el-option label="升级操作 — sh appctl.sh upgrade" value="upgrade" />
-                    </el-select>
+                    <el-radio-group v-model="deployForm.action" class="deploy-action-rg">
+                      <el-radio-button label="precheck_install">① 安装前置检查 — <code>sh appctl.sh precheck install</code>（目标参数必填组件）</el-radio-button>
+                      <el-radio-button label="precheck_upgrade">② 升级前置检查 — <code>sh appctl.sh precheck upgrade</code>（目标参数必填组件）</el-radio-button>
+                      <el-radio-button label="installl">③ 安装操作 — <code>sh appctl.sh installl</code></el-radio-button>
+                      <el-radio-button label="upgrade">④ 升级操作 — <code>sh appctl.sh upgrade</code></el-radio-button>
+                    </el-radio-group>
                   </el-form-item>
                   <el-form-item label="目标参数">
                     <el-input v-model="deployForm.target" placeholder="precheck install / precheck upgrade 必填组件（如 gaussdb）；installl / upgrade 按现场脚本可填或留空" />
