@@ -64,10 +64,11 @@ TEMPLATES = [
 WSGI_APPLICATION = "tpops_deployment.wsgi.application"
 ASGI_APPLICATION = "tpops_deployment.asgi.application"
 
+_sqlite_name = os.environ.get("DJANGO_SQLITE_PATH", "").strip()
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "NAME": _sqlite_name if _sqlite_name else str(BASE_DIR / "db.sqlite3"),
     }
 }
 
