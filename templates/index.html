@@ -416,12 +416,12 @@
                     <el-radio-group v-model="deployForm.action" class="deploy-action-rg">
                       <el-radio-button label="precheck_install">① 安装前置检查 — <code>sh appctl.sh precheck install</code>（目标参数必填组件）</el-radio-button>
                       <el-radio-button label="precheck_upgrade">② 升级前置检查 — <code>sh appctl.sh precheck upgrade</code>（目标参数必填组件）</el-radio-button>
-                      <el-radio-button label="installl">③ 安装操作 — <code>sh appctl.sh installl</code></el-radio-button>
+                      <el-radio-button label="install">③ 安装操作 — <code>sh appctl.sh install</code></el-radio-button>
                       <el-radio-button label="upgrade">④ 升级操作 — <code>sh appctl.sh upgrade</code></el-radio-button>
                     </el-radio-group>
                   </el-form-item>
                   <el-form-item label="目标参数">
-                    <el-input v-model="deployForm.target" placeholder="precheck install / precheck upgrade 必填组件（如 gaussdb）；installl / upgrade 按现场脚本可填或留空" />
+                    <el-input v-model="deployForm.target" placeholder="precheck install / precheck upgrade 必填组件（如 gaussdb）；install / upgrade 按现场脚本可填或留空" />
                   </el-form-item>
                 </el-form>
                 <div style="margin:0 0 16px;display:flex;flex-wrap:wrap;gap:10px;">
@@ -441,7 +441,7 @@
             <el-card shadow="never" style="margin-bottom:12px;">
               <template #header>
                 <span style="font-weight:600">部署进度</span>
-                <span class="hint" style="margin-left:10px;">下方每一层为一行「圆点链」表示该层各服务；<strong>点击圆点</strong>在底部打开 <code>deploy/install.log</code> 或 <code>deploy/precheck.log</code> 实时 tail（安装阶段默认 install）</span>
+                <span class="hint" style="margin-left:10px;">下方每一层为一行「圆点链」表示该层各服务；<strong>点击圆点</strong>在底部打开 <code>deploy/install.log</code> 或 <code>deploy/precheck.log</code> 实时 tail（install/upgrade 阶段默认 install.log）</span>
               </template>
               <div class="phase-strip">
                 <span><strong>阶段</strong>：</span>
@@ -622,7 +622,7 @@ use_import_ca = no
 
         const showManifestTree = computed(() => {
           const a = lastAction.value || '';
-          return a === 'installl' || a === 'upgrade';
+          return a === 'install' || a === 'upgrade';
         });
 
         const manifestServiceRows = computed(() => {

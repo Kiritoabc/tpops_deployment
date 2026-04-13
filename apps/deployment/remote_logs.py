@@ -9,7 +9,7 @@ def log_kind_for_action(action: str) -> str:
         return "precheck"
     if str(action).startswith("precheck"):
         return "precheck"
-    if action == "installl" or action == "upgrade":
+    if action == "install" or action == "upgrade":
         return "install"
     return "precheck"
 

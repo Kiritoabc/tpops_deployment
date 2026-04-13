@@ -77,7 +77,7 @@ def _remote_manifest_paths_for_nodes(host, user_edit_kv: dict) -> list:
 
 
 def _should_poll_manifest(action: str) -> bool:
-    return action in (DeploymentTask.INSTALLL, DeploymentTask.UPGRADE)
+    return action in (DeploymentTask.INSTALL, DeploymentTask.UPGRADE)
 
 
 def _wait_init_manifest(
@@ -209,8 +209,8 @@ def _build_appctl_command(host, action: str, target: str) -> str:
         if not tgt:
             raise ValueError("升级前置检查需要填写目标组件（如 gaussdb）")
         sub = "precheck upgrade %s" % tgt
-    elif action == DeploymentTask.INSTALLL:
-        sub = "installl%s" % (" %s" % tgt if tgt else "")
+    elif action == DeploymentTask.INSTALL:
+        sub = "install%s" % (" %s" % tgt if tgt else "")
     elif action == DeploymentTask.UPGRADE:
         sub = "upgrade%s" % (" %s" % tgt if tgt else "")
     else:

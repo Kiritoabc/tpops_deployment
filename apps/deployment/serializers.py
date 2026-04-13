@@ -6,7 +6,7 @@ from .user_edit import parse_user_edit_block
 _VALID_ACTIONS = {
     DeploymentTask.PRECHECK_INSTALL,
     DeploymentTask.PRECHECK_UPGRADE,
-    DeploymentTask.INSTALLL,
+    DeploymentTask.INSTALL,
     DeploymentTask.UPGRADE,
 }
 

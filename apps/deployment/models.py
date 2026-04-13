@@ -3,17 +3,17 @@ from django.db import models
 
 
 class DeploymentTask(models.Model):
-    """远程仅支持四种：precheck install / precheck upgrade / installl / upgrade（均通过 sh appctl.sh）"""
+    """远程：precheck install / precheck upgrade / install / upgrade（sh appctl.sh）"""
 
     PRECHECK_INSTALL = "precheck_install"
     PRECHECK_UPGRADE = "precheck_upgrade"
-    INSTALLL = "installl"
+    INSTALL = "install"
     UPGRADE = "upgrade"
 
     ACTION_CHOICES = [
         (PRECHECK_INSTALL, "安装前置检查 (precheck install)"),
         (PRECHECK_UPGRADE, "升级前置检查 (precheck upgrade)"),
-        (INSTALLL, "安装操作 (installl)"),
+        (INSTALL, "安装操作 (install)"),
         (UPGRADE, "升级操作 (upgrade)"),
     ]
 
@@ -47,7 +47,7 @@ class DeploymentTask(models.Model):
         max_length=64,
         default="gaussdb",
         blank=True,
-        help_text="precheck install / precheck upgrade 必填组件名（如 gaussdb）；installl / upgrade 按现场脚本可选填",
+        help_text="precheck install / precheck upgrade 必填组件名（如 gaussdb）；install / upgrade 按现场脚本可选填",
     )
     deploy_mode = models.CharField(
         max_length=16,
