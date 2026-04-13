@@ -5,7 +5,7 @@
 - 顶层：各层聚合状态，如 patch_status、base_enviornment_status、…
 - 各层键（如 patch、base_enviornment）：值为服务项列表，每项含 name、script、status、retry_time 等
 """
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import yaml
 
@@ -232,6 +232,146 @@ def _legacy_manifest_to_tree(data: Any) -> Dict[str, Any]:
         roots.append(_walk("manifest", data, ""))
 
     return {"roots": roots, "levels": LEVEL_ORDER}
+
+
+_STATUS_PRIORITY = {
+    "error": 60,
+    "null": 55,
+    "retrying": 50,
+    "running": 40,
+    "none": 20,
+    "done": 10,
+}
+
+
+def _agg_status(statuses: List[str]) -> str:
+    best = "done"
+    bp = _STATUS_PRIORITY.get(best, 0)
+    for s in statuses:
+        ss = _norm_status(s)
+        p = _STATUS_PRIORITY.get(ss, 15)
+        if p > bp:
+            bp = p
+            best = ss
+    return best
+
+
+def merge_tpops_manifest_dicts(
+    dicts: List[Dict[str, Any]], manifest_paths: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """多节点 manifest 字典合并为一棵树（聚合各层/各服务状态）。"""
+    if not dicts:
+        return {"roots": [], "levels": LEVEL_ORDER, "summary": {}, "nodes": []}
+
+    nodes_meta = []
+    paths = manifest_paths or []
+    for i, d in enumerate(dicts):
+        if not isinstance(d, dict):
+            continue
+        label = "node_%s" % (i + 1)
+        if i < len(paths):
+            p = paths[i]
+            if "manifest_" in p and p.endswith(".yaml"):
+                import re as _re
+
+                m = _re.search(r"manifest_([0-9.]+)\.yaml", p)
+                if m:
+                    label = m.group(1)
+            elif p.endswith("/manifest.yaml") or p.endswith("manifest.yaml"):
+                label = "local"
+        nodes_meta.append({"index": i, "label": label})
+
+    merged_levels = {}
+    for level in LEVEL_ORDER:
+        sk = "%s_status" % level
+        aggs = [_norm_status(d.get(sk)) for d in dicts if isinstance(d, dict)]
+        merged_levels[level] = _agg_status(aggs) if aggs else "none"
+
+    roots: List[Dict[str, Any]] = []
+    summary = {
+        "levels_total": len(LEVEL_ORDER),
+        "levels_done": sum(1 for lv in LEVEL_ORDER if merged_levels.get(lv) == "done"),
+        "levels_running": sum(
+            1 for lv in LEVEL_ORDER if merged_levels.get(lv) in ("running", "retrying")
+        ),
+        "levels_error": sum(1 for lv in LEVEL_ORDER if merged_levels.get(lv) == "error"),
+        "levels_none": sum(1 for lv in LEVEL_ORDER if merged_levels.get(lv) == "none"),
+        "by_level": dict(merged_levels),
+        "services_total": 0,
+        "services_done": 0,
+    }
+
+    for level in LEVEL_ORDER:
+        sk = "%s_status" % level
+        agg = merged_levels[level]
+        children: List[Dict[str, Any]] = []
+
+        # 按服务 name 对齐多节点（不按列表下标）
+        per_node_by_name: List[Dict[str, Dict[str, Any]]] = []
+        all_names = set()
+        for d in dicts:
+            if not isinstance(d, dict):
+                per_node_by_name.append({})
+                continue
+            block = d.get(level)
+            lst = block if isinstance(block, list) else ([] if block is None else [block])
+            by_name = {}
+            for item in lst:
+                if isinstance(item, dict):
+                    nm = str(item.get("name") or "").strip() or "_unnamed"
+                    by_name[nm] = item
+                    all_names.add(nm)
+            per_node_by_name.append(by_name)
+
+        for name in sorted(all_names):
+            statuses = []
+            metas = []
+            script = ""
+            for ni, by_name in enumerate(per_node_by_name):
+                item = by_name.get(name)
+                if isinstance(item, dict):
+                    script = item.get("script") or script
+                    stn = _norm_status(item.get("status"))
+                    statuses.append(stn)
+                    metas.append(
+                        {
+                            "node_index": ni,
+                            "status": stn,
+                            "finish_execute_time": item.get("finish_execute_time"),
+                        }
+                    )
+            st = _agg_status(statuses) if statuses else "none"
+            meta = {k: None for k in SERVICE_DETAIL_KEYS}
+            if metas:
+                meta["nodes"] = metas
+            children.append(
+                {
+                    "id": "%s/%s" % (level, name),
+                    "label": "%s · %s" % (name, script) if script else name,
+                    "status": st,
+                    "meta": meta,
+                }
+            )
+            summary["services_total"] += 1
+            if st == "done":
+                summary["services_done"] += 1
+
+        roots.append(
+            {
+                "id": level,
+                "label": level,
+                "status": agg,
+                "meta": {"level_status_key": sk, "merged_nodes": len(dicts)},
+                "children": children,
+            }
+        )
+
+    return {
+        "roots": roots,
+        "levels": LEVEL_ORDER,
+        "summary": summary,
+        "nodes": nodes_meta,
+    }
 
 
 def manifest_to_tree(raw_yaml: str) -> Dict[str, Any]:

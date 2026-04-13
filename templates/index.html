@@ -104,6 +104,23 @@
     .deploy-action-rg { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: 100%; }
     .deploy-action-rg .el-radio-button { margin: 0 !important; }
     .deploy-action-rg .el-radio-button__inner { width: 100%; text-align: left; white-space: normal; height: auto; line-height: 1.45; padding: 12px 14px; }
+    .flow-pipeline { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px 4px; padding: 16px 8px; background: #fafafa; border-radius: 8px; border: 1px solid #ebeef5; margin-bottom: 16px; }
+    .flow-step { flex: 1; min-width: 72px; max-width: 140px; text-align: center; position: relative; }
+    .flow-step:not(:last-child)::after { content: ''; position: absolute; top: 18px; right: -50%; width: 100%; height: 2px; background: #dcdfe6; z-index: 0; }
+    .flow-step.done:not(:last-child)::after { background: #67c23a; }
+    .flow-dot { width: 36px; height: 36px; border-radius: 50%; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; cursor: default; position: relative; z-index: 1; border: 2px solid #dcdfe6; background: #fff; color: #909399; transition: .2s; }
+    .flow-dot.clickable { cursor: pointer; box-shadow: 0 0 0 2px rgba(24,144,255,.2); }
+    .flow-dot.clickable:hover { border-color: #1890ff; color: #1890ff; }
+    .flow-dot.pending { background: #f5f7fa; }
+    .flow-dot.active { border-color: #e6a23c; color: #e6a23c; animation: pulse-dot 1.2s ease-in-out infinite; }
+    .flow-dot.done { border-color: #67c23a; background: #f0f9ff; color: #67c23a; }
+    .flow-dot.skip { background: #f4f4f5; color: #c0c4cc; border-style: dashed; }
+    @keyframes pulse-dot { 0%,100%{ box-shadow: 0 0 0 0 rgba(230,162,60,.35);} 50%{ box-shadow: 0 0 0 6px rgba(230,162,60,0);} }
+    .flow-cap { font-size: 12px; color: #606266; line-height: 1.35; }
+    .flow-sub { font-size: 11px; color: #909399; margin-top: 4px; }
+    .split-logs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 960px) { .split-logs { grid-template-columns: 1fr; } }
+    .log-box-sm { height: 220px; }
   </style>
 </head>
 <body>
@@ -409,63 +426,78 @@
             </el-card>
 
             <el-row :gutter="16">
-              <el-col :xs="24" :lg="14">
-                <el-card v-if="manifestSummary && manifestSummary.services_total != null" shadow="never" style="margin-bottom:16px;">
-                  <template #header><span style="font-weight:600">整体进度</span></template>
-                  <el-row :gutter="12">
-                    <el-col :span="8">
-                      <div style="font-size:12px;color:#909399;">层（按 manifest 聚合状态）</div>
-                      <div style="font-size:20px;font-weight:600;color:#1890ff;">
-                        <span v-text="manifestSummary.levels_done || 0"></span> / <span v-text="manifestSummary.levels_total || 8"></span> <span style="font-size:13px;font-weight:400;color:#606266;">已完成</span>
-                      </div>
-                    </el-col>
-                    <el-col :span="8">
-                      <div style="font-size:12px;color:#909399;">服务项</div>
-                      <div style="font-size:20px;font-weight:600;color:#52c41a;">
-                        <span v-text="manifestSummary.services_done || 0"></span> / <span v-text="manifestSummary.services_total || 0"></span> <span style="font-size:13px;font-weight:400;color:#606266;">done</span>
-                      </div>
-                    </el-col>
-                    <el-col :span="8">
-                      <div style="font-size:12px;color:#909399;">层状态速览</div>
-                      <div style="margin-top:4px;">
-                        <el-tag v-if="manifestSummary.levels_running" size="small" type="warning" style="margin:2px;">running: <span v-text="manifestSummary.levels_running"></span></el-tag>
-                        <el-tag v-if="manifestSummary.levels_error" size="small" type="danger" style="margin:2px;">error: <span v-text="manifestSummary.levels_error"></span></el-tag>
-                        <el-tag v-if="manifestSummary.levels_none" size="small" type="info" style="margin:2px;">none: <span v-text="manifestSummary.levels_none"></span></el-tag>
-                      </div>
-                    </el-col>
-                  </el-row>
-                </el-card>
-                <el-card shadow="never">
-                  <template #header><span style="font-weight:600">部署流程（Manifest）</span></template>
-                  <el-tree
-                    v-if="treeRoots.length"
-                    :data="treeRoots"
-                    :props="{ label: 'label', children: 'children' }"
-                    node-key="id"
-                    default-expand-all
-                  >
-                    <template #default="{ data }">
-                      <span :class="'status-' + (data.status || 'none')">
-                        <span v-text="data.label"></span>
-                        <el-tag v-if="data.status" size="small" style="margin-left:8px" v-text="data.status"></el-tag>
-                        <span v-if="data.meta && data.meta.finish_execute_time" style="margin-left:8px;font-size:12px;color:#909399;">
-                          耗时: <span v-text="data.meta.finish_execute_time"></span>
+              <el-col :xs="24" :lg="15">
+                <el-card shadow="never" style="margin-bottom:12px;">
+                  <template #header><span style="font-weight:600">流程</span> <span class="hint" style="margin-left:8px;">点击 ②③④ 圆点可 tail <code>log_path/deploy/</code> 下对应日志（与当前任务并行）</span></template>
+                  <div class="flow-pipeline">
+                    <div class="flow-step" :class="{ done: flowS1 === 'done' }">
+                      <div class="flow-dot" :class="flowS1">1</div>
+                      <div class="flow-cap">执行 appctl</div>
+                      <div class="flow-sub" v-text="phaseHint || '—'"></div>
+                    </div>
+                    <div class="flow-step" :class="{ done: flowS2 === 'done' }">
+                      <div class="flow-dot clickable" :class="flowS2" @click="openLogTail('precheck')" title="precheck.log">2</div>
+                      <div class="flow-cap">前置检查</div>
+                      <div class="flow-sub">precheck.log</div>
+                    </div>
+                    <div class="flow-step" :class="{ done: flowS3 === 'done' }">
+                      <div class="flow-dot" :class="flowS3">3</div>
+                      <div class="flow-cap">初始化</div>
+                      <div class="flow-sub">init manifest</div>
+                    </div>
+                    <div class="flow-step" :class="{ done: flowS4 === 'done' }">
+                      <div class="flow-dot clickable" :class="flowS4" @click="openLogTail('install')" title="install.log">4</div>
+                      <div class="flow-cap">安装/升级</div>
+                      <div class="flow-sub">install.log</div>
+                    </div>
+                  </div>
+                  <el-alert v-if="phaseBanner" :title="phaseBanner" type="info" :closable="false" show-icon style="margin-bottom:12px;" />
+                  <el-card v-if="manifestSummary && manifestSummary.services_total != null" shadow="hover" style="margin-bottom:12px;">
+                    <template #header><span style="font-weight:600">整体进度（多节点 manifest 聚合）</span></template>
+                    <el-row :gutter="8">
+                      <el-col :span="8"><span style="font-size:12px;color:#909399;">层完成</span><div style="font-size:18px;font-weight:600;color:#1890ff;"><span v-text="manifestSummary.levels_done || 0"></span>/<span v-text="manifestSummary.levels_total || 8"></span></div></el-col>
+                      <el-col :span="8"><span style="font-size:12px;color:#909399;">服务 done</span><div style="font-size:18px;font-weight:600;color:#52c41a;"><span v-text="manifestSummary.services_done || 0"></span>/<span v-text="manifestSummary.services_total || 0"></span></div></el-col>
+                      <el-col :span="8"><span style="font-size:12px;color:#909399;">manifest</span><div style="font-size:11px;color:#606266;word-break:break-all;" v-text="(manifestPaths || []).join(' · ') || '—'"></div></el-col>
+                    </el-row>
+                  </el-card>
+                  <el-card shadow="never">
+                    <template #header><span style="font-weight:600">部署树（Manifest）</span> <span class="hint" v-if="!showManifestTree">仅 installl / upgrade 在 init 完成后展示</span></template>
+                    <el-tree
+                      v-if="treeRoots.length && showManifestTree"
+                      :data="treeRoots"
+                      :props="{ label: 'label', children: 'children' }"
+                      node-key="id"
+                      default-expand-all
+                    >
+                      <template #default="{ data }">
+                        <span :class="'status-' + (data.status || 'none')">
+                          <span v-text="data.label"></span>
+                          <el-tag v-if="data.status" size="small" style="margin-left:8px" v-text="data.status"></el-tag>
+                          <template v-if="data.meta && data.meta.nodes">
+                            <el-tag v-for="(n,ix) in data.meta.nodes" :key="ix" size="small" type="info" style="margin-left:4px;"><span v-text="n.status"></span></el-tag>
+                          </template>
                         </span>
-                      </span>
-                    </template>
-                  </el-tree>
-                  <el-empty v-else description="创建任务后将通过 WebSocket 推送解析结果" />
+                      </template>
+                    </el-tree>
+                    <el-empty v-else :description="showManifestTree ? '等待 manifest 数据…' : '当前为前置检查，不轮询 manifest'" />
+                  </el-card>
                 </el-card>
               </el-col>
-              <el-col :xs="24" :lg="10">
-                <el-card shadow="never">
-                  <template #header><span style="font-weight:600">实时输出</span></template>
-                  <div class="log-box" v-text="logText"></div>
-                  <div style="margin-top:10px;font-size:13px;color:#606266;">
-                    任务状态：<span v-text="taskStatus || '-'"></span>
-                    <span v-if="currentTaskId"> · #<span v-text="currentTaskId"></span></span>
-                  </div>
-                </el-card>
+              <el-col :xs="24" :lg="9">
+                <div class="split-logs">
+                  <el-card shadow="never">
+                    <template #header><span style="font-weight:600">appctl 输出</span></template>
+                    <div class="log-box log-box-sm" v-text="logText"></div>
+                  </el-card>
+                  <el-card shadow="never">
+                    <template #header><span style="font-weight:600">文件日志</span> <span class="hint" v-text="logTailLabel"></span></template>
+                    <div class="log-box log-box-sm" v-text="logTailText"></div>
+                  </el-card>
+                </div>
+                <div style="margin-top:10px;font-size:13px;color:#606266;">
+                  任务状态：<span v-text="taskStatus || '-'"></span>
+                  <span v-if="currentTaskId"> · #<span v-text="currentTaskId"></span></span>
+                </div>
               </el-col>
             </el-row>
 
@@ -570,11 +602,27 @@ use_import_ca = no
           target: 'gaussdb',
         });
         const logText = ref('');
+        const logTailText = ref('');
+        const logTailLabel = ref('（点击流程 ② / ④）');
         const treeRoots = ref([]);
         const manifestSummary = ref(null);
+        const manifestPaths = ref([]);
         const taskStatus = ref('');
         const currentTaskId = ref(null);
+        const lastAction = ref('');
+        const phaseHint = ref('');
+        const phaseBanner = ref('');
+        const flowS1 = ref('pending');
+        const flowS2 = ref('pending');
+        const flowS3 = ref('pending');
+        const flowS4 = ref('pending');
         let socket = null;
+        let logSocket = null;
+
+        const showManifestTree = computed(() => {
+          const a = lastAction.value || '';
+          return a === 'installl' || a === 'upgrade';
+        });
 
         const breadcrumbTitle = computed(() => {
           const m = { overview: '概览', hosts: '主机管理', deploy: '部署任务' };
@@ -665,26 +713,106 @@ use_import_ca = no
           tasks.value = data;
         };
 
+        const resetFlow = () => {
+          flowS1.value = 'pending';
+          flowS2.value = 'pending';
+          flowS3.value = 'pending';
+          flowS4.value = 'pending';
+          phaseHint.value = '';
+          phaseBanner.value = '';
+          manifestPaths.value = [];
+        };
+
         const closeSocket = () => {
           if (socket) { socket.close(); socket = null; }
+        };
+        const closeLogSocket = () => {
+          if (logSocket) { logSocket.close(); logSocket = null; }
+        };
+
+        const openLogTail = (kind) => {
+          if (!currentTaskId.value) return ElementPlus.ElMessage.warning('请先创建或订阅任务');
+          closeLogSocket();
+          logTailText.value = '';
+          logTailLabel.value = kind === 'install' ? 'install.log' : 'precheck.log';
+          const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+          const url = `${proto}://${location.host}/ws/deploy/${currentTaskId.value}/log/?token=${encodeURIComponent(token.value)}&kind=${encodeURIComponent(kind)}`;
+          logSocket = new WebSocket(url);
+          logSocket.onmessage = (ev) => {
+            let msg;
+            try { msg = JSON.parse(ev.data); } catch { return; }
+            if (msg.type === 'chunk' && msg.data) logTailText.value += msg.data;
+            if (msg.type === 'meta') logTailLabel.value = (msg.path || '') + ' (' + (msg.kind || '') + ')';
+            if (msg.type === 'error') ElementPlus.ElMessage.error(msg.message || '日志错误');
+          };
+          logSocket.onerror = () => ElementPlus.ElMessage.error('日志 WebSocket 错误');
         };
 
         const openSocket = (taskId) => {
           closeSocket();
+          closeLogSocket();
+          resetFlow();
+          logTailText.value = '';
           const proto = location.protocol === 'https:' ? 'wss' : 'ws';
           const url = `${proto}://${location.host}/ws/deploy/${taskId}/?token=${encodeURIComponent(token.value)}`;
           socket = new WebSocket(url);
           socket.onmessage = (ev) => {
             let msg;
             try { msg = JSON.parse(ev.data); } catch { return; }
+            if (msg.type === 'hello') {
+              taskStatus.value = msg.status;
+              if (msg.action) lastAction.value = msg.action;
+            }
+            if (msg.type === 'phase') {
+              phaseBanner.value = msg.message || '';
+              phaseHint.value = (msg.paths_tried && msg.paths_tried.length) ? ('检测: ' + msg.paths_tried.join(', ')) : (msg.command || '');
+              if (msg.phase === 'run_appctl') { flowS1.value = 'active'; }
+              if (msg.phase === 'wait_init_manifest') {
+                flowS1.value = 'done';
+                flowS2.value = 'done';
+                flowS3.value = 'active';
+              }
+              if (msg.phase === 'init_manifest_ready') {
+                flowS3.value = 'done';
+                flowS4.value = 'active';
+              }
+              if (msg.phase === 'precheck_no_manifest') {
+                flowS3.value = 'skip';
+                flowS4.value = 'skip';
+              }
+              if (msg.phase === 'init_manifest_timeout') {
+                flowS3.value = 'pending';
+                phaseBanner.value = (msg.message || '') + '（manifest 可能仍会在后续出现）';
+              }
+            }
             if (msg.type === 'log' && msg.data) logText.value += msg.data;
             if (msg.type === 'manifest' && msg.data) {
               if (msg.data.roots) treeRoots.value = msg.data.roots;
               manifestSummary.value = msg.data.summary || null;
+              if (msg.data.manifest_paths) manifestPaths.value = msg.data.manifest_paths;
+              flowS4.value = 'active';
             }
-            if (msg.type === 'status') taskStatus.value = msg.data;
-            if (msg.type === 'done') taskStatus.value = 'finished:' + msg.exit_code;
-            if (msg.type === 'hello') taskStatus.value = msg.status;
+            if (msg.type === 'manifest_wait') {
+              phaseHint.value = (msg.message || '') + (msg.paths ? ' — ' + msg.paths.join(', ') : '');
+            }
+            if (msg.type === 'status') {
+              taskStatus.value = msg.data;
+              if (msg.data === 'running') flowS1.value = 'active';
+            }
+            if (msg.type === 'done') {
+              taskStatus.value = 'finished:' + msg.exit_code;
+              flowS1.value = 'done';
+              const a = lastAction.value || '';
+              if (a === 'precheck_install' || a === 'precheck_upgrade') {
+                flowS2.value = 'done';
+                flowS3.value = 'skip';
+                flowS4.value = 'skip';
+              } else {
+                flowS2.value = 'done';
+                flowS3.value = flowS3.value === 'skip' ? 'skip' : 'done';
+                flowS4.value = 'done';
+              }
+            }
           };
           socket.onerror = () => ElementPlus.ElMessage.error('WebSocket 错误');
         };
@@ -716,11 +844,14 @@ use_import_ca = no
 
         const logout = () => {
           closeSocket();
+          closeLogSocket();
           setAuth('', '', null);
           localStorage.removeItem('user');
           logText.value = '';
+          logTailText.value = '';
           treeRoots.value = [];
           manifestSummary.value = null;
+          manifestPaths.value = [];
         };
 
         const resetHostForm = () => {
@@ -767,8 +898,11 @@ use_import_ca = no
           }
           loading.value = true;
           logText.value = '';
+          logTailText.value = '';
           treeRoots.value = [];
           manifestSummary.value = null;
+          manifestPaths.value = [];
+          lastAction.value = deployForm.action;
           try {
             const body = {
               host: deployForm.host,
@@ -800,9 +934,12 @@ use_import_ca = no
         const attachTask = (row) => {
           currentTaskId.value = row.id;
           taskStatus.value = row.status;
+          lastAction.value = row.action || '';
           logText.value = '';
+          logTailText.value = '';
           treeRoots.value = [];
           manifestSummary.value = null;
+          manifestPaths.value = [];
           activeMenu.value = 'deploy';
           openSocket(row.id);
         };
@@ -812,12 +949,13 @@ use_import_ca = no
             try { await fetchHosts(); await fetchTasks(); } catch {}
           }
         });
-        onUnmounted(closeSocket);
+        onUnmounted(() => { closeSocket(); closeLogSocket(); });
 
         return {
           token, user, loading, activeMenu, breadcrumbTitle, runningCount, successCount, failedCount, lastTasks, onMenuSelect,
           hosts, tasks, showRegister, loginForm, regForm, hostForm, deployForm, deployStep,
-          logText, treeRoots, manifestSummary, taskStatus, currentTaskId,
+          logText, logTailText, logTailLabel, treeRoots, manifestSummary, manifestPaths, taskStatus, currentTaskId,
+          showManifestTree, phaseHint, phaseBanner, flowS1, flowS2, flowS3, flowS4, openLogTail,
           isHostDisabledForNode1, isHostDisabledTriple, goDeployStep2, fillUserEditTemplate,
           doLogin, doRegister, logout, saveHost, resetHostForm, editHost, testHost, startDeploy, attachTask,
         };

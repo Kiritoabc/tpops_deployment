@@ -1,6 +1,10 @@
 import os
 import re
+import shlex
 import threading
+import time
+
+import yaml
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -15,7 +19,7 @@ from apps.hosts.ssh_client import (
     write_remote_file_utf8,
 )
 
-from apps.manifest.parser import manifest_to_tree
+from apps.manifest.parser import manifest_to_tree, merge_tpops_manifest_dicts
 
 from .models import DeploymentTask
 from .user_edit import parse_user_edit_block
@@ -33,46 +37,168 @@ def _emit(task_id: int, payload: dict):
     )
 
 
-def _remote_manifest_path(host) -> str:
+def _deploy_root(host) -> str:
     root = (host.docker_service_root or "").strip().rstrip("/")
-    if not root:
-        root = "/data/docker-service"
-    return "%s/config/gaussdb/manifest.yaml" % root
+    return root or "/data/docker-service"
 
 
-def _default_user_edit_path(host) -> str:
-    root = (host.docker_service_root or "").strip().rstrip("/")
-    if not root:
-        root = "/data/docker-service"
-    return "%s/config/gaussdb/user_edit_file.conf" % root
+def _init_marker_paths(host) -> list:
+    r = _deploy_root(host)
+    return [
+        "%s/config/gaussdb/init_manifest_successful" % r,
+        "%s/config/gaussdb/init_manifest_successful.txt" % r,
+        "%s/config/init_manifest_successful" % r,
+    ]
 
 
-def _poll_manifest_loop(task_id: int, host_id: int, secret: str, stop_event: threading.Event):
+def _remote_manifest_paths_for_nodes(host, user_edit_kv: dict) -> list:
+    """本地节点用 manifest.yaml，其它 IP 用 manifest_{ip}.yaml"""
+    root = _deploy_root(host)
+    base = "%s/config/gaussdb" % root
+    local = (host.hostname or "").strip()
+    ips = []
+    for key in ("node1_ip", "node2_ip", "node3_ip"):
+        v = (user_edit_kv or {}).get(key)
+        if v and v.strip():
+            ips.append(v.strip())
+    if not ips:
+        return ["%s/manifest.yaml" % base]
+    paths = []
+    seen = set()
+    for ip in ips:
+        if ip == local:
+            p = "%s/manifest.yaml" % base
+        else:
+            p = "%s/manifest_%s.yaml" % (base, ip)
+        if p not in seen:
+            seen.add(p)
+            paths.append(p)
+    return paths
+
+
+def _should_poll_manifest(action: str) -> bool:
+    return action in (DeploymentTask.INSTALLL, DeploymentTask.UPGRADE)
+
+
+def _wait_init_manifest(
+    task_id: int,
+    host,
+    secret: str,
+    stop_event: threading.Event,
+    timeout_sec: int = 7200,
+) -> bool:
+    """等待 init manifest 标记文件出现；推送 phase 消息。"""
+    paths = _init_marker_paths(host)
+    _emit(
+        task_id,
+        {
+            "type": "phase",
+            "phase": "wait_init_manifest",
+            "message": "等待初始化完成（init manifest successful）…",
+            "paths_tried": paths,
+        },
+    )
+    deadline = time.time() + timeout_sec
+    inner_check = "for p in %s; do test -f \"$p\" && echo FOUND && exit 0; done; exit 1" % " ".join(
+        shlex.quote(p) for p in paths
+    )
+    while not stop_event.is_set() and time.time() < deadline:
+        from apps.hosts.ssh_client import run_remote_command_output
+
+        cmd = "sh -c %s" % shlex.quote(inner_check)
+        out, code = run_remote_command_output(
+            host.hostname,
+            host.port,
+            host.username,
+            host.auth_method,
+            secret,
+            cmd,
+            timeout=30,
+        )
+        if code == 0 and "FOUND" in out:
+            _emit(
+                task_id,
+                {
+                    "type": "phase",
+                    "phase": "init_manifest_ready",
+                    "message": "初始化完成，开始轮询 manifest",
+                },
+            )
+            return True
+        time.sleep(2.0)
+    _emit(
+        task_id,
+        {
+            "type": "phase",
+            "phase": "init_manifest_timeout",
+            "message": "等待 init manifest 标记超时或未出现",
+        },
+    )
+    return False
+
+
+def _poll_manifest_loop(
+    task_id: int,
+    host_id: int,
+    secret: str,
+    stop_event: threading.Event,
+    manifest_paths: list,
+):
     from apps.hosts.models import Host
 
     while not stop_event.wait(5.0):
         try:
             host = Host.objects.get(pk=host_id)
-            path = _remote_manifest_path(host)
-            raw, _code = remote_cat_file(
-                host.hostname,
-                host.port,
-                host.username,
-                host.auth_method,
-                secret,
-                path,
-                timeout=60,
+            task = DeploymentTask.objects.filter(pk=task_id).only("user_edit_content").first()
+            kv, _ = parse_user_edit_block((task.user_edit_content if task else "") or "")
+            paths = list(manifest_paths) if manifest_paths else _remote_manifest_paths_for_nodes(
+                host, kv
             )
-            tree = manifest_to_tree(raw)
-            _emit(task_id, {"type": "manifest", "data": tree})
+            dicts = []
+            for p in paths:
+                raw, _code = remote_cat_file(
+                    host.hostname,
+                    host.port,
+                    host.username,
+                    host.auth_method,
+                    secret,
+                    p,
+                    timeout=60,
+                )
+                if not (raw or "").strip():
+                    continue
+                try:
+                    data = yaml.safe_load(raw)
+                except Exception:
+                    continue
+                if isinstance(data, dict):
+                    dicts.append(data)
+            if dicts:
+                if len(dicts) == 1:
+                    tree = manifest_to_tree(yaml.safe_dump(dicts[0], allow_unicode=True))
+                else:
+                    tree = merge_tpops_manifest_dicts(dicts, paths)
+                tree["manifest_paths"] = paths
+                _emit(task_id, {"type": "manifest", "data": tree})
+            else:
+                _emit(
+                    task_id,
+                    {
+                        "type": "manifest_wait",
+                        "message": "manifest 文件尚未就绪，继续等待…",
+                        "paths": paths,
+                    },
+                )
         except Exception as exc:
             _emit(task_id, {"type": "manifest_error", "message": str(exc)})
 
 
+def _default_user_edit_path(host) -> str:
+    return "%s/config/gaussdb/user_edit_file.conf" % _deploy_root(host)
+
+
 def _build_appctl_command(host, action: str, target: str) -> str:
-    root = (host.docker_service_root or "").strip().rstrip("/")
-    if not root:
-        raise ValueError("请先在服务器配置中填写部署根目录")
+    root = _deploy_root(host)
     tgt = (target or "").strip()
 
     if action == DeploymentTask.PRECHECK_INSTALL:
@@ -84,7 +210,6 @@ def _build_appctl_command(host, action: str, target: str) -> str:
             raise ValueError("升级前置检查需要填写目标组件（如 gaussdb）")
         sub = "precheck upgrade %s" % tgt
     elif action == DeploymentTask.INSTALLL:
-        # 现场脚本子命令为 installl（三个 l）
         sub = "installl%s" % (" %s" % tgt if tgt else "")
     elif action == DeploymentTask.UPGRADE:
         sub = "upgrade%s" % (" %s" % tgt if tgt else "")
@@ -127,7 +252,7 @@ def _run_task(task_id: int):
 
     h = task.host
     final_conf = task.user_edit_content or ""
-    _, parse_err = parse_user_edit_block(final_conf)
+    kv, parse_err = parse_user_edit_block(final_conf)
     if parse_err:
         task.status = DeploymentTask.STATUS_FAILED
         task.error_message = parse_err
@@ -137,6 +262,8 @@ def _run_task(task_id: int):
         )
         _emit(task_id, {"type": "log", "data": parse_err + "\n"})
         return
+
+    manifest_paths = _remote_manifest_paths_for_nodes(h, kv)
 
     path, perr = resolve_user_edit_conf_path(
         h.hostname,
@@ -225,15 +352,36 @@ def _run_task(task_id: int):
     task.save(update_fields=["status", "started_at", "updated_at"])
 
     _emit(task_id, {"type": "status", "data": task.status})
+    _emit(
+        task_id,
+        {
+            "type": "phase",
+            "phase": "run_appctl",
+            "message": "执行命令",
+            "command": cmd,
+        },
+    )
     _emit(task_id, {"type": "log", "data": "执行: %s\n" % cmd})
 
     stop_poll = threading.Event()
-    poller = threading.Thread(
-        target=_poll_manifest_loop,
-        args=(task_id, task.host_id, secret, stop_poll),
-        daemon=True,
-    )
-    poller.start()
+    poller = None
+    if _should_poll_manifest(task.action):
+        if _wait_init_manifest(task_id, h, secret, stop_poll):
+            poller = threading.Thread(
+                target=_poll_manifest_loop,
+                args=(task_id, task.host_id, secret, stop_poll, manifest_paths),
+                daemon=True,
+            )
+            poller.start()
+    else:
+        _emit(
+            task_id,
+            {
+                "type": "phase",
+                "phase": "precheck_no_manifest",
+                "message": "前置检查阶段不轮询 manifest；请点流程节点查看 deploy 日志",
+            },
+        )
 
     exit_code = None
     buffer = ""

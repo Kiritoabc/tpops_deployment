@@ -71,7 +71,8 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 - `/api/auth/` — 注册、登录、刷新 Token、个人信息  
 - `/api/hosts/` — 主机 CRUD、连通性测试  
 - `/api/deployment/tasks/` — 创建 / 列表 / 详情任务  
-- `/ws/deploy/<task_id>/?token=<access_jwt>` — 任务日志与 manifest 推送  
+- `/ws/deploy/<task_id>/?token=<access_jwt>` — 任务 appctl 输出与 manifest 推送  
+- `/ws/deploy/<task_id>/log/?token=<jwt>&kind=precheck|install` — 远程文件日志 tail  
 
 ## 许可
 

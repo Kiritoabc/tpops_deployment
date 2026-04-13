@@ -51,6 +51,7 @@ class DeploymentConsumer(AsyncWebsocketConsumer):
                     "type": "hello",
                     "task_id": self.task_id,
                     "status": task.status,
+                    "action": task.action,
                 },
                 ensure_ascii=False,
             )
