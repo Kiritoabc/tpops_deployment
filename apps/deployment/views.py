@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -13,7 +14,11 @@ class DeploymentTaskViewSet(
     mixins.ListModelMixin,
     viewsets.GenericViewSet,
 ):
-    queryset = DeploymentTask.objects.select_related("host").all()
+    queryset = (
+        DeploymentTask.objects.select_related(
+            "host", "host_node2", "host_node3", "created_by"
+        ).all()
+    )
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -22,9 +27,12 @@ class DeploymentTaskViewSet(
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.user.is_authenticated:
-            return qs.filter(created_by=self.request.user)
-        return qs.none()
+        user = self.request.user
+        if not user.is_authenticated:
+            return qs.none()
+        if user.is_staff:
+            return qs
+        return qs.filter(Q(created_by=user) | Q(created_by__isnull=True))
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

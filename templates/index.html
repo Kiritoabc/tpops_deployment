@@ -159,6 +159,22 @@
     .host-table .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
     .host-endpoint { font-weight: 500; color: #303133; }
     .host-sub { font-size: 12px; color: #909399; margin-top: 2px; }
+    /* 部署任务列表 */
+    .deploy-hero {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+      margin-bottom: 14px; padding: 16px 18px; border-radius: 10px;
+      background: linear-gradient(118deg, #102a43 0%, #1c4d6e 50%, #1a6b8c 100%);
+      color: #fff; box-shadow: 0 8px 22px rgba(16,42,67,.2);
+    }
+    .deploy-hero h2 { margin: 0 0 6px; font-size: 17px; font-weight: 600; color: #fff; }
+    .deploy-hero p { margin: 0; font-size: 12px; opacity: .9; line-height: 1.55; max-width: 640px; }
+    .deploy-hero .el-button { border-color: rgba(255,255,255,.35); color: #fff; background: rgba(255,255,255,.1); }
+    .deploy-hero .el-button--primary { background: #1890ff; border-color: #1890ff; color: #fff; }
+    .deploy-task-card { border-radius: 10px; overflow: hidden; border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); margin-bottom: 16px; }
+    .deploy-task-card > .el-card__header { background: linear-gradient(90deg, #f0f7ff 0%, #fff 100%); font-weight: 600; border-bottom: 1px solid #ebeef5; }
+    .deploy-table .el-table__header th { background: #f5f7fa !important; color: #606266; font-weight: 600; }
+    .deploy-table .row-current-task { background: #e6f7ff !important; }
+    .deploy-table .row-current-task:hover > td { background: #d6f0ff !important; }
   </style>
 </head>
 <body>
@@ -447,7 +463,80 @@
 
           <!-- 部署任务 -->
           <template v-else-if="activeMenu === 'deploy'">
-            <h2 class="ob-page-title">部署任务</h2>
+            <div class="deploy-hero">
+              <div>
+                <h2>部署任务</h2>
+                <p>下方为<strong>历史部署记录</strong>，每次点「写入配置并执行」都会新增一条。点<strong>查看详情</strong>可重新订阅该任务的 appctl 输出与流水线；列表支持按时间排序。</p>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <el-button type="primary" :loading="loading" @click="refreshTasksOnly">刷新列表</el-button>
+                <el-button @click="deployStep = 0">新建部署</el-button>
+              </div>
+            </div>
+
+            <el-card shadow="never" class="deploy-task-card">
+              <template #header>
+                <span>部署记录</span>
+                <span style="float:right;font-weight:400;font-size:12px;color:#909399">共 {{ tasks.length }} 条 · 当前查看 #{{ currentTaskId || '—' }}</span>
+              </template>
+              <el-table
+                :data="tasks"
+                stripe
+                class="deploy-table"
+                style="width:100%"
+                empty-text="暂无部署记录，请先在下方向导中发起一次部署"
+                :default-sort="{ prop: 'created_at', order: 'descending' }"
+                :row-class-name="deployTaskRowClass"
+                max-height="420"
+              >
+                <el-table-column prop="id" label="任务 ID" width="88" sortable />
+                <el-table-column prop="created_at" label="触发时间" width="168" sortable>
+                  <template #default="{ row }">
+                    <span class="mono" style="font-size:12px;color:#606266">{{ formatHostTime(row.created_at) }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="host_name" label="执行机" min-width="100" show-overflow-tooltip />
+                <el-table-column label="节点 2/3" min-width="120" show-overflow-tooltip>
+                  <template #default="{ row }">
+                    <span v-if="row.deploy_mode !== 'triple'" class="hint">—</span>
+                    <span v-else v-text="[row.host_node2_name, row.host_node3_name].filter(Boolean).join(' / ') || '同节点1'"></span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="deploy_mode" label="形态" width="88" align="center">
+                  <template #default="{ row }">
+                    <el-tag size="small" :type="row.deploy_mode === 'triple' ? 'warning' : 'info'" effect="plain">{{ row.deploy_mode === 'triple' ? '三节点' : '单节点' }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" min-width="140" show-overflow-tooltip>
+                  <template #default="{ row }">
+                    <span v-text="deployActionLabel(row.action)"></span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="target" label="目标" width="96" show-overflow-tooltip />
+                <el-table-column prop="status" label="状态" width="108" align="center">
+                  <template #default="{ row }">
+                    <el-tag size="small" :type="deployStatusTagType(row.status)" effect="light">{{ deployStatusLabel(row.status) }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="exit_code" label="退出码" width="88" align="center">
+                  <template #default="{ row }">
+                    <span v-if="row.exit_code != null" class="mono" v-text="row.exit_code"></span>
+                    <span v-else class="hint">—</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="属主" width="96" show-overflow-tooltip>
+                  <template #default="{ row }">
+                    <span v-text="row.created_by_username || '—'"></span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="120" fixed="right">
+                  <template #default="{ row }">
+                    <el-button link type="primary" @click="attachTask(row)">{{ currentTaskId === row.id ? '已打开' : '查看详情' }}</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-card>
+
             <el-card shadow="never" style="margin-bottom:16px;">
               <template #header><span style="font-weight:600">新建部署向导</span></template>
               <el-steps :active="deployStep" align-center style="margin-bottom:20px;">
@@ -591,24 +680,6 @@
                 </el-card>
               </el-col>
             </el-row>
-
-            <el-card shadow="never" style="margin-top:16px;">
-              <template #header><span style="font-weight:600">任务历史</span></template>
-              <el-table :data="tasks" stripe>
-                <el-table-column prop="id" label="ID" width="72" />
-                <el-table-column prop="host_name" label="节点1" min-width="100" />
-                <el-table-column prop="deploy_mode" label="形态" width="80" />
-                <el-table-column prop="action" label="操作" min-width="160" show-overflow-tooltip />
-                <el-table-column prop="target" label="目标" width="100" />
-                <el-table-column prop="status" label="状态" width="110" />
-                <el-table-column prop="exit_code" label="退出码" width="88" />
-                <el-table-column label="订阅日志" width="100" fixed="right">
-                  <template #default="{ row }">
-                    <el-button link type="primary" @click="attachTask(row)">订阅</el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </el-card>
           </template>
         </el-main>
       </el-container>
@@ -740,7 +811,12 @@ use_import_ca = no
 
         const deployStep = ref(0);
 
-        const onMenuSelect = (key) => { activeMenu.value = key; };
+        const onMenuSelect = (key) => {
+          activeMenu.value = key;
+          if (key === 'deploy' && token.value) {
+            fetchTasks().catch(() => {});
+          }
+        };
 
         const isHostDisabledForNode1 = (hid) => {
           if (deployForm.deploy_mode !== 'triple') return false;
@@ -832,8 +908,49 @@ use_import_ca = no
         };
         const fetchTasks = async () => {
           const { data } = await api.get('/deployment/tasks/');
-          tasks.value = data;
+          tasks.value = Array.isArray(data) ? data : (data.results || []);
         };
+
+        const refreshTasksOnly = async () => {
+          loading.value = true;
+          try {
+            await fetchTasks();
+            ElementPlus.ElMessage.success('部署列表已更新');
+          } catch (e) {
+            ElementPlus.ElMessage.error('刷新失败');
+          } finally { loading.value = false; }
+        };
+
+        const deployActionLabel = (a) => {
+          const m = {
+            precheck_install: '安装前置检查',
+            precheck_upgrade: '升级前置检查',
+            install: '安装',
+            upgrade: '升级',
+          };
+          return m[a] || a || '—';
+        };
+
+        const deployStatusLabel = (s) => {
+          const m = {
+            pending: '待执行',
+            running: '执行中',
+            success: '成功',
+            failed: '失败',
+            cancelled: '已取消',
+          };
+          return m[s] || s || '—';
+        };
+
+        const deployStatusTagType = (s) => {
+          if (s === 'success') return 'success';
+          if (s === 'failed') return 'danger';
+          if (s === 'running') return 'warning';
+          if (s === 'cancelled') return 'info';
+          return '';
+        };
+
+        const deployTaskRowClass = ({ row }) => (currentTaskId.value && row.id === currentTaskId.value ? 'row-current-task' : '');
 
         const scrollLogEl = (elRef) => {
           nextTick(() => {
@@ -1149,6 +1266,8 @@ use_import_ca = no
           selectedLogHint.value = '';
           activeMenu.value = 'deploy';
           openSocket(row.id);
+          fetchTasks().catch(() => {});
+          ElementPlus.ElMessage.info('已切换到任务 #' + row.id + '，日志区将显示实时输出（已结束任务可能无新输出）');
         };
 
         onMounted(async () => {
@@ -1161,6 +1280,7 @@ use_import_ca = no
         return {
           token, user, loading, activeMenu, breadcrumbTitle, runningCount, successCount, failedCount, lastTasks, onMenuSelect,
           hosts, hostsWithCredential, hostsKeyAuth, tasks, showRegister, loginForm, regForm, hostForm, deployForm, deployStep,
+          refreshTasksOnly, deployActionLabel, deployStatusLabel, deployStatusTagType, deployTaskRowClass,
           logText, logTailText, logTailLabel, logAppctlEl, logFileEl, treeRoots, manifestSummary, manifestPaths, manifestPayload, taskStatus, currentTaskId,
           showManifestTree, pipelineRows, selectedPipelineKey, selectedLogHint, phaseHint, phaseBanner, flowS1, flowS2, flowS3, flowS4,
           openLogTail, openLogTailRel, onPipelineStepClick, onPipelineSubClick,

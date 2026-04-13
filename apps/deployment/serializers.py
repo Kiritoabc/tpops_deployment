@@ -15,6 +15,7 @@ class DeploymentTaskSerializer(serializers.ModelSerializer):
     host_name = serializers.CharField(source="host.name", read_only=True)
     host_node2_name = serializers.CharField(source="host_node2.name", read_only=True)
     host_node3_name = serializers.CharField(source="host_node3.name", read_only=True)
+    created_by_username = serializers.SerializerMethodField()
 
     class Meta:
         model = DeploymentTask
@@ -34,6 +35,7 @@ class DeploymentTaskSerializer(serializers.ModelSerializer):
             "status",
             "exit_code",
             "error_message",
+            "created_by_username",
             "created_at",
             "started_at",
             "finished_at",
@@ -50,7 +52,12 @@ class DeploymentTaskSerializer(serializers.ModelSerializer):
             "host_node2_name",
             "host_node3_name",
             "remote_user_edit_path",
+            "created_by_username",
         )
+
+    def get_created_by_username(self, obj):
+        u = getattr(obj, "created_by", None)
+        return getattr(u, "username", None) or ""
 
 
 class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
