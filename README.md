@@ -45,7 +45,7 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 - 升级前置检查：`sh appctl.sh precheck upgrade <组件>`
 - 安装操作：`sh appctl.sh install`（可选再跟「目标参数」）；**单节点**时通过 `yes y | sh appctl.sh …` 自动应答脚本中的 `(y/n)` 确认（非交互 SSH）。
 - 升级操作：`sh appctl.sh upgrade`（可选「目标参数」）
-- **install / upgrade**：appctl 启动后即开始轮询远程 `manifest.yaml` 与 `manifest_{node_ip}.yaml`（路径来自主机「部署根目录」+ `user_edit` 的 node1/2/3_ip），文件可读且解析为有效 YAML 后推送到前端；以「大层串行、层内并发」展示流水线，点击步骤在右侧 tail `install.log`（前置为 `precheck.log`）。若 appctl 输出中出现 `init manifest successful`，仅作阶段提示，不决定何时开始拉取。
+- **install / upgrade**：appctl 启动后即轮询执行机上的 **`<部署根目录>/config/gaussdb/manifest.yaml`**（不根据 `user_edit` 里的 IP 拼其它文件名），可读且解析为有效 YAML 后推送到前端；流水线展示与日志 tail 规则同前。
 - **precheck install / precheck upgrade**：**不轮询 manifest**。
 - 部署日志：`{log_path}/deploy/precheck.log`、`{log_path}/deploy/install.log`；WebSocket `ws/deploy/<id>/log/?kind=precheck|install` 或 `&rel=文件名`（仅 `log_path/deploy/` 下安全文件名）实时 tail。Manifest 每层服务以横向圆点链展示，点击圆点默认 tail 当前阶段对应日志。
 

@@ -691,7 +691,7 @@
                     </template>
                     <el-empty
                       v-else
-                      :description="showManifestTree ? '安装/升级期间，后台会持续读取远程 config/gaussdb 下的 manifest.yaml（及多节点时的 manifest_*.yaml），文件有有效内容后即展示流水线。若长时间无数据，请核对主机「部署根目录」与 user_edit 中的 node*_ip。' : '当前为前置检查，无 manifest 流水线'"
+                      :description="showManifestTree ? '安装/升级期间，后台会持续读取执行机「部署根目录」下 config/gaussdb/manifest.yaml；有有效 YAML 后即展示流水线。若长时间无数据，请核对主机上的部署根目录是否与 appctl 所在目录一致。' : '当前为前置检查，无 manifest 流水线'"
                     />
                   </div>
                 </el-card>
