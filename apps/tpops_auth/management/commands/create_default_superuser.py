@@ -29,17 +29,18 @@ class Command(BaseCommand):
 
         user = User.objects.filter(username=username).first()
         if user:
-            user.set_password(password)
+            # 已存在则只保证权限，不重置密码（避免每次容器重启覆盖用户修改）
             user.is_superuser = True
             user.is_staff = True
             user.is_active = True
-            user.email = email or user.email
-            if hasattr(user, "role"):
-                user.role = "admin"
+            if email and not (user.email or "").strip():
+                user.email = email
+            user.role = "admin"
             user.save()
             self.stdout.write(
                 self.style.SUCCESS(
-                    "Updated bootstrap superuser: %s (password reset)" % username
+                    "Bootstrap user already exists: %s (permissions ensured, password unchanged)"
+                    % username
                 )
             )
             return
