@@ -5,6 +5,7 @@
 - 顶层：各层聚合状态，如 patch_status、base_enviornment_status、…
 - 各层键（如 patch、base_enviornment）：值为服务项列表，每项含 name、script、status、retry_time 等
 """
+import re
 from typing import Any, Dict, List, Optional
 
 import yaml
@@ -43,6 +44,105 @@ def _norm_status(val: Any) -> str:
         s = val.strip().lower()
         return s if s else "none"
     return str(val).lower()
+
+
+def _parse_duration_seconds(val: Any) -> float:
+    """Best-effort parse install_require_time / similar to seconds for ETA sum."""
+    if val is None:
+        return 0.0
+    if isinstance(val, (int, float)):
+        return float(val) if val >= 0 else 0.0
+    s = str(val).strip()
+    if not s:
+        return 0.0
+    try:
+        return float(s)
+    except ValueError:
+        pass
+    m = re.match(r"^(\d+(?:\.\d+)?)\s*([hms])?$", s, re.I)
+    if m:
+        num = float(m.group(1))
+        u = (m.group(2) or "s").lower()
+        if u == "h":
+            return num * 3600
+        if u == "m":
+            return num * 60
+        return num
+    digits = re.findall(r"\d+(?:\.\d+)?", s)
+    if digits:
+        try:
+            return float(digits[0])
+        except ValueError:
+            pass
+    return 0.0
+
+
+def _estimated_install_seconds_from_data(data: Dict[str, Any]) -> float:
+    total = 0.0
+    if not isinstance(data, dict):
+        return total
+    for level in LEVEL_ORDER:
+        block = data.get(level)
+        if not isinstance(block, list):
+            continue
+        for item in block:
+            if isinstance(item, dict):
+                total += _parse_duration_seconds(item.get("install_require_time"))
+    return total
+
+
+def _first_running_service(roots: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    for root in roots or []:
+        if not isinstance(root, dict):
+            continue
+        lid = root.get("id") or root.get("label")
+        for ch in root.get("children") or []:
+            if not isinstance(ch, dict):
+                continue
+            st = _norm_status(ch.get("status"))
+            if st in ("running", "retrying"):
+                meta = ch.get("meta") if isinstance(ch.get("meta"), dict) else {}
+                return {
+                    "level": lid,
+                    "level_label": root.get("label") or lid,
+                    "id": ch.get("id"),
+                    "label": ch.get("label") or ch.get("id"),
+                    "status": st,
+                    "start_time": meta.get("start_time"),
+                    "install_require_time": meta.get("install_require_time"),
+                }
+    return None
+
+
+def enrich_manifest_summary(summary: Dict[str, Any], roots: List[Dict[str, Any]], data: Any) -> None:
+    """
+    Mutates summary with progress %, ETA sum, first running service (for UI).
+    ``data`` is the raw manifest dict (single node) or None (caller fills estimate separately).
+    """
+    if not isinstance(summary, dict):
+        return
+    lt = int(summary.get("levels_total") or 0)
+    ld = int(summary.get("levels_done") or 0)
+    st = int(summary.get("services_total") or 0)
+    sd = int(summary.get("services_done") or 0)
+    summary["levels_progress_percent"] = int(round(100.0 * ld / lt)) if lt else 0
+    summary["services_progress_percent"] = int(round(100.0 * sd / st)) if st else 0
+    summary["progress_percent"] = (
+        summary["services_progress_percent"] if st else summary["levels_progress_percent"]
+    )
+    if isinstance(data, dict):
+        summary["estimated_total_seconds"] = round(
+            _estimated_install_seconds_from_data(data), 1
+        )
+    running = _first_running_service(roots)
+    summary["current_running_service"] = running
+    summary["services_running"] = sum(
+        1
+        for r in roots or []
+        if isinstance(r, dict)
+        for ch in (r.get("children") or [])
+        if isinstance(ch, dict) and _norm_status(ch.get("status")) in ("running", "retrying")
+    )
 
 
 def _is_tpops_manifest(data: Any) -> bool:
@@ -170,6 +270,7 @@ def _build_tpops_tree(data: Dict[str, Any]) -> Dict[str, Any]:
                 svc_done += 1
     summary["services_total"] = svc_total
     summary["services_done"] = svc_done
+    enrich_manifest_summary(summary, roots, data)
 
     return {
         "roots": roots,
@@ -417,6 +518,12 @@ def merge_tpops_manifest_dicts(
                 "children": children,
             }
         )
+
+    est_sum = sum(
+        _estimated_install_seconds_from_data(d) for d in dicts if isinstance(d, dict)
+    )
+    enrich_manifest_summary(summary, roots, None)
+    summary["estimated_total_seconds"] = round(est_sum, 1)
 
     out = {
         "roots": roots,

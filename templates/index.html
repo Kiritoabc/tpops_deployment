@@ -179,6 +179,57 @@
     .deploy-status-strip .el-alert__title { font-size: 13px; line-height: 1.55; font-weight: 500; }
     .deploy-outcome-ok { color: #67c23a; font-weight: 600; }
     .deploy-outcome-bad { color: #f56c6c; font-weight: 600; }
+    /* OceanBase 风格部署向导：左侧步骤 + 右侧内容 */
+    .deploy-wizard-shell {
+      border-radius: 12px; overflow: hidden; border: 1px solid #e4e7ed;
+      box-shadow: 0 4px 20px rgba(0,21,41,.08); background: #fff;
+    }
+    .deploy-wizard-shell .el-row { margin: 0 !important; }
+    .deploy-wizard-nav {
+      background: linear-gradient(180deg, #0d2844 0%, #0b1f3a 40%, #102a43 100%);
+      color: #fff; padding: 20px 0 24px; min-height: 420px;
+    }
+    .deploy-wizard-brand { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,.1); margin-bottom: 8px; }
+    .deploy-wizard-brand h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; color: #fff; }
+    .deploy-wizard-brand p { margin: 0; font-size: 12px; color: rgba(255,255,255,.72); line-height: 1.5; }
+    .deploy-step-item {
+      display: flex; align-items: flex-start; gap: 12px; padding: 14px 20px; cursor: pointer;
+      border-left: 3px solid transparent; transition: background .15s, border-color .15s;
+    }
+    .deploy-step-item:hover { background: rgba(255,255,255,.06); }
+    .deploy-step-item.active { background: rgba(24,144,255,.15); border-left-color: #1890ff; }
+    .deploy-step-item.done { opacity: .92; }
+    .deploy-step-num {
+      width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.2);
+    }
+    .deploy-step-item.active .deploy-step-num { background: #1890ff; border-color: #1890ff; }
+    .deploy-step-item.done .deploy-step-num { background: #52c41a; border-color: #52c41a; color: #fff; }
+    .deploy-step-text .t { font-size: 14px; font-weight: 600; color: #fff; }
+    .deploy-step-text .d { font-size: 12px; color: rgba(255,255,255,.65); margin-top: 4px; line-height: 1.45; }
+    .deploy-wizard-body { padding: 24px 28px 28px; background: #fafbfc; min-height: 420px; }
+    .deploy-wizard-body .panel-title { font-size: 15px; font-weight: 600; color: #303133; margin: 0 0 16px; }
+    .deploy-wizard-footer {
+      margin-top: 20px; padding-top: 16px; border-top: 1px solid #ebeef5;
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+    }
+    /* Manifest 总进度仪表盘 */
+    .manifest-dash {
+      background: linear-gradient(135deg, #f6f9fc 0%, #fff 55%, #f0f7ff 100%);
+      border: 1px solid #e4e7ed; border-radius: 10px; padding: 16px 18px; margin-bottom: 14px;
+    }
+    .manifest-dash-top { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .manifest-dash-pct { font-size: 28px; font-weight: 700; color: #1890ff; line-height: 1; }
+    .manifest-dash-pct span { font-size: 14px; font-weight: 500; color: #909399; margin-left: 2px; }
+    .manifest-dash-meta { display: flex; flex-wrap: wrap; gap: 20px; font-size: 13px; color: #606266; }
+    .manifest-dash-meta strong { color: #303133; }
+    .manifest-dash-bar { margin-top: 4px; }
+    .manifest-current-box {
+      margin-top: 12px; padding: 10px 12px; background: #fff; border-radius: 8px; border: 1px dashed #c6e2ff;
+      font-size: 13px; color: #606266; line-height: 1.5;
+    }
+    .manifest-current-box .lab { font-size: 12px; color: #909399; margin-bottom: 4px; }
+    .manifest-current-box .val { color: #303133; font-weight: 500; word-break: break-all; }
   </style>
 </head>
 <body>
@@ -552,78 +603,103 @@
               </el-table>
             </el-card>
 
-            <el-card shadow="never" style="margin-bottom:16px;">
-              <template #header><span style="font-weight:600">新建部署向导</span></template>
-              <el-steps :active="deployStep" align-center style="margin-bottom:20px;">
-                <el-step title="部署形态" />
-                <el-step title="选择节点" />
-                <el-step title="配置与下发" />
-              </el-steps>
+            <el-card shadow="never" class="deploy-task-card" style="margin-bottom:16px;">
+              <template #header><span>集群部署引导</span><span style="float:right;font-size:12px;color:#909399;font-weight:400">参考 OceanBase 控制台：左侧步骤导航 · 右侧填写</span></template>
+              <div class="deploy-wizard-shell">
+                <el-row :gutter="0">
+                  <el-col :xs="24" :md="7" class="deploy-wizard-nav">
+                    <div class="deploy-wizard-brand">
+                      <h3>创建部署任务</h3>
+                      <p>按顺序完成三步后下发；安装/升级任务创建后可在下方查看流水线与日志。</p>
+                    </div>
+                    <div
+                      v-for="(s, idx) in deployWizardSteps"
+                      :key="s.key"
+                      class="deploy-step-item"
+                      :class="{ active: deployStep === idx, done: deployStep > idx }"
+                      @click="goDeployWizardStep(idx)"
+                    >
+                      <div class="deploy-step-num">{{ deployStep > idx ? '✓' : (idx + 1) }}</div>
+                      <div class="deploy-step-text">
+                        <div class="t" v-text="s.title"></div>
+                        <div class="d" v-text="s.desc"></div>
+                      </div>
+                    </div>
+                  </el-col>
+                  <el-col :xs="24" :md="17" class="deploy-wizard-body">
+                    <div v-show="deployStep === 0">
+                      <div class="panel-title">步骤 1 · 部署形态</div>
+                      <el-radio-group v-model="deployForm.deploy_mode" size="large">
+                        <el-radio-button label="single">单节点</el-radio-button>
+                        <el-radio-button label="triple">三节点</el-radio-button>
+                      </el-radio-group>
+                      <div class="hint" style="margin-top:14px;">
+                        <strong>执行机</strong>为节点 1：负责 SSH、写入 <code>user_edit_file.conf</code> 与执行 <code>sh appctl.sh</code>。三节点时节点 2/3 可选，仅作记录；<code>user_edit</code> 内 IP 由您填写，平台不覆盖。
+                      </div>
+                      <div class="deploy-wizard-footer">
+                        <span></span>
+                        <el-button type="primary" @click="deployStep = 1">下一步</el-button>
+                      </div>
+                    </div>
 
-              <div v-show="deployStep === 0">
-                <el-radio-group v-model="deployForm.deploy_mode" size="large">
-                  <el-radio-button label="single">单节点部署</el-radio-button>
-                  <el-radio-button label="triple">三节点部署</el-radio-button>
-                </el-radio-group>
-                <div class="hint" style="margin-top:12px;"><strong>节点 1</strong>为执行 SSH、写配置与跑 appctl 的机器。三节点形态下可选填节点 2/3（用于后续扩展或记录）；<code>user_edit</code> 里的 IP 请自行填写，系统不会改写。</div>
-                <div style="margin-top:16px;">
-                  <el-button type="primary" @click="deployStep = 1">下一步</el-button>
-                </div>
-              </div>
+                    <div v-show="deployStep === 1">
+                      <div class="panel-title">步骤 2 · 选择节点</div>
+                      <el-form label-width="112px" label-position="left" style="max-width:640px;">
+                        <el-form-item label="节点 1（执行）">
+                          <el-select v-model="deployForm.host" placeholder="选择已纳管主机" filterable style="width:100%">
+                            <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledForNode1(h.id)" :label="h.name + ' — ' + h.hostname + ':' + h.port + ' (' + h.username + ')'" :value="h.id" />
+                          </el-select>
+                        </el-form-item>
+                        <template v-if="deployForm.deploy_mode === 'triple'">
+                          <el-form-item label="节点 2（可选）">
+                            <el-select v-model="deployForm.host_node2" clearable placeholder="不选则与节点 1 同机" filterable style="width:100%">
+                              <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledTriple(h.id, 2)" :label="h.name + ' — ' + h.hostname + ':' + h.port" :value="h.id" />
+                            </el-select>
+                          </el-form-item>
+                          <el-form-item label="节点 3（可选）">
+                            <el-select v-model="deployForm.host_node3" clearable placeholder="不选则与节点 1 同机" filterable style="width:100%">
+                              <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledTriple(h.id, 3)" :label="h.name + ' — ' + h.hostname + ':' + h.port" :value="h.id" />
+                            </el-select>
+                          </el-form-item>
+                        </template>
+                      </el-form>
+                      <div class="deploy-wizard-footer">
+                        <el-button @click="deployStep = 0">上一步</el-button>
+                        <el-button type="primary" @click="goDeployStep2">下一步</el-button>
+                      </div>
+                    </div>
 
-              <div v-show="deployStep === 1">
-                <el-form label-width="120px" style="max-width:720px;">
-                  <el-form-item label="节点 1（执行）">
-                    <el-select v-model="deployForm.host" placeholder="选择主机" filterable style="width:100%">
-                      <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledForNode1(h.id)" :label="h.name + ' — ' + h.hostname + ' :' + h.port + ' (' + h.username + ')'" :value="h.id" />
-                    </el-select>
-                  </el-form-item>
-                  <template v-if="deployForm.deploy_mode === 'triple'">
-                    <el-form-item label="节点 2（可选）">
-                      <el-select v-model="deployForm.host_node2" clearable placeholder="不选则与节点 1 同机" filterable style="width:100%">
-                        <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledTriple(h.id, 2)" :label="h.name + ' — ' + h.hostname + ' :' + h.port" :value="h.id" />
-                      </el-select>
-                    </el-form-item>
-                    <el-form-item label="节点 3（可选）">
-                      <el-select v-model="deployForm.host_node3" clearable placeholder="不选则与节点 1 同机" filterable style="width:100%">
-                        <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledTriple(h.id, 3)" :label="h.name + ' — ' + h.hostname + ' :' + h.port" :value="h.id" />
-                      </el-select>
-                    </el-form-item>
-                  </template>
-                </el-form>
-                <el-button @click="deployStep = 0">上一步</el-button>
-                <el-button type="primary" @click="goDeployStep2">下一步</el-button>
-              </div>
-
-              <div v-show="deployStep === 2">
-                <el-alert type="info" :closable="false" show-icon style="margin-bottom:14px;">
-                  <template #title>先选择要下发的操作，再点蓝色按钮；<code>user_edit</code> 在下方编辑（默认可直接改）。</template>
-                </el-alert>
-                <el-divider content-position="left"><span style="font-weight:600;color:#303133;">下发操作</span></el-divider>
-                <el-form label-width="120px" style="max-width:720px;">
-                  <el-form-item label="操作类型">
-                    <el-radio-group v-model="deployForm.action" class="deploy-action-rg">
-                      <el-radio-button label="precheck_install">① 安装前置检查 — <code>sh appctl.sh precheck install</code>（目标参数必填组件）</el-radio-button>
-                      <el-radio-button label="precheck_upgrade">② 升级前置检查 — <code>sh appctl.sh precheck upgrade</code>（目标参数必填组件）</el-radio-button>
-                      <el-radio-button label="install">③ 安装操作 — <code>sh appctl.sh install</code></el-radio-button>
-                      <el-radio-button label="upgrade">④ 升级操作 — <code>sh appctl.sh upgrade</code></el-radio-button>
-                    </el-radio-group>
-                  </el-form-item>
-                  <el-form-item label="目标参数">
-                    <el-input v-model="deployForm.target" placeholder="precheck install / precheck upgrade 必填组件（如 gaussdb）；install / upgrade 按现场脚本可填或留空" />
-                  </el-form-item>
-                </el-form>
-                <div style="margin:0 0 16px;display:flex;flex-wrap:wrap;gap:10px;">
-                  <el-button type="primary" size="large" @click="startDeploy" :loading="loading">写入配置并执行</el-button>
-                  <el-button size="large" @click="deployStep = 1">上一步</el-button>
-                </div>
-                <el-divider content-position="left"><span style="font-weight:600;color:#303133;">user_edit 配置</span></el-divider>
-                <p style="margin:0 0 8px;color:#606266;font-size:13px;">默认已填入模板；<strong>node_ip 等以您填写为准</strong>，系统不会用所选 SSH 主机地址覆盖。内容将原样写入远程 <code>user_edit_file.conf</code> 后执行上方操作。</p>
-                <el-input v-model="deployForm.user_edit_content" type="textarea" :rows="14" placeholder="[user_edit] ..." class="mono-ta" />
-                <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
-                  <el-button @click="fillUserEditTemplate">恢复默认模板</el-button>
-                  <span class="hint" style="margin:0;">底部改完配置后，点上方「写入配置并执行」即可下发。</span>
-                </div>
+                    <div v-show="deployStep === 2">
+                      <div class="panel-title">步骤 3 · 操作与配置</div>
+                      <el-alert type="info" :closable="false" show-icon style="margin-bottom:14px;">
+                        <template #title>选择 appctl 操作后点击「下发执行」；<code>user_edit</code> 将<strong>原样</strong>写入远程配置文件。</template>
+                      </el-alert>
+                      <el-form label-width="100px" style="max-width:100%;">
+                        <el-form-item label="操作类型">
+                          <el-radio-group v-model="deployForm.action" class="deploy-action-rg">
+                            <el-radio-button label="precheck_install">安装前置检查 — <code>precheck install</code>（需填目标组件）</el-radio-button>
+                            <el-radio-button label="precheck_upgrade">升级前置检查 — <code>precheck upgrade</code>（需填目标组件）</el-radio-button>
+                            <el-radio-button label="install">安装 — <code>install</code></el-radio-button>
+                            <el-radio-button label="upgrade">升级 — <code>upgrade</code></el-radio-button>
+                          </el-radio-group>
+                        </el-form-item>
+                        <el-form-item label="目标参数">
+                          <el-input v-model="deployForm.target" placeholder="precheck 类必填组件名（如 gaussdb）；install / upgrade 按现场可留空" />
+                        </el-form-item>
+                        <el-form-item label="user_edit">
+                          <el-input v-model="deployForm.user_edit_content" type="textarea" :rows="12" placeholder="[user_edit] ..." class="mono-ta" />
+                          <div style="margin-top:8px;">
+                            <el-button size="small" @click="fillUserEditTemplate">恢复默认模板</el-button>
+                          </div>
+                        </el-form-item>
+                      </el-form>
+                      <div class="deploy-wizard-footer">
+                        <el-button @click="deployStep = 1">上一步</el-button>
+                        <el-button type="primary" size="large" @click="startDeploy" :loading="loading">下发执行</el-button>
+                      </div>
+                    </div>
+                  </el-col>
+                </el-row>
               </div>
             </el-card>
 
@@ -654,7 +730,27 @@
                     <el-tag size="small" @click="openLogTail('install')" style="cursor:pointer">install.log</el-tag>
                     <span v-text="phaseBanner" style="flex:1;min-width:120px;"></span>
                   </div>
-                  <el-card v-if="manifestSummary && manifestSummary.services_total != null" shadow="hover" style="margin-bottom:12px;">
+                  <div v-if="showManifestTree && manifestSummary && manifestSummary.services_total != null" class="manifest-dash">
+                    <div class="manifest-dash-top">
+                      <div>
+                        <div style="font-size:13px;color:#606266;margin-bottom:6px;">安装总进度（按服务项）</div>
+                        <div class="manifest-dash-pct">{{ manifestProgressPercent }}<span>%</span></div>
+                      </div>
+                      <div class="manifest-dash-meta">
+                        <div>已用时间 <strong>{{ deployElapsedHuman }}</strong></div>
+                        <div v-if="manifestEstimatedHuman">manifest 预估耗时合计 <strong>{{ manifestEstimatedHuman }}</strong></div>
+                        <div>层进度 <strong>{{ manifestSummary.levels_done || 0 }}/{{ manifestSummary.levels_total || 0 }}</strong></div>
+                        <div>服务 <strong>{{ manifestSummary.services_done || 0 }}/{{ manifestSummary.services_total || 0 }}</strong></div>
+                      </div>
+                    </div>
+                    <el-progress class="manifest-dash-bar" :percentage="manifestProgressPercent" :stroke-width="10" />
+                    <div v-if="manifestCurrentStepLine" class="manifest-current-box">
+                      <div class="lab">当前进行</div>
+                      <div class="val" v-text="manifestCurrentStepLine"></div>
+                    </div>
+                    <div class="hint" style="margin-top:10px;word-break:break-all;" v-text="'manifest: ' + ((manifestPaths || []).join(' · ') || '—')"></div>
+                  </div>
+                  <el-card v-else-if="manifestSummary && manifestSummary.services_total != null" shadow="hover" style="margin-bottom:12px;">
                     <template #header><span style="font-weight:600">汇总</span></template>
                     <div style="font-size:12px;color:#606266;">
                       层 <span v-text="manifestSummary.levels_done || 0"></span>/<span v-text="manifestSummary.levels_total || 8"></span>
@@ -805,6 +901,15 @@ use_import_ca = no
         const manifestPayload = ref(null);
         const manifestSummary = ref(null);
         const manifestPaths = ref([]);
+        const deployWizardSteps = [
+          { key: 'mode', title: '部署形态', desc: '单节点或三节点拓扑' },
+          { key: 'hosts', title: '选择节点', desc: '指定执行 SSH 与 appctl 的主机' },
+          { key: 'config', title: '操作与配置', desc: 'appctl 动作与 user_edit 内容' },
+        ];
+        const taskRunStartedMs = ref(null);
+        const taskRunEndedMs = ref(null);
+        const deployNowMs = ref(Date.now());
+        let deployElapsedTimer = null;
         const selectedPipelineKey = ref('');
         const selectedLogHint = ref('');
         const taskStatus = ref('');
@@ -830,6 +935,81 @@ use_import_ca = no
           if (p && p.pipeline && p.pipeline.length) return p.pipeline;
           return [];
         });
+
+        const formatDurationSec = (sec) => {
+          if (sec == null || Number.isNaN(sec) || sec < 0) return '—';
+          const s = Math.floor(sec);
+          const h = Math.floor(s / 3600);
+          const m = Math.floor((s % 3600) / 60);
+          const r = s % 60;
+          if (h > 0) return h + ' 小时 ' + m + ' 分 ' + r + ' 秒';
+          if (m > 0) return m + ' 分 ' + r + ' 秒';
+          return r + ' 秒';
+        };
+
+
+        const manifestProgressPercent = computed(() => {
+          const s = manifestSummary.value;
+          if (!s || s.services_total == null) return 0;
+          const p = s.progress_percent != null ? s.progress_percent : s.services_progress_percent;
+          if (p != null) return Math.min(100, Math.max(0, Math.round(p)));
+          const t = s.services_total || 0;
+          const d = s.services_done || 0;
+          return t ? Math.min(100, Math.round((100 * d) / t)) : 0;
+        });
+
+        const manifestEstimatedHuman = computed(() => {
+          const s = manifestSummary.value;
+          const sec = s && s.estimated_total_seconds;
+          if (sec == null || sec <= 0) return '';
+          return formatDurationSec(Number(sec));
+        });
+
+        const manifestCurrentStepLine = computed(() => {
+          const s = manifestSummary.value;
+          const cur = s && s.current_running_service;
+          if (cur && (cur.label || cur.level_label)) {
+            let t = (cur.level_label || cur.level || '') + ' → ' + (cur.label || cur.id || '');
+            if (cur.start_time) t += ' · 开始 ' + String(cur.start_time);
+            return t;
+          }
+          const rows = pipelineRows.value || [];
+          for (const row of rows) {
+            if ((row.level_status || '') === 'running') return (row.title || '') + '（大层执行中）';
+            const ch = row.children || [];
+            for (const sub of ch) {
+              if ((sub.status || '') === 'running' || (sub.status || '') === 'retrying')
+                return (row.title || '') + ' → ' + (sub.label || '');
+            }
+          }
+          return '';
+        });
+
+        const clearDeployElapsedTimer = () => {
+          if (deployElapsedTimer) {
+            clearInterval(deployElapsedTimer);
+            deployElapsedTimer = null;
+          }
+        };
+
+        const startDeployElapsedTimer = () => {
+          clearDeployElapsedTimer();
+          deployElapsedTimer = setInterval(() => { deployNowMs.value = Date.now(); }, 1000);
+        };
+
+        const goDeployWizardStep = (idx) => {
+          if (idx <= deployStep.value) {
+            deployStep.value = idx;
+            return;
+          }
+          if (idx === 1 && deployStep.value === 0) {
+            deployStep.value = 1;
+            return;
+          }
+          if (idx === 2 && deployStep.value === 1) {
+            goDeployStep2();
+          }
+        };
 
         const breadcrumbTitle = computed(() => {
           const m = { overview: '概览', hosts: '主机管理', deploy: '部署任务' };
@@ -1050,6 +1230,25 @@ use_import_ca = no
           return '';
         });
 
+        const deployElapsedHuman = computed(() => {
+          const snap = currentTaskSnapshot.value;
+          const st = (snap && snap.status) || effectiveLiveStatus.value || '';
+          const parseIso = (x) => {
+            if (!x) return null;
+            const t = Date.parse(x);
+            return Number.isNaN(t) ? null : t;
+          };
+          if (snap && (st === 'success' || st === 'failed' || st === 'cancelled')) {
+            const a = parseIso(snap.started_at);
+            const b = parseIso(snap.finished_at);
+            if (a != null && b != null && b >= a) return formatDurationSec((b - a) / 1000);
+          }
+          const start = taskRunStartedMs.value;
+          if (start == null) return '—';
+          const end = taskRunEndedMs.value != null ? taskRunEndedMs.value : deployNowMs.value;
+          return formatDurationSec((end - start) / 1000);
+        });
+
         const refreshCurrentTaskSnapshot = async () => {
           const id = currentTaskId.value;
           if (!id) return;
@@ -1087,8 +1286,13 @@ use_import_ca = no
           phaseBanner.value = '';
           manifestPaths.value = [];
           manifestPayload.value = null;
+          manifestSummary.value = null;
+          treeRoots.value = [];
           selectedPipelineKey.value = '';
           selectedLogHint.value = '';
+          taskRunStartedMs.value = null;
+          taskRunEndedMs.value = null;
+          clearDeployElapsedTimer();
         };
 
         const closeSocket = () => {
@@ -1180,6 +1384,19 @@ use_import_ca = no
                 finished_at: msg.finished_at,
                 started_at: msg.started_at,
               });
+              const st = msg.status || '';
+              if (st === 'running' || st === 'pending') {
+                const t = msg.started_at ? Date.parse(msg.started_at) : NaN;
+                taskRunStartedMs.value = Number.isNaN(t) ? Date.now() : t;
+                taskRunEndedMs.value = null;
+                startDeployElapsedTimer();
+              } else {
+                clearDeployElapsedTimer();
+                const a = msg.started_at ? Date.parse(msg.started_at) : null;
+                const b = msg.finished_at ? Date.parse(msg.finished_at) : null;
+                taskRunStartedMs.value = a && !Number.isNaN(a) ? a : null;
+                taskRunEndedMs.value = b && !Number.isNaN(b) ? b : Date.now();
+              }
             }
             if (msg.type === 'phase') {
               phaseBanner.value = msg.message || '';
@@ -1232,7 +1449,13 @@ use_import_ca = no
             if (msg.type === 'status') {
               taskStatus.value = msg.data;
               applyLiveTaskPatch({ status: msg.data });
-              if (msg.data === 'running') flowS1.value = 'active';
+              if (msg.data === 'running') {
+                flowS1.value = 'active';
+                if (taskRunStartedMs.value == null) {
+                  taskRunStartedMs.value = Date.now();
+                  startDeployElapsedTimer();
+                }
+              }
             }
             if (msg.type === 'done') {
               const st = msg.status || (msg.exit_code === 0 ? 'success' : 'failed');
@@ -1242,6 +1465,8 @@ use_import_ca = no
                 exit_code: msg.exit_code,
                 finished_at: msg.finished_at,
               });
+              taskRunEndedMs.value = msg.finished_at ? Date.parse(msg.finished_at) : Date.now();
+              clearDeployElapsedTimer();
               flowS1.value = 'done';
               const a = lastAction.value || '';
               if (a === 'precheck_install' || a === 'precheck_upgrade') {
@@ -1288,6 +1513,7 @@ use_import_ca = no
         const logout = () => {
           closeSocket();
           closeLogSocket();
+          clearDeployElapsedTimer();
           setAuth('', '', null);
           localStorage.removeItem('user');
           logText.value = '';
@@ -1301,6 +1527,8 @@ use_import_ca = no
           currentTaskSnapshot.value = null;
           currentTaskId.value = null;
           taskStatus.value = '';
+          taskRunStartedMs.value = null;
+          taskRunEndedMs.value = null;
         };
 
         const resetHostForm = () => {
@@ -1442,8 +1670,10 @@ use_import_ca = no
         return {
           token, user, loading, activeMenu, breadcrumbTitle, runningCount, successCount, failedCount, lastTasks, onMenuSelect,
           hosts, hostsWithCredential, hostsKeyAuth, tasks, showRegister, loginForm, regForm, hostForm, deployForm, deployStep,
+          deployWizardSteps, goDeployWizardStep,
           refreshTasksOnly, deployActionLabel, deployStatusLabel, deployStatusTagType, deployOutcomeTagType, deployTaskRowClass,
           currentTaskSnapshot, deployStatusStripVisible, deployStatusStripTitle, deployStatusStripType, liveTaskFinishedHint,
+          deployElapsedHuman, manifestProgressPercent, manifestEstimatedHuman, manifestCurrentStepLine,
           logText, logTailText, logTailLabel, logAppctlEl, logFileEl, treeRoots, manifestSummary, manifestPaths, manifestPayload, taskStatus, currentTaskId,
           showManifestTree, pipelineRows, selectedPipelineKey, selectedLogHint, phaseHint, phaseBanner, flowS1, flowS2, flowS3, flowS4,
           openLogTail, openLogTailRel, onPipelineStepClick, onPipelineSubClick,
