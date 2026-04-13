@@ -28,7 +28,6 @@ def _remote_manifest_path(host) -> str:
     root = (host.docker_service_root or "").strip().rstrip("/")
     if not root:
         root = "/data/docker-service"
-    # 与脚本中 CONFIG_HOME 一致：部署根目录下的 config/gaussdb/manifest.yaml
     return "%s/config/gaussdb/manifest.yaml" % root
 
 
@@ -57,13 +56,24 @@ def _poll_manifest_loop(task_id: int, host_id: int, secret: str, stop_event: thr
 def _build_appctl_command(host, action: str, target: str) -> str:
     root = (host.docker_service_root or "").strip().rstrip("/")
     if not root:
-        raise ValueError("请先在服务器配置中填写 docker-service 根目录")
-    if action == DeploymentTask.PRECHECK:
-        sub = "precheck install %s" % target
+        raise ValueError("请先在服务器配置中填写部署根目录")
+    tgt = (target or "").strip()
+
+    if action == DeploymentTask.PRECHECK_INSTALL:
+        if not tgt:
+            raise ValueError("安装前置检查需要填写目标组件（如 gaussdb）")
+        sub = "precheck install %s" % tgt
+    elif action == DeploymentTask.PRECHECK_UPGRADE:
+        if not tgt:
+            raise ValueError("升级前置检查需要填写目标组件（如 gaussdb）")
+        sub = "precheck upgrade %s" % tgt
     elif action == DeploymentTask.INSTALL:
-        sub = "install %s" % target
+        sub = "install%s" % (" %s" % tgt if tgt else "")
+    elif action == DeploymentTask.UPGRADE:
+        sub = "upgrade%s" % (" %s" % tgt if tgt else "")
     else:
-        raise ValueError("未知操作")
+        raise ValueError("未知操作类型")
+
     return (
         "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
         "cd %s && bash appctl.sh %s" % (root, sub)

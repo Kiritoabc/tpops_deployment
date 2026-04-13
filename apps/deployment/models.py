@@ -3,11 +3,18 @@ from django.db import models
 
 
 class DeploymentTask(models.Model):
-    PRECHECK = "precheck"
+    """远程: cd <根目录> && bash appctl.sh <子命令>"""
+
+    PRECHECK_INSTALL = "precheck_install"
+    PRECHECK_UPGRADE = "precheck_upgrade"
     INSTALL = "install"
+    UPGRADE = "upgrade"
+
     ACTION_CHOICES = [
-        (PRECHECK, "预检查"),
-        (INSTALL, "安装"),
+        (PRECHECK_INSTALL, "安装前置检查 (precheck install)"),
+        (PRECHECK_UPGRADE, "升级前置检查 (precheck upgrade)"),
+        (INSTALL, "安装 (install)"),
+        (UPGRADE, "升级 (upgrade)"),
     ]
 
     STATUS_PENDING = "pending"
@@ -32,7 +39,8 @@ class DeploymentTask(models.Model):
     target = models.CharField(
         max_length=64,
         default="gaussdb",
-        help_text="appctl.sh 目标，例如 gaussdb",
+        blank=True,
+        help_text="precheck install|upgrade 时传入的组件名，如 gaussdb；纯 install/upgrade 可留空",
     )
     status = models.CharField(
         max_length=32, choices=STATUS_CHOICES, default=STATUS_PENDING
@@ -57,4 +65,4 @@ class DeploymentTask(models.Model):
         verbose_name_plural = verbose_name
 
     def __str__(self):
-        return f"{self.get_action_display()} {self.target} ({self.status})"
+        return "%s %s (%s)" % (self.get_action_display(), self.target or "-", self.status)

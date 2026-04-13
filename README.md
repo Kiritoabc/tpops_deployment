@@ -41,8 +41,10 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 
 在主机配置的部署根目录下执行；进度文件与脚本中 `CONFIG_HOME` 一致：
 
-- 预检查：`bash appctl.sh precheck install <target>`
-- 安装：`bash appctl.sh install <target>`
+- 安装前置检查：`bash appctl.sh precheck install <组件>`（如 `gaussdb`）
+- 升级前置检查：`bash appctl.sh precheck upgrade <组件>`
+- 安装：`bash appctl.sh install` 或 `bash appctl.sh install <参数>`（按脚本需要）
+- 升级：`bash appctl.sh upgrade` 或带参数
 - Manifest：`<部署根>/config/gaussdb/manifest.yaml`（轮询解析层状态 `*_status` 与各层服务列表）
 
 ## 项目结构（摘要）

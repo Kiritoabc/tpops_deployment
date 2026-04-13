@@ -191,8 +191,8 @@
               <template #header><span style="font-weight:600">快速开始</span></template>
               <el-steps :active="3" align-center finish-status="success">
                 <el-step title="主机管理" description="填写 SSH 与部署根目录（appctl.sh 所在路径）" />
-                <el-step title="预检查" description="precheck install 目标组件" />
-                <el-step title="安装" description="install 并查看日志与流程树" />
+                <el-step title="前置检查" description="precheck install / precheck upgrade" />
+                <el-step title="安装 / 升级" description="install / upgrade，查看日志与流程" />
               </el-steps>
             </el-card>
           </template>
@@ -271,19 +271,22 @@
                   </el-select>
                 </el-form-item>
                 <el-form-item label="操作类型">
-                  <el-select v-model="deployForm.action" style="width:200px">
-                    <el-option label="预检查 (precheck install)" value="precheck" />
+                  <el-select v-model="deployForm.action" style="width:280px">
+                    <el-option label="安装前置检查 (precheck install)" value="precheck_install" />
+                    <el-option label="升级前置检查 (precheck upgrade)" value="precheck_upgrade" />
                     <el-option label="安装 (install)" value="install" />
+                    <el-option label="升级 (upgrade)" value="upgrade" />
                   </el-select>
                 </el-form-item>
-                <el-form-item label="目标组件">
-                  <el-input v-model="deployForm.target" style="width:140px" placeholder="gaussdb" />
+                <el-form-item label="目标参数">
+                  <el-input v-model="deployForm.target" style="width:160px" placeholder="gaussdb 或留空" />
+                  <div class="hint" style="margin-top:4px;">前置检查必填组件名（如 gaussdb）；纯 <code>install</code> / <code>upgrade</code> 若脚本无需参数可留空。</div>
                 </el-form-item>
                 <el-form-item>
                   <el-button type="primary" @click="startDeploy" :loading="loading">执行</el-button>
                 </el-form-item>
               </el-form>
-              <div class="hint">远程命令：<code>cd &lt;部署根目录&gt; && bash appctl.sh precheck install &lt;目标&gt;</code> 或 <code>bash appctl.sh install &lt;目标&gt;</code></div>
+              <div class="hint">远程示例：<code>bash appctl.sh precheck install gaussdb</code>、<code>bash appctl.sh precheck upgrade gaussdb</code>、<code>bash appctl.sh install</code>、<code>bash appctl.sh upgrade</code>（有参数则在目标参数中填写）。</div>
             </el-card>
 
             <el-row :gutter="16">
@@ -352,7 +355,7 @@
               <el-table :data="tasks" stripe>
                 <el-table-column prop="id" label="ID" width="72" />
                 <el-table-column prop="host_name" label="主机" min-width="100" />
-                <el-table-column prop="action" label="操作" width="100" />
+                <el-table-column prop="action" label="操作" min-width="160" show-overflow-tooltip />
                 <el-table-column prop="target" label="目标" width="100" />
                 <el-table-column prop="status" label="状态" width="110" />
                 <el-table-column prop="exit_code" label="退出码" width="88" />
@@ -408,7 +411,7 @@
         const loginForm = reactive({ username: '', password: '' });
         const regForm = reactive({ username: '', email: '', password: '', password_confirm: '', role: 'viewer' });
         const hostForm = reactive({ id: null, name: '', hostname: '', port: 22, username: 'root', auth_method: 'password', password: '', private_key: '', docker_service_root: '/data/docker-service' });
-        const deployForm = reactive({ host: null, action: 'precheck', target: 'gaussdb' });
+        const deployForm = reactive({ host: null, action: 'precheck_install', target: 'gaussdb' });
         const logText = ref('');
         const treeRoots = ref([]);
         const manifestSummary = ref(null);

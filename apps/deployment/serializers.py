@@ -2,6 +2,13 @@ from rest_framework import serializers
 
 from .models import DeploymentTask
 
+_VALID_ACTIONS = {
+    DeploymentTask.PRECHECK_INSTALL,
+    DeploymentTask.PRECHECK_UPGRADE,
+    DeploymentTask.INSTALL,
+    DeploymentTask.UPGRADE,
+}
+
 
 class DeploymentTaskSerializer(serializers.ModelSerializer):
     host_name = serializers.CharField(source="host.name", read_only=True)
@@ -39,10 +46,7 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
         fields = ("host", "action", "target")
 
     def validate(self, attrs):
-        if attrs.get("action") not in (
-            DeploymentTask.PRECHECK,
-            DeploymentTask.INSTALL,
-        ):
+        if attrs.get("action") not in _VALID_ACTIONS:
             raise serializers.ValidationError({"action": "不支持的操作类型"})
         return attrs
 
