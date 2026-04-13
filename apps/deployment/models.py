@@ -17,6 +17,13 @@ class DeploymentTask(models.Model):
         (UPGRADE, "升级 (upgrade)"),
     ]
 
+    MODE_SINGLE = "single"
+    MODE_TRIPLE = "triple"
+    DEPLOY_MODE_CHOICES = [
+        (MODE_SINGLE, "单节点"),
+        (MODE_TRIPLE, "三节点"),
+    ]
+
     STATUS_PENDING = "pending"
     STATUS_RUNNING = "running"
     STATUS_SUCCESS = "success"
@@ -41,6 +48,37 @@ class DeploymentTask(models.Model):
         default="gaussdb",
         blank=True,
         help_text="precheck install|upgrade 时传入的组件名，如 gaussdb；纯 install/upgrade 可留空",
+    )
+    deploy_mode = models.CharField(
+        max_length=16,
+        choices=DEPLOY_MODE_CHOICES,
+        default=MODE_SINGLE,
+        verbose_name="部署形态",
+    )
+    host_node2 = models.ForeignKey(
+        "hosts.Host",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="deployment_tasks_as_node2",
+        verbose_name="节点2（仅三节点）",
+    )
+    host_node3 = models.ForeignKey(
+        "hosts.Host",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="deployment_tasks_as_node3",
+        verbose_name="节点3（仅三节点）",
+    )
+    user_edit_content = models.TextField(
+        verbose_name="user_edit 配置内容",
+        help_text="将写入远程 user_edit_file.conf（覆盖前会先解析 [user_edit]）",
+    )
+    remote_user_edit_path = models.CharField(
+        max_length=512,
+        blank=True,
+        verbose_name="实际写入的远程路径",
     )
     status = models.CharField(
         max_length=32, choices=STATUS_CHOICES, default=STATUS_PENDING

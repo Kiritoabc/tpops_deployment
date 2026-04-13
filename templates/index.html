@@ -100,6 +100,7 @@
     .status-null { color: #b37feb; }
     .status-retrying { color: #ff9800; }
     .hint { font-size: 12px; color: #909399; margin-top: 4px; line-height: 1.5; }
+    .mono-ta textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -168,33 +169,100 @@
           <template v-if="activeMenu === 'overview'">
             <h2 class="ob-page-title">概览</h2>
             <el-row :gutter="16" style="margin-bottom:20px;">
-              <el-col :xs="24" :sm="8">
+              <el-col :xs="24" :sm="8" :md="4">
                 <el-card shadow="hover" class="stat-card">
                   <div class="num" v-text="hosts.length"></div>
                   <div class="lab">已配置主机</div>
                 </el-card>
               </el-col>
-              <el-col :xs="24" :sm="8">
+              <el-col :xs="24" :sm="8" :md="4">
                 <el-card shadow="hover" class="stat-card">
                   <div class="num" v-text="tasks.length"></div>
                   <div class="lab">历史任务数</div>
                 </el-card>
               </el-col>
-              <el-col :xs="24" :sm="8">
+              <el-col :xs="24" :sm="8" :md="4">
                 <el-card shadow="hover" class="stat-card">
-                  <div class="num" style="color:#52c41a;" v-text="runningCount"></div>
-                  <div class="lab">进行中任务</div>
+                  <div class="num" style="color:#e6a23c;" v-text="runningCount"></div>
+                  <div class="lab">进行中</div>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :sm="8" :md="4">
+                <el-card shadow="hover" class="stat-card">
+                  <div class="num" style="color:#52c41a;" v-text="successCount"></div>
+                  <div class="lab">成功</div>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :sm="8" :md="4">
+                <el-card shadow="hover" class="stat-card">
+                  <div class="num" style="color:#f56c6c;" v-text="failedCount"></div>
+                  <div class="lab">失败</div>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :sm="8" :md="4">
+                <el-card shadow="hover" class="stat-card">
+                  <div class="num" style="color:#909399;" v-text="(tasks.length ? Math.round(successCount * 100 / tasks.length) : 0) + '%'"></div>
+                  <div class="lab">成功率</div>
                 </el-card>
               </el-col>
             </el-row>
-            <el-card shadow="never">
-              <template #header><span style="font-weight:600">快速开始</span></template>
-              <el-steps :active="3" align-center finish-status="success">
-                <el-step title="主机管理" description="填写 SSH 与部署根目录（appctl.sh 所在路径）" />
-                <el-step title="前置检查" description="precheck install / precheck upgrade" />
-                <el-step title="安装 / 升级" description="install / upgrade，查看日志与流程" />
-              </el-steps>
-            </el-card>
+            <el-row :gutter="16" style="margin-bottom:20px;">
+              <el-col :xs="24" :lg="14">
+                <el-card shadow="never">
+                  <template #header><span style="font-weight:600">平台说明</span></template>
+                  <p style="margin:0 0 10px;line-height:1.7;color:#606266;">
+                    本控制台用于 <strong>TPOPS / GaussDB 容器化部署</strong>：在「主机管理」登记 SSH 可达的执行机（部署根目录需含 <code>appctl.sh</code>），在「部署任务」按向导填写
+                    <code>user_edit_file.conf</code> 后，系统会<strong>自动检测</strong>远程
+                    <code>config/gaussdb/user_edit_file.conf</code> 或 <code>config/user_edit_file.conf</code> 是否存在并<strong>覆盖写入</strong>，再执行所选 <code>appctl.sh</code> 操作。
+                  </p>
+                  <el-descriptions :column="1" border size="small">
+                    <el-descriptions-item label="Manifest">部署根目录下 <code>config/gaussdb/manifest.yaml</code>，任务运行中轮询解析进度树</el-descriptions-item>
+                    <el-descriptions-item label="配置文件">支持单节点 / 三节点；提交后会将所选主机 IP 写入配置中的 node / influx / sftp 等字段</el-descriptions-item>
+                    <el-descriptions-item label="注意">docker-service 不建议并发执行多个 appctl；同一主机请避免并行任务。</el-descriptions-item>
+                  </el-descriptions>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :lg="10">
+                <el-card shadow="never">
+                  <template #header><span style="font-weight:600">快速开始</span></template>
+                  <el-steps direction="vertical" :active="4" finish-status="success">
+                    <el-step title="登记主机" description="SSH、部署根目录 /data/docker-service" />
+                    <el-step title="选择部署形态" description="单节点或三节点，并选择对应执行机" />
+                    <el-step title="编辑 user_edit" description="按模板填写 [user_edit] 段" />
+                    <el-step title="选择操作" description="precheck / install / upgrade 并查看日志" />
+                  </el-steps>
+                </el-card>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="16">
+              <el-col :xs="24" :lg="14">
+                <el-card shadow="never">
+                  <template #header><span style="font-weight:600">已纳管主机</span></template>
+                  <el-table v-if="hosts.length" :data="hosts" stripe size="small" max-height="280">
+                    <el-table-column prop="name" label="名称" width="120" />
+                    <el-table-column prop="hostname" label="IP / 域名" min-width="130" />
+                    <el-table-column prop="port" label="SSH 端口" width="88" />
+                    <el-table-column prop="username" label="SSH 用户" width="100" />
+                    <el-table-column prop="docker_service_root" label="部署根目录" min-width="160" show-overflow-tooltip />
+                  </el-table>
+                  <el-empty v-else description="暂无主机，请前往「主机管理」添加" />
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :lg="10">
+                <el-card shadow="never">
+                  <template #header><span style="font-weight:600">最近任务</span></template>
+                  <el-table v-if="lastTasks.length" :data="lastTasks" stripe size="small" max-height="280">
+                    <el-table-column prop="id" label="ID" width="56" />
+                    <el-table-column prop="host_name" label="节点1" min-width="90" show-overflow-tooltip />
+                    <el-table-column prop="deploy_mode" label="形态" width="72" />
+                    <el-table-column prop="action" label="操作" min-width="120" show-overflow-tooltip />
+                    <el-table-column prop="status" label="状态" width="88" />
+                  </el-table>
+                  <el-empty v-else description="暂无任务记录" />
+                </el-card>
+              </el-col>
+            </el-row>
           </template>
 
           <!-- 主机管理 -->
@@ -263,30 +331,76 @@
           <template v-else-if="activeMenu === 'deploy'">
             <h2 class="ob-page-title">部署任务</h2>
             <el-card shadow="never" style="margin-bottom:16px;">
-              <template #header><span style="font-weight:600">发起任务</span></template>
-              <el-form :inline="true">
-                <el-form-item label="目标主机">
-                  <el-select v-model="deployForm.host" placeholder="请选择主机" style="width:240px" clearable>
-                    <el-option v-for="h in hosts" :key="h.id" :label="h.name + ' (' + h.hostname + ')'" :value="h.id" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="操作类型">
-                  <el-select v-model="deployForm.action" style="width:280px">
-                    <el-option label="安装前置检查 (precheck install)" value="precheck_install" />
-                    <el-option label="升级前置检查 (precheck upgrade)" value="precheck_upgrade" />
-                    <el-option label="安装 (install)" value="install" />
-                    <el-option label="升级 (upgrade)" value="upgrade" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="目标参数">
-                  <el-input v-model="deployForm.target" style="width:160px" placeholder="gaussdb 或留空" />
-                  <div class="hint" style="margin-top:4px;">前置检查必填组件名（如 gaussdb）；纯 <code>install</code> / <code>upgrade</code> 若脚本无需参数可留空。</div>
-                </el-form-item>
-                <el-form-item>
-                  <el-button type="primary" @click="startDeploy" :loading="loading">执行</el-button>
-                </el-form-item>
-              </el-form>
-              <div class="hint">远程示例：<code>bash appctl.sh precheck install gaussdb</code>、<code>bash appctl.sh precheck upgrade gaussdb</code>、<code>bash appctl.sh install</code>、<code>bash appctl.sh upgrade</code>（有参数则在目标参数中填写）。</div>
+              <template #header><span style="font-weight:600">新建部署向导</span></template>
+              <el-steps :active="deployStep" align-center style="margin-bottom:20px;">
+                <el-step title="部署形态" />
+                <el-step title="选择节点" />
+                <el-step title="user_edit 配置" />
+                <el-step title="执行操作" />
+              </el-steps>
+
+              <div v-show="deployStep === 0">
+                <el-radio-group v-model="deployForm.deploy_mode" size="large">
+                  <el-radio-button label="single">单节点部署</el-radio-button>
+                  <el-radio-button label="triple">三节点部署</el-radio-button>
+                </el-radio-group>
+                <div class="hint" style="margin-top:12px;">单节点仅使用<strong>一台</strong>执行机 SSH；三节点需选择<strong>三台不同</strong>主机，配置中的 node1/2/3 与 influx/sftp 安装 IP 将自动写入对应主机地址。</div>
+                <div style="margin-top:16px;">
+                  <el-button type="primary" @click="deployStep = 1">下一步</el-button>
+                </div>
+              </div>
+
+              <div v-show="deployStep === 1">
+                <el-form label-width="120px" style="max-width:720px;">
+                  <el-form-item label="节点 1（执行）">
+                    <el-select v-model="deployForm.host" placeholder="选择主机" filterable style="width:100%">
+                      <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledForNode1(h.id)" :label="h.name + ' — ' + h.hostname + ' :' + h.port + ' (' + h.username + ')'" :value="h.id" />
+                    </el-select>
+                  </el-form-item>
+                  <template v-if="deployForm.deploy_mode === 'triple'">
+                    <el-form-item label="节点 2">
+                      <el-select v-model="deployForm.host_node2" placeholder="选择主机" filterable style="width:100%">
+                        <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledTriple(h.id, 2)" :label="h.name + ' — ' + h.hostname + ' :' + h.port" :value="h.id" />
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item label="节点 3">
+                      <el-select v-model="deployForm.host_node3" placeholder="选择主机" filterable style="width:100%">
+                        <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledTriple(h.id, 3)" :label="h.name + ' — ' + h.hostname + ' :' + h.port" :value="h.id" />
+                      </el-select>
+                    </el-form-item>
+                  </template>
+                </el-form>
+                <el-button @click="deployStep = 0">上一步</el-button>
+                <el-button type="primary" @click="goDeployStep2">下一步</el-button>
+              </div>
+
+              <div v-show="deployStep === 2">
+                <p style="margin:0 0 8px;color:#606266;font-size:13px;">请填写 <code>[user_edit]</code> 段（可含注释行）。提交后系统会合并所选节点 IP 到相关字段，再写入远程已存在的 <code>user_edit_file.conf</code>（若均不存在则写入默认 <code>config/gaussdb/user_edit_file.conf</code>）。</p>
+                <el-input v-model="deployForm.user_edit_content" type="textarea" :rows="18" placeholder="[user_edit] ..." class="mono-ta" />
+                <div style="margin-top:12px;">
+                  <el-button @click="deployStep = 1">上一步</el-button>
+                  <el-button @click="fillUserEditTemplate">填入模板</el-button>
+                  <el-button type="primary" @click="deployStep = 3">下一步</el-button>
+                </div>
+              </div>
+
+              <div v-show="deployStep === 3">
+                <el-form label-width="120px" style="max-width:640px;">
+                  <el-form-item label="操作类型">
+                    <el-select v-model="deployForm.action" style="width:100%">
+                      <el-option label="安装前置检查 (precheck install)" value="precheck_install" />
+                      <el-option label="升级前置检查 (precheck upgrade)" value="precheck_upgrade" />
+                      <el-option label="安装 (install)" value="install" />
+                      <el-option label="升级 (upgrade)" value="upgrade" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="目标参数">
+                    <el-input v-model="deployForm.target" placeholder="前置检查填 gaussdb；install/upgrade 按脚本需要可留空" />
+                  </el-form-item>
+                </el-form>
+                <el-button @click="deployStep = 2">上一步</el-button>
+                <el-button type="primary" @click="startDeploy" :loading="loading">提交并执行</el-button>
+              </div>
             </el-card>
 
             <el-row :gutter="16">
@@ -354,7 +468,8 @@
               <template #header><span style="font-weight:600">任务历史</span></template>
               <el-table :data="tasks" stripe>
                 <el-table-column prop="id" label="ID" width="72" />
-                <el-table-column prop="host_name" label="主机" min-width="100" />
+                <el-table-column prop="host_name" label="节点1" min-width="100" />
+                <el-table-column prop="deploy_mode" label="形态" width="80" />
                 <el-table-column prop="action" label="操作" min-width="160" show-overflow-tooltip />
                 <el-table-column prop="target" label="目标" width="100" />
                 <el-table-column prop="status" label="状态" width="110" />
@@ -396,7 +511,7 @@
   <script src="https://unpkg.com/element-plus@2.4.4/dist/index.full.min.js"></script>
   <script src="https://unpkg.com/axios@1.6.5/dist/axios.min.js"></script>
   <script>
-    const { createApp, ref, reactive, computed, onMounted, onUnmounted } = Vue;
+    const { createApp, ref, reactive, computed, watch, onMounted, onUnmounted } = Vue;
     const api = axios.create({ baseURL: '/api' });
     createApp({
       setup() {
@@ -411,7 +526,15 @@
         const loginForm = reactive({ username: '', password: '' });
         const regForm = reactive({ username: '', email: '', password: '', password_confirm: '', role: 'viewer' });
         const hostForm = reactive({ id: null, name: '', hostname: '', port: 22, username: 'root', auth_method: 'password', password: '', private_key: '', docker_service_root: '/data/docker-service' });
-        const deployForm = reactive({ host: null, action: 'precheck_install', target: 'gaussdb' });
+        const deployForm = reactive({
+          deploy_mode: 'single',
+          host: null,
+          host_node2: null,
+          host_node3: null,
+          user_edit_content: '',
+          action: 'precheck_install',
+          target: 'gaussdb',
+        });
         const logText = ref('');
         const treeRoots = ref([]);
         const manifestSummary = ref(null);
@@ -425,8 +548,76 @@
         });
 
         const runningCount = computed(() => tasks.value.filter(t => t.status === 'running').length);
+        const successCount = computed(() => tasks.value.filter(t => t.status === 'success').length);
+        const failedCount = computed(() => tasks.value.filter(t => t.status === 'failed').length);
+        const lastTasks = computed(() => tasks.value.slice(0, 8));
+
+        const USER_EDIT_TEMPLATE = `[user_edit]
+ssh_port = 22
+gauss_path = /data/gaussdb
+node1_ip = 192.168.0.1
+node2_ip = 192.168.0.2
+node3_ip = 192.168.0.3
+influxdb_install_ip1 = 192.168.0.1
+influxdb_install_ip2 = 192.168.0.2
+sftp_install_ip1 = 192.168.0.1
+sftp_install_ip2 = 192.168.0.2
+main_path = /data/cloud
+node1_ip2 = 192.168.0.1
+node2_ip2 = 192.168.0.2
+node3_ip2 = 192.168.0.3
+log_path = /data/cloud/logs
+sftp_path = /data/sftphome
+influx_path = /data/influxdb
+docker_path = /data/docker
+use_cgroup = no
+ntp_server =
+cpu_limit =
+mem_limit =
+es_enable = no
+es_path = /data/elasticsearch
+ipv6_enable = no
+use_import_ca = no
+`;
+
+        const deployStep = ref(0);
 
         const onMenuSelect = (key) => { activeMenu.value = key; };
+
+        const isHostDisabledForNode1 = (hid) => {
+          if (deployForm.deploy_mode !== 'triple') return false;
+          return hid === deployForm.host_node2 || hid === deployForm.host_node3;
+        };
+        const isHostDisabledTriple = (hid, slot) => {
+          if (deployForm.deploy_mode !== 'triple') return false;
+          if (hid === deployForm.host) return true;
+          if (slot === 2) return hid === deployForm.host_node3;
+          if (slot === 3) return hid === deployForm.host_node2;
+          return false;
+        };
+
+        const goDeployStep2 = () => {
+          if (!deployForm.host) return ElementPlus.ElMessage.warning('请选择节点 1（执行机）');
+          if (deployForm.deploy_mode === 'triple') {
+            if (!deployForm.host_node2 || !deployForm.host_node3)
+              return ElementPlus.ElMessage.warning('三节点请选择节点 2、节点 3');
+            const s = new Set([deployForm.host, deployForm.host_node2, deployForm.host_node3]);
+            if (s.size !== 3) return ElementPlus.ElMessage.warning('三台主机不能重复');
+          }
+          deployStep.value = 2;
+        };
+
+        const fillUserEditTemplate = () => {
+          deployForm.user_edit_content = USER_EDIT_TEMPLATE;
+          ElementPlus.ElMessage.success('已填入模板，请按需修改');
+        };
+
+        watch(() => deployForm.deploy_mode, (v) => {
+          if (v === 'single') {
+            deployForm.host_node2 = null;
+            deployForm.host_node3 = null;
+          }
+        });
 
         const setAuth = (access, refToken, u) => {
           token.value = access || '';
@@ -558,25 +749,42 @@
         };
 
         const startDeploy = async () => {
-          if (!deployForm.host) return ElementPlus.ElMessage.warning('请选择目标主机');
+          if (!deployForm.host) return ElementPlus.ElMessage.warning('请选择节点 1');
+          if (!(deployForm.user_edit_content || '').trim())
+            return ElementPlus.ElMessage.warning('请填写 user_edit 配置');
+          if (deployForm.deploy_mode === 'triple') {
+            if (!deployForm.host_node2 || !deployForm.host_node3)
+              return ElementPlus.ElMessage.warning('三节点请选择节点 2、节点 3');
+          }
           loading.value = true;
           logText.value = '';
           treeRoots.value = [];
           manifestSummary.value = null;
-          activeMenu.value = 'deploy';
           try {
-            const { data } = await api.post('/deployment/tasks/', {
+            const body = {
               host: deployForm.host,
+              deploy_mode: deployForm.deploy_mode,
+              user_edit_content: deployForm.user_edit_content,
               action: deployForm.action,
               target: deployForm.target,
-            });
+            };
+            if (deployForm.deploy_mode === 'triple') {
+              body.host_node2 = deployForm.host_node2;
+              body.host_node3 = deployForm.host_node3;
+            }
+            const { data } = await api.post('/deployment/tasks/', body);
             currentTaskId.value = data.id;
             taskStatus.value = data.status;
             openSocket(data.id);
             await fetchTasks();
             ElementPlus.ElMessage.success('任务已创建');
+            deployStep.value = 0;
+            deployForm.host_node2 = null;
+            deployForm.host_node3 = null;
           } catch (e) {
-            ElementPlus.ElMessage.error('创建任务失败');
+            const msg = e.response?.data;
+            const t = typeof msg === 'object' ? JSON.stringify(msg) : (msg || '创建任务失败');
+            ElementPlus.ElMessage.error(t);
           } finally { loading.value = false; }
         };
 
@@ -598,9 +806,10 @@
         onUnmounted(closeSocket);
 
         return {
-          token, user, loading, activeMenu, breadcrumbTitle, runningCount, onMenuSelect,
-          hosts, tasks, showRegister, loginForm, regForm, hostForm, deployForm,
+          token, user, loading, activeMenu, breadcrumbTitle, runningCount, successCount, failedCount, lastTasks, onMenuSelect,
+          hosts, tasks, showRegister, loginForm, regForm, hostForm, deployForm, deployStep,
           logText, treeRoots, manifestSummary, taskStatus, currentTaskId,
+          isHostDisabledForNode1, isHostDisabledTriple, goDeployStep2, fillUserEditTemplate,
           doLogin, doRegister, logout, saveHost, resetHostForm, editHost, testHost, startDeploy, attachTask,
         };
       }

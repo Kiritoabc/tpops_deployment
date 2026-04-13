@@ -170,3 +170,118 @@ def remote_cat_file(hostname, port, username, auth_method, secret, remote_path, 
     return run_remote_command_output(
         hostname, port, username, auth_method, secret, cmd, timeout=timeout
     )
+
+
+def remote_mkdir_p(
+    hostname: str,
+    port: int,
+    username: str,
+    auth_method: str,
+    secret: str,
+    remote_dir: str,
+    timeout: int = 60,
+):
+    inner = "mkdir -p %s" % shlex.quote(remote_dir)
+    cmd = "bash -lc %s" % shlex.quote(inner)
+    _out, code = run_remote_command_output(
+        hostname, port, username, auth_method, secret, cmd, timeout=timeout
+    )
+    return code == 0
+
+
+def resolve_user_edit_conf_path(
+    hostname: str,
+    port: int,
+    username: str,
+    auth_method: str,
+    secret: str,
+    deploy_root: str,
+    timeout: int = 60,
+):
+    """
+    在远程依次检测:
+      <root>/config/gaussdb/user_edit_file.conf
+      <root>/config/user_edit_file.conf
+    返回存在的第一个绝对路径；均不存在则 (None, 错误信息)。
+    """
+    root = (deploy_root or "").strip().rstrip("/")
+    if not root:
+        return None, "部署根目录为空"
+
+    inner = (
+        "ROOT=%s; "
+        'for p in "$ROOT/config/gaussdb/user_edit_file.conf" "$ROOT/config/user_edit_file.conf"; do '
+        "if [ -f \"$p\" ]; then echo \"$p\"; exit 0; fi; "
+        "done; echo NOTFOUND; exit 2"
+    ) % shlex.quote(root)
+    cmd = "bash -lc %s" % shlex.quote(inner)
+    out, code = run_remote_command_output(
+        hostname, port, username, auth_method, secret, cmd, timeout=timeout
+    )
+    path = out.strip()
+    if code == 0 and path and path != "NOTFOUND":
+        return path, None
+    return None, (
+        "未找到 user_edit_file.conf（已检查 %s/config/gaussdb/ 与 %s/config/）"
+        % (root, root)
+    )
+
+
+def write_remote_file_utf8(
+    hostname: str,
+    port: int,
+    username: str,
+    auth_method: str,
+    secret: str,
+    remote_path: str,
+    content: str,
+):
+    """
+    通过 SFTP 将 UTF-8 文本原子写入远程路径（先 .tmp 再 rename）。
+    返回 (ok: bool, message: str)
+    """
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    connect_kwargs = {
+        "hostname": hostname,
+        "port": port,
+        "username": username,
+        "timeout": 30,
+        "allow_agent": False,
+        "look_for_keys": False,
+    }
+    if auth_method == Host.AUTH_KEY:
+        connect_kwargs["pkey"] = _load_pkey(secret)
+    else:
+        connect_kwargs["password"] = secret
+    client.connect(**connect_kwargs)
+    tmp = "%s.tmp.%d" % (remote_path, id(client))
+    sftp = None
+    try:
+        sftp = client.open_sftp()
+        data = content.encode("utf-8")
+        with sftp.open(tmp, "wb") as remote_f:
+            remote_f.write(data)
+        try:
+            sftp.remove(remote_path)
+        except IOError:
+            pass
+        sftp.rename(tmp, remote_path)
+        return True, "ok"
+    except Exception as exc:
+        if sftp is not None:
+            try:
+                sftp.remove(tmp)
+            except Exception:
+                pass
+        return False, str(exc)
+    finally:
+        if sftp is not None:
+            try:
+                sftp.close()
+            except Exception:
+                pass
+        try:
+            client.close()
+        except Exception:
+            pass

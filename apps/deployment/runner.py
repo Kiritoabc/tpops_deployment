@@ -1,3 +1,4 @@
+import os
 import re
 import threading
 
@@ -6,10 +7,18 @@ from channels.layers import get_channel_layer
 from django.utils import timezone
 
 from apps.hosts.serializers import host_ssh_secret
-from apps.hosts.ssh_client import remote_cat_file, run_remote_command
+from apps.hosts.ssh_client import (
+    remote_mkdir_p,
+    resolve_user_edit_conf_path,
+    remote_cat_file,
+    run_remote_command,
+    write_remote_file_utf8,
+)
+
 from apps.manifest.parser import manifest_to_tree
 
 from .models import DeploymentTask
+from .user_edit import apply_host_ips_to_config, parse_user_edit_block
 
 
 def _channel_group(task_id: int) -> str:
@@ -29,6 +38,13 @@ def _remote_manifest_path(host) -> str:
     if not root:
         root = "/data/docker-service"
     return "%s/config/gaussdb/manifest.yaml" % root
+
+
+def _default_user_edit_path(host) -> str:
+    root = (host.docker_service_root or "").strip().rstrip("/")
+    if not root:
+        root = "/data/docker-service"
+    return "%s/config/gaussdb/user_edit_file.conf" % root
 
 
 def _poll_manifest_loop(task_id: int, host_id: int, secret: str, stop_event: threading.Event):
@@ -86,7 +102,11 @@ def run_task_async(task_id: int):
 
 
 def _run_task(task_id: int):
-    task = DeploymentTask.objects.select_related("host").filter(pk=task_id).first()
+    task = (
+        DeploymentTask.objects.select_related("host", "host_node2", "host_node3")
+        .filter(pk=task_id)
+        .first()
+    )
     if not task:
         return
 
@@ -104,8 +124,98 @@ def _run_task(task_id: int):
         )
         return
 
+    h = task.host
+    # 1) 合并节点 IP 到配置
+    base_conf = task.user_edit_content or ""
+    if task.deploy_mode == DeploymentTask.MODE_TRIPLE:
+        ips = [h.hostname, task.host_node2.hostname, task.host_node3.hostname]
+    else:
+        ips = [h.hostname]
+    final_conf = apply_host_ips_to_config(base_conf, task.deploy_mode, ips)
+    _, parse_err = parse_user_edit_block(final_conf)
+    if parse_err:
+        task.status = DeploymentTask.STATUS_FAILED
+        task.error_message = parse_err
+        task.finished_at = timezone.now()
+        task.save(
+            update_fields=["status", "error_message", "finished_at", "updated_at"]
+        )
+        _emit(task_id, {"type": "log", "data": parse_err + "\n"})
+        return
+
+    # 2) 解析远程 user_edit 路径并写入
+    path, perr = resolve_user_edit_conf_path(
+        h.hostname,
+        h.port,
+        h.username,
+        h.auth_method,
+        secret,
+        h.docker_service_root or "",
+    )
+    if not path:
+        path = _default_user_edit_path(h)
+        _emit(
+            task_id,
+            {"type": "log", "data": "提示: %s，将写入默认路径 %s\n" % (perr or "", path),
+            },
+        )
+        ddir = os.path.dirname(path)
+        if not remote_mkdir_p(
+            h.hostname, h.port, h.username, h.auth_method, secret, ddir
+        ):
+            task.status = DeploymentTask.STATUS_FAILED
+            task.error_message = "无法创建远程目录 %s" % ddir
+            task.finished_at = timezone.now()
+            task.save(
+                update_fields=[
+                    "status",
+                    "error_message",
+                    "finished_at",
+                    "updated_at",
+                ]
+            )
+            _emit(task_id, {"type": "log", "data": task.error_message + "\n"})
+            return
+    else:
+        task.remote_user_edit_path = path
+        task.save(update_fields=["remote_user_edit_path", "updated_at"])
+        _emit(
+            task_id,
+            {"type": "log", "data": "已定位远程配置: %s，开始覆盖写入...\n" % path},
+        )
+
+    ok, werr = write_remote_file_utf8(
+        h.hostname,
+        h.port,
+        h.username,
+        h.auth_method,
+        secret,
+        path,
+        final_conf,
+    )
+    if not ok:
+        task.status = DeploymentTask.STATUS_FAILED
+        task.error_message = werr or "写入 user_edit_file.conf 失败"
+        task.remote_user_edit_path = path
+        task.finished_at = timezone.now()
+        task.save(
+            update_fields=[
+                "status",
+                "error_message",
+                "remote_user_edit_path",
+                "finished_at",
+                "updated_at",
+            ]
+        )
+        _emit(task_id, {"type": "log", "data": "写入失败: %s\n" % werr})
+        return
+
+    task.remote_user_edit_path = path
+    task.save(update_fields=["remote_user_edit_path", "updated_at"])
+    _emit(task_id, {"type": "log", "data": "配置文件已写入: %s\n" % path})
+
     try:
-        cmd = _build_appctl_command(task.host, task.action, task.target)
+        cmd = _build_appctl_command(h, task.action, task.target)
     except ValueError as exc:
         task.status = DeploymentTask.STATUS_FAILED
         task.error_message = str(exc)
@@ -121,6 +231,7 @@ def _run_task(task_id: int):
     task.save(update_fields=["status", "started_at", "updated_at"])
 
     _emit(task_id, {"type": "status", "data": task.status})
+    _emit(task_id, {"type": "log", "data": "执行: %s\n" % cmd})
 
     stop_poll = threading.Event()
     poller = threading.Thread(
@@ -134,10 +245,10 @@ def _run_task(task_id: int):
     buffer = ""
     try:
         for chunk in run_remote_command(
-            task.host.hostname,
-            task.host.port,
-            task.host.username,
-            task.host.auth_method,
+            h.hostname,
+            h.port,
+            h.username,
+            h.auth_method,
             secret,
             cmd,
             timeout=86400,

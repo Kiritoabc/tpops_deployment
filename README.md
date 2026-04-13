@@ -47,11 +47,21 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 - 升级：`bash appctl.sh upgrade` 或带参数
 - Manifest：`<部署根>/config/gaussdb/manifest.yaml`（轮询解析层状态 `*_status` 与各层服务列表）
 
+### 部署向导与 `user_edit_file.conf`
+
+1. 选择 **单节点** 或 **三节点**；三节点需选 3 台不同主机（节点 1 为执行 SSH 与写入配置的机器）。
+2. 填写 **`[user_edit]`** 段配置文本；提交前会将所选主机的 **hostname** 写入 `node1_ip` / `node2_ip` / `node3_ip`、`node*_ip2`、`influxdb_install_ip*`、`sftp_install_ip*` 等字段（单节点只写 `node1_ip` / `node1_ip2`）。
+3. 后端在节点 1 上检测存在的文件并覆盖（与脚本一致）：
+   - `<部署根>/config/gaussdb/user_edit_file.conf`
+   - `<部署根>/config/user_edit_file.conf`  
+   若两个都不存在，则 **创建** 默认路径 `config/gaussdb/user_edit_file.conf`（自动 `mkdir -p`）。
+4. 再执行所选 `appctl.sh` 操作。
+
 ## 项目结构（摘要）
 
 - `apps/tpops_auth`：自定义用户 + JWT（避免与 `django.contrib.auth` 的 app label 冲突）
 - `apps/hosts`：主机与 SSH 凭证（Fernet 加密）
-- `apps/deployment`：任务模型与后台线程执行 + Channels 组播
+- `apps/deployment`：任务模型、user_edit 解析合并、`user_edit_file.conf` 远程写入、appctl 执行 + Channels 组播
 - `apps/manifest`：`manifest.yaml` 解析 API（调试）
 - `apps/logs`：WebSocket 路由与消费者
 - `templates/index.html`：Vue3 + Element Plus 单页（CDN）
