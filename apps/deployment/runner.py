@@ -18,7 +18,7 @@ from apps.hosts.ssh_client import (
 from apps.manifest.parser import manifest_to_tree
 
 from .models import DeploymentTask
-from .user_edit import apply_host_ips_to_config, parse_user_edit_block
+from .user_edit import parse_user_edit_block
 
 
 def _channel_group(task_id: int) -> str:
@@ -125,16 +125,8 @@ def _run_task(task_id: int):
         return
 
     h = task.host
-    # 1) 合并节点 IP 到配置
-    base_conf = task.user_edit_content or ""
-    if task.deploy_mode == DeploymentTask.MODE_TRIPLE:
-        n1 = h.hostname
-        n2 = task.host_node2.hostname if task.host_node2_id else n1
-        n3 = task.host_node3.hostname if task.host_node3_id else n1
-        ips = [n1, n2, n3]
-    else:
-        ips = [h.hostname]
-    final_conf = apply_host_ips_to_config(base_conf, task.deploy_mode, ips)
+    # 按用户填写内容原样写入，不覆盖 node_ip 等（SSH 目标仅用于连接与执行 appctl）
+    final_conf = task.user_edit_content or ""
     _, parse_err = parse_user_edit_block(final_conf)
     if parse_err:
         task.status = DeploymentTask.STATUS_FAILED

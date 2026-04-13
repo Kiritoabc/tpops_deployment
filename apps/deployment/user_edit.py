@@ -91,6 +91,9 @@ def apply_host_ips_to_config(
     deploy_mode: str,
     host_ips: List[str],
 ) -> str:
+    """
+    可选：用 SSH 登记的主机名覆盖配置中的 node IP（当前产品逻辑已不使用，保留供脚本/扩展调用）。
+    """
     prefix, body, suffix = _extract_user_edit_block(content)
     if "[user_edit]" not in content.lower():
         return content

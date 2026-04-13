@@ -217,7 +217,7 @@
                   </p>
                   <el-descriptions :column="1" border size="small">
                     <el-descriptions-item label="Manifest">部署根目录下 <code>config/gaussdb/manifest.yaml</code>，任务运行中轮询解析进度树</el-descriptions-item>
-                    <el-descriptions-item label="配置文件">支持单节点 / 三节点；提交后会将所选主机 IP 写入配置中的 node / influx / sftp 等字段</el-descriptions-item>
+                    <el-descriptions-item label="配置文件"><code>user_edit</code> 以页面填写为准原样下发；所选节点仅用于 SSH 连接与执行 appctl</el-descriptions-item>
                     <el-descriptions-item label="注意">docker-service 不建议并发执行多个 appctl；同一主机请避免并行任务。</el-descriptions-item>
                   </el-descriptions>
                 </el-card>
@@ -343,7 +343,7 @@
                   <el-radio-button label="single">单节点部署</el-radio-button>
                   <el-radio-button label="triple">三节点部署</el-radio-button>
                 </el-radio-group>
-                <div class="hint" style="margin-top:12px;">单节点仅<strong>节点 1</strong>执行 SSH 与写配置。三节点形态下也<strong>只需选节点 1</strong>即可下发（未选节点 2/3 时，配置里 node2/node3 等与节点 1 同 IP）；若实际为三台不同机器，再分别选择节点 2、3。</div>
+                <div class="hint" style="margin-top:12px;"><strong>节点 1</strong>为执行 SSH、写配置与跑 appctl 的机器。三节点形态下可选填节点 2/3（用于后续扩展或记录）；<code>user_edit</code> 里的 IP 请自行填写，系统不会改写。</div>
                 <div style="margin-top:16px;">
                   <el-button type="primary" @click="deployStep = 1">下一步</el-button>
                 </div>
@@ -396,7 +396,7 @@
                   <el-button size="large" @click="deployStep = 1">上一步</el-button>
                 </div>
                 <el-divider content-position="left"><span style="font-weight:600;color:#303133;">user_edit 配置</span></el-divider>
-                <p style="margin:0 0 8px;color:#606266;font-size:13px;">默认已填入模板；提交时会合并所选节点 IP，并写入远程 <code>user_edit_file.conf</code> 后执行上方操作。</p>
+                <p style="margin:0 0 8px;color:#606266;font-size:13px;">默认已填入模板；<strong>node_ip 等以您填写为准</strong>，系统不会用所选 SSH 主机地址覆盖。内容将原样写入远程 <code>user_edit_file.conf</code> 后执行上方操作。</p>
                 <el-input v-model="deployForm.user_edit_content" type="textarea" :rows="14" placeholder="[user_edit] ..." class="mono-ta" />
                 <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
                   <el-button @click="fillUserEditTemplate">恢复默认模板</el-button>
