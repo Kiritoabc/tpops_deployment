@@ -55,6 +55,43 @@ def _is_tpops_manifest(data: Any) -> bool:
     return False
 
 
+def build_pipeline_from_roots(roots: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    流水线：大层串行（顺序即 roots 顺序），每层内子服务并发（展示说明）。
+    """
+    cn = "一二三四五六七八九十"
+    pipeline = []
+    for i, root in enumerate(roots or []):
+        if not isinstance(root, dict):
+            continue
+        idx = i + 1
+        step_cn = cn[idx - 1] if idx <= 10 else str(idx)
+        title = "步骤%s：%s" % (step_cn, root.get("label") or root.get("id") or "")
+        subs = []
+        for ch in root.get("children") or []:
+            if not isinstance(ch, dict):
+                continue
+            lab = ch.get("label") or ch.get("id") or ""
+            subs.append(
+                {
+                    "id": ch.get("id"),
+                    "label": lab,
+                    "status": ch.get("status") or "none",
+                }
+            )
+        pipeline.append(
+            {
+                "index": idx,
+                "key": root.get("id"),
+                "title": title,
+                "level_status": root.get("status") or "none",
+                "parallel_note": "本层内子步骤并发执行",
+                "children": subs,
+            }
+        )
+    return pipeline
+
+
 def _service_node(level_key: str, idx: int, item: Any) -> Dict[str, Any]:
     """列表中的一项 -> 树节点。"""
     node_id = "%s/item_%s" % (level_key, idx)
@@ -134,7 +171,12 @@ def _build_tpops_tree(data: Dict[str, Any]) -> Dict[str, Any]:
     summary["services_total"] = svc_total
     summary["services_done"] = svc_done
 
-    return {"roots": roots, "levels": LEVEL_ORDER, "summary": summary}
+    return {
+        "roots": roots,
+        "levels": LEVEL_ORDER,
+        "summary": summary,
+        "pipeline": build_pipeline_from_roots(roots),
+    }
 
 
 def _meta_from_obj(obj: Any) -> Dict[str, Any]:
@@ -231,7 +273,11 @@ def _legacy_manifest_to_tree(data: Any) -> Dict[str, Any]:
     else:
         roots.append(_walk("manifest", data, ""))
 
-    return {"roots": roots, "levels": LEVEL_ORDER}
+    return {
+        "roots": roots,
+        "levels": LEVEL_ORDER,
+        "pipeline": build_pipeline_from_roots(roots),
+    }
 
 
 _STATUS_PRIORITY = {
@@ -261,7 +307,13 @@ def merge_tpops_manifest_dicts(
 ) -> Dict[str, Any]:
     """多节点 manifest 字典合并为一棵树（聚合各层/各服务状态）。"""
     if not dicts:
-        return {"roots": [], "levels": LEVEL_ORDER, "summary": {}, "nodes": []}
+        return {
+            "roots": [],
+            "levels": LEVEL_ORDER,
+            "summary": {},
+            "nodes": [],
+            "pipeline": [],
+        }
 
     nodes_meta = []
     paths = manifest_paths or []
@@ -366,23 +418,31 @@ def merge_tpops_manifest_dicts(
             }
         )
 
-    return {
+    out = {
         "roots": roots,
         "levels": LEVEL_ORDER,
         "summary": summary,
         "nodes": nodes_meta,
     }
+    out["pipeline"] = build_pipeline_from_roots(roots)
+    return out
 
 
 def manifest_to_tree(raw_yaml: str) -> Dict[str, Any]:
     text = (raw_yaml or "").strip()
     if not text:
-        return {"roots": [], "levels": LEVEL_ORDER, "summary": {}}
+        return {"roots": [], "levels": LEVEL_ORDER, "summary": {}, "pipeline": []}
 
     try:
         data = yaml.safe_load(text)
     except yaml.YAMLError as exc:
-        return {"roots": [], "levels": LEVEL_ORDER, "error": str(exc), "summary": {}}
+        return {
+            "roots": [],
+            "levels": LEVEL_ORDER,
+            "error": str(exc),
+            "summary": {},
+            "pipeline": [],
+        }
 
     if _is_tpops_manifest(data):
         assert isinstance(data, dict)
