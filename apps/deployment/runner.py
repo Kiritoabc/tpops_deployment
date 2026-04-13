@@ -69,6 +69,54 @@ def _should_poll_manifest(action: str) -> bool:
     return action in (DeploymentTask.INSTALL, DeploymentTask.UPGRADE)
 
 
+def _poll_manifest_once(task_id: int, host_id: int, secret: str, manifest_paths: list) -> list:
+    """Return list of remote paths that were polled (for logging)."""
+    from apps.hosts.models import Host
+
+    host = Host.objects.get(pk=host_id)
+    task = DeploymentTask.objects.filter(pk=task_id).only("user_edit_content").first()
+    kv, _ = parse_user_edit_block((task.user_edit_content if task else "") or "")
+    paths = list(manifest_paths) if manifest_paths else _remote_manifest_paths_for_nodes(
+        host, kv
+    )
+    dicts = []
+    for p in paths:
+        raw, _code = remote_cat_file(
+            host.hostname,
+            host.port,
+            host.username,
+            host.auth_method,
+            secret,
+            p,
+            timeout=60,
+        )
+        if not (raw or "").strip():
+            continue
+        try:
+            data = yaml.safe_load(raw)
+        except Exception:
+            continue
+        if isinstance(data, dict):
+            dicts.append(data)
+    if dicts:
+        if len(dicts) == 1:
+            tree = manifest_to_tree(yaml.safe_dump(dicts[0], allow_unicode=True))
+        else:
+            tree = merge_tpops_manifest_dicts(dicts, paths)
+        tree["manifest_paths"] = paths
+        _emit(task_id, {"type": "manifest", "data": tree})
+    else:
+        _emit(
+            task_id,
+            {
+                "type": "manifest_wait",
+                "message": "manifest 文件尚未就绪或内容为空，继续等待…",
+                "paths": paths,
+            },
+        )
+    return paths
+
+
 def _poll_manifest_loop(
     task_id: int,
     host_id: int,
@@ -76,53 +124,21 @@ def _poll_manifest_loop(
     stop_event: threading.Event,
     manifest_paths: list,
 ):
-    from apps.hosts.models import Host
+    """
+    Poll remote manifest files until stop_event is set.
 
-    while not stop_event.wait(5.0):
+    Important: do NOT use ``while not stop_event.wait(5):`` — the first call
+    waits up to 5s before any read; if appctl exits and the main thread sets
+    ``stop_event`` within that window, the loop body never runs and manifest
+    is never fetched.
+    """
+    while not stop_event.is_set():
         try:
-            host = Host.objects.get(pk=host_id)
-            task = DeploymentTask.objects.filter(pk=task_id).only("user_edit_content").first()
-            kv, _ = parse_user_edit_block((task.user_edit_content if task else "") or "")
-            paths = list(manifest_paths) if manifest_paths else _remote_manifest_paths_for_nodes(
-                host, kv
-            )
-            dicts = []
-            for p in paths:
-                raw, _code = remote_cat_file(
-                    host.hostname,
-                    host.port,
-                    host.username,
-                    host.auth_method,
-                    secret,
-                    p,
-                    timeout=60,
-                )
-                if not (raw or "").strip():
-                    continue
-                try:
-                    data = yaml.safe_load(raw)
-                except Exception:
-                    continue
-                if isinstance(data, dict):
-                    dicts.append(data)
-            if dicts:
-                if len(dicts) == 1:
-                    tree = manifest_to_tree(yaml.safe_dump(dicts[0], allow_unicode=True))
-                else:
-                    tree = merge_tpops_manifest_dicts(dicts, paths)
-                tree["manifest_paths"] = paths
-                _emit(task_id, {"type": "manifest", "data": tree})
-            else:
-                _emit(
-                    task_id,
-                    {
-                        "type": "manifest_wait",
-                        "message": "manifest 文件尚未就绪，继续等待…",
-                        "paths": paths,
-                    },
-                )
+            _poll_manifest_once(task_id, host_id, secret, manifest_paths)
         except Exception as exc:
             _emit(task_id, {"type": "manifest_error", "message": str(exc)})
+        if stop_event.wait(5.0):
+            break
 
 
 def _default_user_edit_path(host) -> str:
@@ -347,9 +363,29 @@ def _run_task(task_id: int):
                         {
                             "type": "phase",
                             "phase": "init_manifest_ready",
-                            "message": "已检测到 init manifest successful，开始轮询 manifest",
+                            "message": "已检测到 init manifest successful，开始拉取 manifest",
                         },
                     )
+                    try:
+                        tried = _poll_manifest_once(
+                            task_id, task.host_id, secret, manifest_paths
+                        )
+                        _emit(
+                            task_id,
+                            {
+                                "type": "log",
+                                "data": "[manifest] 首次尝试读取: %s\n"
+                                % (", ".join(tried) if tried else "(无路径)"),
+                            },
+                        )
+                    except Exception as exc:
+                        _emit(
+                            task_id,
+                            {
+                                "type": "manifest_error",
+                                "message": "首次拉取 manifest 失败: %s" % exc,
+                            },
+                        )
                     poller = threading.Thread(
                         target=_poll_manifest_loop,
                         args=(task_id, task.host_id, secret, stop_poll, manifest_paths),
