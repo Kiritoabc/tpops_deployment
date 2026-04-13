@@ -21,6 +21,19 @@ def remote_log_path(log_path: str, kind: str) -> str:
     return "%s/deploy/%s.log" % (base, kind)
 
 
+def remote_deploy_log_file(log_path: str, basename: str) -> str:
+    """log_path/deploy/<basename>，basename 不含路径。"""
+    import re
+
+    base = (log_path or "").strip().rstrip("/")
+    if not base or not basename:
+        return ""
+    safe = basename.strip()
+    if not re.match(r"^[a-zA-Z0-9._-]+$", safe):
+        return ""
+    return "%s/deploy/%s" % (base, safe)
+
+
 def tail_remote_log_chunk(
     hostname: str,
     port: int,

@@ -45,7 +45,9 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 - 升级前置检查：`sh appctl.sh precheck upgrade <组件>`
 - 安装操作：`sh appctl.sh installl`（现场脚本子命令为三个 l，可选再跟「目标参数」）
 - 升级操作：`sh appctl.sh upgrade`（可选「目标参数」）
-- Manifest：`<部署根>/config/gaussdb/manifest.yaml`（轮询解析层状态 `*_status` 与各层服务列表）
+- **installl / upgrade**：先等待 `config/gaussdb/init_manifest_successful`（或同目录 `.txt` / `config/` 下备选）出现后，再轮询 `manifest.yaml` 与 `manifest_{node_ip}.yaml`（来自 `user_edit` 的 node1/2/3_ip）并**聚合**展示。
+- **precheck install / precheck upgrade**：**不轮询 manifest**。
+- 部署日志：`{log_path}/deploy/precheck.log`、`{log_path}/deploy/install.log`；WebSocket `ws/deploy/<id>/log/?kind=precheck|install` 或 `&rel=文件名`（仅 `log_path/deploy/` 下安全文件名）实时 tail。Manifest 每层服务以横向圆点链展示，点击圆点默认 tail 当前阶段对应日志。
 
 ### 部署向导与 `user_edit_file.conf`
 
@@ -72,7 +74,8 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 - `/api/hosts/` — 主机 CRUD、连通性测试  
 - `/api/deployment/tasks/` — 创建 / 列表 / 详情任务  
 - `/ws/deploy/<task_id>/?token=<access_jwt>` — 任务 appctl 输出与 manifest 推送  
-- `/ws/deploy/<task_id>/log/?token=<jwt>&kind=precheck|install` — 远程文件日志 tail  
+- `/ws/deploy/<task_id>/log/?token=<jwt>&kind=precheck|install` — `deploy/*.log`  
+- `/ws/deploy/<task_id>/log/?token=<jwt>&rel=precheck.log` — 同上目录指定文件名  
 
 ## 许可
 

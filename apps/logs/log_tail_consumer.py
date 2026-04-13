@@ -10,7 +10,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken
 
 from apps.deployment.models import DeploymentTask
-from apps.deployment.remote_logs import remote_log_path, tail_remote_log_chunk
+from apps.deployment.remote_logs import remote_deploy_log_file, remote_log_path, tail_remote_log_chunk
 from apps.hosts.serializers import host_ssh_secret
 from apps.deployment.user_edit import parse_user_edit_block
 
@@ -28,8 +28,7 @@ def get_task_deploy(task_id: int, user):
 
 class DeployLogTailConsumer(AsyncWebsocketConsumer):
     """
-    ?token=&kind=precheck|install
-    从 user_edit 的 log_path/deploy/{kind}.log 增量 tail。
+    ?token=&kind=precheck|install  或  &rel=deploy 目录下文件名（仅字母数字._-）
     """
 
     async def connect(self):
@@ -39,6 +38,7 @@ class DeployLogTailConsumer(AsyncWebsocketConsumer):
         self.log_kind = (query.get("kind") or ["precheck"])[0]
         if self.log_kind not in ("precheck", "install"):
             self.log_kind = "precheck"
+        self.rel_file = (query.get("rel") or [""])[0].strip() or None
 
         if not token:
             await self.close(code=4401)
@@ -66,6 +66,7 @@ class DeployLogTailConsumer(AsyncWebsocketConsumer):
                     "type": "hello",
                     "task_id": self.task_id,
                     "kind": self.log_kind,
+                    "rel": self.rel_file,
                 },
                 ensure_ascii=False,
             )
@@ -93,7 +94,11 @@ class DeployLogTailConsumer(AsyncWebsocketConsumer):
                 )
             )
             return
-        rpath = remote_log_path(kv.get("log_path", ""), self.log_kind)
+        lp = kv.get("log_path", "")
+        if self.rel_file:
+            rpath = remote_deploy_log_file(lp, self.rel_file)
+        else:
+            rpath = remote_log_path(lp, self.log_kind)
         if not rpath:
             send(
                 text_data=json.dumps(
