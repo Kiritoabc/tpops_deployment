@@ -132,6 +132,33 @@
     .log-deploy-main { height: min(52vh, 560px); min-height: 280px; }
     .log-deploy-sub { height: 200px; margin-top: 12px; }
     .phase-strip { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; background: #f5f7fa; border-radius: 6px; margin-bottom: 14px; font-size: 13px; color: #606266; }
+    /* 主机管理页 */
+    .host-hero {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+      margin-bottom: 16px; padding: 18px 20px; border-radius: 10px;
+      background: linear-gradient(120deg, #0b1f3a 0%, #153a5c 55%, #1a5080 100%);
+      color: #fff; box-shadow: 0 8px 24px rgba(11,31,58,.18);
+    }
+    .host-hero h2 { margin: 0 0 6px; font-size: 18px; font-weight: 600; color: #fff; }
+    .host-hero p { margin: 0; font-size: 13px; opacity: .88; line-height: 1.5; max-width: 560px; }
+    .host-hero .el-button { border-color: rgba(255,255,255,.35); color: #fff; background: rgba(255,255,255,.08); }
+    .host-hero .el-button:hover { border-color: #69c0ff; color: #e6f7ff; background: rgba(255,255,255,.14); }
+    .host-stat-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .host-stat-pill {
+      flex: 1; min-width: 120px; padding: 12px 16px; border-radius: 8px; background: #fff;
+      border: 1px solid #e4e7ed; box-shadow: 0 1px 4px rgba(0,21,41,.06);
+    }
+    .host-stat-pill .n { font-size: 22px; font-weight: 600; color: #1890ff; line-height: 1.2; }
+    .host-stat-pill .l { font-size: 12px; color: #909399; margin-top: 4px; }
+    .host-card-accent { border-radius: 10px; overflow: hidden; border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); }
+    .host-card-accent > .el-card__header {
+      background: linear-gradient(90deg, #f6f9fc 0%, #fff 100%);
+      border-bottom: 1px solid #ebeef5; font-weight: 600;
+    }
+    .host-table .el-table__header th { background: #f5f7fa !important; color: #606266; font-weight: 600; }
+    .host-table .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+    .host-endpoint { font-weight: 500; color: #303133; }
+    .host-sub { font-size: 12px; color: #909399; margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -270,12 +297,20 @@
               <el-col :xs="24" :lg="14">
                 <el-card shadow="never">
                   <template #header><span style="font-weight:600">已纳管主机</span></template>
-                  <el-table v-if="hosts.length" :data="hosts" stripe size="small" max-height="280">
-                    <el-table-column prop="name" label="名称" width="120" />
-                    <el-table-column prop="hostname" label="IP / 域名" min-width="130" />
-                    <el-table-column prop="port" label="SSH 端口" width="88" />
-                    <el-table-column prop="username" label="SSH 用户" width="100" />
+                  <el-table v-if="hosts.length" :data="hosts" stripe size="small" max-height="280" class="host-table">
+                    <el-table-column prop="name" label="名称" width="120" show-overflow-tooltip />
+                    <el-table-column label="连接" min-width="150">
+                      <template #default="{ row }">
+                        <span class="host-endpoint mono">{{ row.hostname }}:{{ row.port }}</span>
+                        <div class="host-sub">{{ row.username }} · {{ authMethodLabel(row.auth_method) }}</div>
+                      </template>
+                    </el-table-column>
                     <el-table-column prop="docker_service_root" label="部署根目录" min-width="160" show-overflow-tooltip />
+                    <el-table-column label="凭证" width="80" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="row.has_credential ? 'success' : 'warning'" size="small" effect="plain">{{ row.has_credential ? '已配' : '未配' }}</el-tag>
+                      </template>
+                    </el-table-column>
                   </el-table>
                   <el-empty v-else description="暂无主机，请前往「主机管理」添加" />
                 </el-card>
@@ -298,11 +333,24 @@
 
           <!-- 主机管理 -->
           <template v-else-if="activeMenu === 'hosts'">
-            <h2 class="ob-page-title">主机管理</h2>
+            <div class="host-hero">
+              <div>
+                <h2>主机纳管</h2>
+                <p>维护 SSH 连接与远程部署根目录；列表展示端口、用户、认证方式、凭证是否已保存等。仅本人创建的主机及历史未绑定账号的主机对本账号可见。</p>
+              </div>
+              <el-button :loading="loading" @click="refreshHostsPage">
+                <span style="margin-right:4px">↻</span> 刷新列表
+              </el-button>
+            </div>
+            <div class="host-stat-row">
+              <div class="host-stat-pill"><div class="n" v-text="hosts.length"></div><div class="l">已纳管主机</div></div>
+              <div class="host-stat-pill"><div class="n" v-text="hostsWithCredential"></div><div class="l">已配置 SSH 凭证</div></div>
+              <div class="host-stat-pill"><div class="n" v-text="hostsKeyAuth"></div><div class="l">密钥登录</div></div>
+            </div>
             <el-row :gutter="16">
               <el-col :xs="24" :lg="9">
-                <el-card shadow="never">
-                  <template #header><span style="font-weight:600">添加 / 编辑主机</span></template>
+                <el-card shadow="never" class="host-card-accent">
+                  <template #header><span>{{ hostForm.id ? '编辑主机' : '添加主机' }}</span></template>
                   <el-form :model="hostForm" label-width="112px" size="default">
                     <el-form-item label="显示名称">
                       <el-input v-model="hostForm.name" placeholder="如：生产节点-1" />
@@ -340,16 +388,55 @@
                 </el-card>
               </el-col>
               <el-col :xs="24" :lg="15">
-                <el-card shadow="never">
-                  <template #header><span style="font-weight:600">主机列表</span></template>
-                  <el-table :data="hosts" stripe style="width:100%">
-                    <el-table-column prop="name" label="名称" min-width="100" />
-                    <el-table-column prop="hostname" label="地址" min-width="120" />
-                    <el-table-column prop="docker_service_root" label="部署根目录" min-width="160" show-overflow-tooltip />
-                    <el-table-column label="操作" width="200" fixed="right">
+                <el-card shadow="never" class="host-card-accent">
+                  <template #header>
+                    <span>主机列表</span>
+                    <span style="float:right;font-weight:400;font-size:12px;color:#909399">共 {{ hosts.length }} 台</span>
+                  </template>
+                  <el-table
+                    :data="hosts"
+                    stripe
+                    style="width:100%"
+                    class="host-table"
+                    empty-text="暂无主机，请在左侧填写并保存"
+                    :default-sort="{ prop: 'created_at', order: 'descending' }"
+                  >
+                    <el-table-column prop="id" label="ID" width="64" sortable />
+                    <el-table-column prop="name" label="显示名称" min-width="110" show-overflow-tooltip sortable />
+                    <el-table-column label="SSH 连接" min-width="168">
+                      <template #default="{ row }">
+                        <span class="host-endpoint mono">{{ row.hostname }}:{{ row.port }}</span>
+                        <div class="host-sub">用户 <strong>{{ row.username }}</strong></div>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="认证" width="96" align="center">
+                      <template #default="{ row }">
+                        <el-tag size="small" :type="row.auth_method === 'key' ? 'primary' : 'info'" effect="light">{{ authMethodLabel(row.auth_method) }}</el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="凭证" width="88" align="center">
+                      <template #default="{ row }">
+                        <el-tooltip :content="row.has_credential ? '已保存加密凭证，可测连通性' : '未保存密码/私钥，请先编辑填写'" placement="top">
+                          <el-tag size="small" :type="row.has_credential ? 'success' : 'warning'" effect="plain">{{ row.has_credential ? '已保存' : '未配置' }}</el-tag>
+                        </el-tooltip>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="docker_service_root" label="部署根目录" min-width="150" show-overflow-tooltip />
+                    <el-table-column label="属主" width="100" show-overflow-tooltip>
+                      <template #default="{ row }">
+                        <span>{{ row.owner_username || '—' }}</span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="created_at" label="创建时间" width="158" sortable>
+                      <template #default="{ row }">
+                        <span class="mono" style="font-size:12px;color:#606266">{{ formatHostTime(row.created_at) }}</span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="220" fixed="right">
                       <template #default="{ row }">
                         <el-button link type="primary" @click="editHost(row)">编辑</el-button>
-                        <el-button link @click="testHost(row)" :loading="row._testing">连通性</el-button>
+                        <el-button link type="success" @click="testHost(row)" :loading="row._testing">连通性</el-button>
+                        <el-button link type="danger" @click="deleteHost(row)">删除</el-button>
                       </template>
                     </el-table-column>
                   </el-table>
@@ -648,6 +735,8 @@ use_import_ca = no
         const successCount = computed(() => tasks.value.filter(t => t.status === 'success').length);
         const failedCount = computed(() => tasks.value.filter(t => t.status === 'failed').length);
         const lastTasks = computed(() => tasks.value.slice(0, 8));
+        const hostsWithCredential = computed(() => hosts.value.filter(h => h.has_credential).length);
+        const hostsKeyAuth = computed(() => hosts.value.filter(h => h.auth_method === 'key').length);
 
         const deployStep = ref(0);
 
@@ -721,7 +810,25 @@ use_import_ca = no
 
         const fetchHosts = async () => {
           const { data } = await api.get('/hosts/');
-          hosts.value = data;
+          hosts.value = Array.isArray(data) ? data : (data.results || []);
+        };
+
+        const refreshHostsPage = async () => {
+          loading.value = true;
+          try {
+            await fetchHosts();
+            ElementPlus.ElMessage.success('列表已更新');
+          } catch (e) {
+            ElementPlus.ElMessage.error('刷新失败');
+          } finally { loading.value = false; }
+        };
+
+        const authMethodLabel = (m) => (m === 'key' ? '密钥' : '密码');
+        const formatHostTime = (iso) => {
+          if (!iso) return '—';
+          const d = new Date(iso);
+          if (Number.isNaN(d.getTime())) return String(iso).slice(0, 19).replace('T', ' ');
+          return d.toLocaleString('zh-CN', { hour12: false });
         };
         const fetchTasks = async () => {
           const { data } = await api.get('/deployment/tasks/');
@@ -962,6 +1069,25 @@ use_import_ca = no
           } finally { row._testing = false; }
         };
 
+        const deleteHost = async (row) => {
+          try {
+            await ElementPlus.ElMessageBox.confirm(
+              '确定删除主机「' + (row.name || row.hostname) + '」？此操作不可恢复。',
+              '删除确认',
+              { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+            );
+          } catch { return; }
+          loading.value = true;
+          try {
+            await api.delete('/hosts/' + row.id + '/');
+            ElementPlus.ElMessage.success('已删除');
+            if (hostForm.id === row.id) resetHostForm();
+            await fetchHosts();
+          } catch (e) {
+            ElementPlus.ElMessage.error('删除失败');
+          } finally { loading.value = false; }
+        };
+
         const startDeploy = async () => {
           if (!deployForm.host) return ElementPlus.ElMessage.warning('请选择节点 1');
           if (!(deployForm.user_edit_content || '').trim())
@@ -1034,12 +1160,13 @@ use_import_ca = no
 
         return {
           token, user, loading, activeMenu, breadcrumbTitle, runningCount, successCount, failedCount, lastTasks, onMenuSelect,
-          hosts, tasks, showRegister, loginForm, regForm, hostForm, deployForm, deployStep,
+          hosts, hostsWithCredential, hostsKeyAuth, tasks, showRegister, loginForm, regForm, hostForm, deployForm, deployStep,
           logText, logTailText, logTailLabel, logAppctlEl, logFileEl, treeRoots, manifestSummary, manifestPaths, manifestPayload, taskStatus, currentTaskId,
           showManifestTree, pipelineRows, selectedPipelineKey, selectedLogHint, phaseHint, phaseBanner, flowS1, flowS2, flowS3, flowS4,
           openLogTail, openLogTailRel, onPipelineStepClick, onPipelineSubClick,
           isHostDisabledForNode1, isHostDisabledTriple, goDeployStep2, fillUserEditTemplate,
-          doLogin, doRegister, logout, saveHost, resetHostForm, editHost, testHost, startDeploy, attachTask,
+          authMethodLabel, formatHostTime, refreshHostsPage,
+          doLogin, doRegister, logout, saveHost, resetHostForm, editHost, testHost, deleteHost, startDeploy, attachTask,
         };
       }
     }).use(ElementPlus).mount('#app');

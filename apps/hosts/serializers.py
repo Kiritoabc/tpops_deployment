@@ -9,6 +9,8 @@ class HostSerializer(serializers.ModelSerializer):
     private_key = serializers.CharField(
         write_only=True, required=False, allow_blank=True
     )
+    has_credential = serializers.SerializerMethodField()
+    owner_username = serializers.SerializerMethodField()
 
     class Meta:
         model = Host
@@ -20,12 +22,27 @@ class HostSerializer(serializers.ModelSerializer):
             "username",
             "auth_method",
             "docker_service_root",
+            "has_credential",
+            "owner_username",
             "password",
             "private_key",
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "created_at", "updated_at")
+        read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+            "has_credential",
+            "owner_username",
+        )
+
+    def get_has_credential(self, obj):
+        return bool((obj.credential or "").strip())
+
+    def get_owner_username(self, obj):
+        u = getattr(obj, "created_by", None)
+        return getattr(u, "username", None) or ""
 
     def create(self, validated_data):
         password = validated_data.pop("password", "") or ""
