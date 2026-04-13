@@ -16,6 +16,7 @@ class DeploymentTaskSerializer(serializers.ModelSerializer):
     host_node2_name = serializers.CharField(source="host_node2.name", read_only=True)
     host_node3_name = serializers.CharField(source="host_node3.name", read_only=True)
     created_by_username = serializers.SerializerMethodField()
+    outcome_label = serializers.SerializerMethodField()
 
     class Meta:
         model = DeploymentTask
@@ -35,6 +36,7 @@ class DeploymentTaskSerializer(serializers.ModelSerializer):
             "status",
             "exit_code",
             "error_message",
+            "outcome_label",
             "created_by_username",
             "created_at",
             "started_at",
@@ -53,11 +55,26 @@ class DeploymentTaskSerializer(serializers.ModelSerializer):
             "host_node3_name",
             "remote_user_edit_path",
             "created_by_username",
+            "outcome_label",
         )
 
     def get_created_by_username(self, obj):
         u = getattr(obj, "created_by", None)
         return getattr(u, "username", None) or ""
+
+    def get_outcome_label(self, obj):
+        s = obj.status
+        if s == DeploymentTask.STATUS_SUCCESS:
+            return "成功"
+        if s == DeploymentTask.STATUS_FAILED:
+            return "失败"
+        if s == DeploymentTask.STATUS_CANCELLED:
+            return "已取消"
+        if s == DeploymentTask.STATUS_RUNNING:
+            return "执行中"
+        if s == DeploymentTask.STATUS_PENDING:
+            return "待执行"
+        return s or "—"
 
 
 class DeploymentTaskCreateSerializer(serializers.ModelSerializer):

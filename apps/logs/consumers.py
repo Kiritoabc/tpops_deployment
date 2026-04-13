@@ -7,18 +7,14 @@ from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken
 
-from apps.deployment.models import DeploymentTask
+from apps.deployment.access import get_deployment_task_for_user
 
 User = get_user_model()
 
 
 @database_sync_to_async
 def get_task_for_user(task_id: int, user):
-    return (
-        DeploymentTask.objects.filter(pk=task_id, created_by=user)
-        .select_related("host")
-        .first()
-    )
+    return get_deployment_task_for_user(task_id, user, select_related=("host",))
 
 
 class DeploymentConsumer(AsyncWebsocketConsumer):
@@ -52,6 +48,14 @@ class DeploymentConsumer(AsyncWebsocketConsumer):
                     "task_id": self.task_id,
                     "status": task.status,
                     "action": task.action,
+                    "exit_code": task.exit_code,
+                    "error_message": (task.error_message or "")[:2000],
+                    "finished_at": task.finished_at.isoformat()
+                    if task.finished_at
+                    else None,
+                    "started_at": task.started_at.isoformat()
+                    if task.started_at
+                    else None,
                 },
                 ensure_ascii=False,
             )

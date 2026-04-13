@@ -175,6 +175,10 @@
     .deploy-table .el-table__header th { background: #f5f7fa !important; color: #606266; font-weight: 600; }
     .deploy-table .row-current-task { background: #e6f7ff !important; }
     .deploy-table .row-current-task:hover > td { background: #d6f0ff !important; }
+    .deploy-status-strip { margin-bottom: 14px; }
+    .deploy-status-strip .el-alert__title { font-size: 13px; line-height: 1.55; font-weight: 500; }
+    .deploy-outcome-ok { color: #67c23a; font-weight: 600; }
+    .deploy-outcome-bad { color: #f56c6c; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -338,8 +342,14 @@
                     <el-table-column prop="id" label="ID" width="56" />
                     <el-table-column prop="host_name" label="节点1" min-width="90" show-overflow-tooltip />
                     <el-table-column prop="deploy_mode" label="形态" width="72" />
-                    <el-table-column prop="action" label="操作" min-width="120" show-overflow-tooltip />
-                    <el-table-column prop="status" label="状态" width="88" />
+                    <el-table-column label="操作" min-width="100" show-overflow-tooltip>
+                      <template #default="{ row }"><span v-text="deployActionLabel(row.action)"></span></template>
+                    </el-table-column>
+                    <el-table-column label="结果" width="88" align="center">
+                      <template #default="{ row }">
+                        <el-tag size="small" :type="deployOutcomeTagType(row.status)" effect="dark">{{ row.outcome_label || deployStatusLabel(row.status) }}</el-tag>
+                      </template>
+                    </el-table-column>
                   </el-table>
                   <el-empty v-else description="暂无任务记录" />
                 </el-card>
@@ -466,7 +476,7 @@
             <div class="deploy-hero">
               <div>
                 <h2>部署任务</h2>
-                <p>下方为<strong>历史部署记录</strong>，每次点「写入配置并执行」都会新增一条。点<strong>查看详情</strong>可重新订阅该任务的 appctl 输出与流水线；列表支持按时间排序。</p>
+                <p>下方为<strong>历史部署记录</strong>，「<strong>结果</strong>」列一眼可见成功 / 失败 / 执行中。点<strong>查看详情</strong>后上方会显示<strong>当前任务状态条</strong>（与列表、数据库一致）；实时输出仅对进行中的任务推送，已结束任务可点标签看文件日志。</p>
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:8px;">
                 <el-button type="primary" :loading="loading" @click="refreshTasksOnly">刷新列表</el-button>
@@ -513,9 +523,14 @@
                   </template>
                 </el-table-column>
                 <el-table-column prop="target" label="目标" width="96" show-overflow-tooltip />
-                <el-table-column prop="status" label="状态" width="108" align="center">
+                <el-table-column label="结果" width="100" align="center">
                   <template #default="{ row }">
-                    <el-tag size="small" :type="deployStatusTagType(row.status)" effect="light">{{ deployStatusLabel(row.status) }}</el-tag>
+                    <el-tag size="small" :type="deployOutcomeTagType(row.status)" effect="dark">{{ row.outcome_label || deployStatusLabel(row.status) }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="status" label="状态" width="100" align="center">
+                  <template #default="{ row }">
+                    <el-tag size="small" :type="deployStatusTagType(row.status)" effect="plain">{{ deployStatusLabel(row.status) }}</el-tag>
                   </template>
                 </el-table-column>
                 <el-table-column prop="exit_code" label="退出码" width="88" align="center">
@@ -612,6 +627,21 @@
               </div>
             </el-card>
 
+            <el-alert
+              v-if="currentTaskId && deployStatusStripVisible"
+              class="deploy-status-strip"
+              :title="deployStatusStripTitle"
+              :type="deployStatusStripType"
+              :closable="false"
+              show-icon
+            >
+              <template v-if="currentTaskSnapshot && (currentTaskSnapshot.error_message || '').trim()">
+                <div style="margin-top:8px;font-size:12px;word-break:break-all;opacity:.95;">
+                  <strong>失败原因：</strong><span v-text="currentTaskSnapshot.error_message"></span>
+                </div>
+              </template>
+            </el-alert>
+
             <el-row :gutter="20" class="deploy-split">
               <el-col :xs="24" :md="12">
                 <el-card shadow="never" style="height:100%;">
@@ -673,9 +703,9 @@
                   <div ref="logAppctlEl" class="log-box log-deploy-main" v-text="logText"></div>
                   <div style="font-size:12px;color:#909399;margin:12px 0 6px;">文件日志 <span class="hint" v-text="logTailLabel"></span></div>
                   <div ref="logFileEl" class="log-box log-deploy-sub" v-text="logTailText"></div>
-                  <div style="margin-top:10px;font-size:13px;color:#606266;">
-                    任务状态：<span v-text="taskStatus || '-'"></span>
-                    <span v-if="currentTaskId"> · #<span v-text="currentTaskId"></span></span>
+                  <div style="margin-top:10px;font-size:12px;color:#909399;line-height:1.6;">
+                    <span v-if="liveTaskFinishedHint" v-text="liveTaskFinishedHint"></span>
+                    <span v-else>下方为实时流；已结束任务无历史回放时可点上方的 <code>precheck.log</code> / <code>install.log</code> 查看文件日志。</span>
                   </div>
                 </el-card>
               </el-col>
@@ -776,6 +806,7 @@ use_import_ca = no
         const selectedLogHint = ref('');
         const taskStatus = ref('');
         const currentTaskId = ref(null);
+        const currentTaskSnapshot = ref(null);
         const lastAction = ref('');
         const phaseHint = ref('');
         const phaseBanner = ref('');
@@ -950,7 +981,87 @@ use_import_ca = no
           return '';
         };
 
+        const deployOutcomeTagType = (s) => {
+          if (s === 'success') return 'success';
+          if (s === 'failed') return 'danger';
+          if (s === 'running') return 'warning';
+          if (s === 'cancelled') return 'info';
+          return 'info';
+        };
+
         const deployTaskRowClass = ({ row }) => (currentTaskId.value && row.id === currentTaskId.value ? 'row-current-task' : '');
+
+        const applyLiveTaskPatch = (partial) => {
+          const id = currentTaskId.value;
+          if (!id) return;
+          let cur = currentTaskSnapshot.value;
+          if (!cur || cur.id !== id) cur = { id };
+          currentTaskSnapshot.value = { ...cur, ...partial };
+        };
+
+        const deployStatusStripVisible = computed(() => Boolean(currentTaskId.value));
+
+        const effectiveLiveStatus = computed(() => {
+          const s = currentTaskSnapshot.value;
+          if (s && s.status) return s.status;
+          const raw = taskStatus.value || '';
+          if (raw.startsWith('finished:')) {
+            const code = parseInt(raw.split(':')[1], 10);
+            return Number.isNaN(code) ? '' : (code === 0 ? 'success' : 'failed');
+          }
+          return raw;
+        });
+
+        const deployStatusStripType = computed(() => {
+          const st = effectiveLiveStatus.value;
+          if (st === 'success') return 'success';
+          if (st === 'failed') return 'error';
+          if (st === 'running') return 'warning';
+          return 'info';
+        });
+
+        const deployStatusStripTitle = computed(() => {
+          const id = currentTaskId.value;
+          if (!id) return '';
+          const s = currentTaskSnapshot.value;
+          const st = effectiveLiveStatus.value;
+          const label = (s && s.outcome_label) || deployStatusLabel(st);
+          const action = deployActionLabel((s && s.action) || lastAction.value);
+          const parts = ['当前查看任务 #' + id, '操作：' + action, '结果：' + label];
+          if (s && s.exit_code != null && (st === 'success' || st === 'failed' || st === 'cancelled'))
+            parts.push('退出码 ' + s.exit_code);
+          if (s && s.finished_at) parts.push('结束 ' + formatHostTime(s.finished_at));
+          else if (s && s.started_at && st === 'running') parts.push('开始 ' + formatHostTime(s.started_at));
+          return parts.join(' · ');
+        });
+
+        const liveTaskFinishedHint = computed(() => {
+          const id = currentTaskId.value;
+          if (!id) return '';
+          const s = currentTaskSnapshot.value;
+          const st = (s && s.status) || effectiveLiveStatus.value;
+          if (st === 'success' || st === 'failed' || st === 'cancelled') {
+            const ec = s && s.exit_code != null ? s.exit_code : '—';
+            return '任务 #' + id + ' 已结束（' + deployStatusLabel(st) + '，退出码 ' + ec + '）。上方 appctl 窗口无历史回放时，请点击流水线区域的 precheck.log / install.log 查看远程文件日志。';
+          }
+          return '';
+        });
+
+        const refreshCurrentTaskSnapshot = async () => {
+          const id = currentTaskId.value;
+          if (!id) return;
+          try {
+            const { data } = await api.get('/deployment/tasks/' + id + '/');
+            currentTaskSnapshot.value = data;
+            taskStatus.value = data.status;
+            const idx = tasks.value.findIndex((t) => t.id === id);
+            if (idx >= 0) {
+              const next = tasks.value.slice();
+              next[idx] = { ...next[idx], ...data };
+              tasks.value = next;
+            }
+          } catch (_) {}
+        };
 
         const scrollLogEl = (elRef) => {
           nextTick(() => {
@@ -1057,6 +1168,15 @@ use_import_ca = no
             if (msg.type === 'hello') {
               taskStatus.value = msg.status;
               if (msg.action) lastAction.value = msg.action;
+              applyLiveTaskPatch({
+                id: msg.task_id,
+                action: msg.action,
+                status: msg.status,
+                exit_code: msg.exit_code,
+                error_message: msg.error_message,
+                finished_at: msg.finished_at,
+                started_at: msg.started_at,
+              });
             }
             if (msg.type === 'phase') {
               phaseBanner.value = msg.message || '';
@@ -1093,10 +1213,17 @@ use_import_ca = no
             }
             if (msg.type === 'status') {
               taskStatus.value = msg.data;
+              applyLiveTaskPatch({ status: msg.data });
               if (msg.data === 'running') flowS1.value = 'active';
             }
             if (msg.type === 'done') {
-              taskStatus.value = 'finished:' + msg.exit_code;
+              const st = msg.status || (msg.exit_code === 0 ? 'success' : 'failed');
+              taskStatus.value = st;
+              applyLiveTaskPatch({
+                status: st,
+                exit_code: msg.exit_code,
+                finished_at: msg.finished_at,
+              });
               flowS1.value = 'done';
               const a = lastAction.value || '';
               if (a === 'precheck_install' || a === 'precheck_upgrade') {
@@ -1108,6 +1235,8 @@ use_import_ca = no
                 flowS3.value = flowS3.value === 'skip' ? 'skip' : 'done';
                 flowS4.value = 'done';
               }
+              refreshCurrentTaskSnapshot();
+              fetchTasks().catch(() => {});
             }
           };
           socket.onerror = () => ElementPlus.ElMessage.error('WebSocket 错误');
@@ -1151,6 +1280,9 @@ use_import_ca = no
           manifestPayload.value = null;
           selectedPipelineKey.value = '';
           selectedLogHint.value = '';
+          currentTaskSnapshot.value = null;
+          currentTaskId.value = null;
+          taskStatus.value = '';
         };
 
         const resetHostForm = () => {
@@ -1239,6 +1371,7 @@ use_import_ca = no
             const { data } = await api.post('/deployment/tasks/', body);
             currentTaskId.value = data.id;
             taskStatus.value = data.status;
+            currentTaskSnapshot.value = data;
             openSocket(data.id);
             await fetchTasks();
             ElementPlus.ElMessage.success('任务已创建');
@@ -1252,10 +1385,11 @@ use_import_ca = no
           } finally { loading.value = false; }
         };
 
-        const attachTask = (row) => {
+        const attachTask = async (row) => {
           currentTaskId.value = row.id;
           taskStatus.value = row.status;
           lastAction.value = row.action || '';
+          currentTaskSnapshot.value = { ...row };
           logText.value = '';
           logTailText.value = '';
           treeRoots.value = [];
@@ -1265,9 +1399,19 @@ use_import_ca = no
           selectedPipelineKey.value = '';
           selectedLogHint.value = '';
           activeMenu.value = 'deploy';
+          try {
+            const { data } = await api.get('/deployment/tasks/' + row.id + '/');
+            currentTaskSnapshot.value = data;
+            taskStatus.value = data.status;
+          } catch (_) {}
           openSocket(row.id);
           fetchTasks().catch(() => {});
-          ElementPlus.ElMessage.info('已切换到任务 #' + row.id + '，日志区将显示实时输出（已结束任务可能无新输出）');
+          const st = (currentTaskSnapshot.value && currentTaskSnapshot.value.status) || row.status;
+          if (st === 'running' || st === 'pending') {
+            ElementPlus.ElMessage.info('已打开任务 #' + row.id + '，下方将推送 appctl 实时输出');
+          } else {
+            ElementPlus.ElMessage.info('已打开任务 #' + row.id + '（已结束：' + deployStatusLabel(st) + '）。标准输出无回放时请点 precheck.log / install.log');
+          }
         };
 
         onMounted(async () => {
@@ -1280,7 +1424,8 @@ use_import_ca = no
         return {
           token, user, loading, activeMenu, breadcrumbTitle, runningCount, successCount, failedCount, lastTasks, onMenuSelect,
           hosts, hostsWithCredential, hostsKeyAuth, tasks, showRegister, loginForm, regForm, hostForm, deployForm, deployStep,
-          refreshTasksOnly, deployActionLabel, deployStatusLabel, deployStatusTagType, deployTaskRowClass,
+          refreshTasksOnly, deployActionLabel, deployStatusLabel, deployStatusTagType, deployOutcomeTagType, deployTaskRowClass,
+          currentTaskSnapshot, deployStatusStripVisible, deployStatusStripTitle, deployStatusStripType, liveTaskFinishedHint,
           logText, logTailText, logTailLabel, logAppctlEl, logFileEl, treeRoots, manifestSummary, manifestPaths, manifestPayload, taskStatus, currentTaskId,
           showManifestTree, pipelineRows, selectedPipelineKey, selectedLogHint, phaseHint, phaseBanner, flowS1, flowS2, flowS3, flowS4,
           openLogTail, openLogTailRel, onPipelineStepClick, onPipelineSubClick,

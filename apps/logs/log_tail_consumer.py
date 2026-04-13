@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken
 
-from apps.deployment.models import DeploymentTask
+from apps.deployment.access import get_deployment_task_for_user
 from apps.deployment.remote_logs import remote_deploy_log_file, remote_log_path, tail_remote_log_chunk
 from apps.hosts.serializers import host_ssh_secret
 from apps.deployment.user_edit import parse_user_edit_block
@@ -19,11 +19,7 @@ User = get_user_model()
 
 @database_sync_to_async
 def get_task_deploy(task_id: int, user):
-    return (
-        DeploymentTask.objects.filter(pk=task_id, created_by=user)
-        .select_related("host")
-        .first()
-    )
+    return get_deployment_task_for_user(task_id, user, select_related=("host",))
 
 
 class DeployLogTailConsumer(AsyncWebsocketConsumer):

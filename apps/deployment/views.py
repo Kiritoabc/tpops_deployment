@@ -1,8 +1,8 @@
-from django.db.models import Q
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from .access import filter_deployment_tasks_for_user
 from .models import DeploymentTask
 from .runner import run_task_async
 from .serializers import DeploymentTaskCreateSerializer, DeploymentTaskSerializer
@@ -27,12 +27,7 @@ class DeploymentTaskViewSet(
 
     def get_queryset(self):
         qs = super().get_queryset()
-        user = self.request.user
-        if not user.is_authenticated:
-            return qs.none()
-        if user.is_staff:
-            return qs
-        return qs.filter(Q(created_by=user) | Q(created_by__isnull=True))
+        return filter_deployment_tasks_for_user(qs, self.request.user)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

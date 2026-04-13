@@ -417,4 +417,12 @@ def _run_task(task_id: int):
         ]
     )
     _emit(task_id, {"type": "status", "data": task.status})
-    _emit(task_id, {"type": "done", "exit_code": task.exit_code})
+    _emit(
+        task_id,
+        {
+            "type": "done",
+            "exit_code": task.exit_code,
+            "status": task.status,
+            "finished_at": task.finished_at.isoformat() if task.finished_at else None,
+        },
+    )
