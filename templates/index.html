@@ -374,12 +374,9 @@
               </div>
 
               <div v-show="deployStep === 2">
-                <p style="margin:0 0 8px;color:#606266;font-size:13px;">下方为默认 <code>[user_edit]</code> 模板，可直接修改。提交时会将所选节点 IP 合并进配置，写入远程 <code>user_edit_file.conf</code> 后再执行下方所选操作。</p>
-                <el-input v-model="deployForm.user_edit_content" type="textarea" :rows="16" placeholder="[user_edit] ..." class="mono-ta" />
-                <div style="margin-top:10px;">
-                  <el-button @click="deployStep = 1">上一步</el-button>
-                  <el-button @click="fillUserEditTemplate">恢复默认模板</el-button>
-                </div>
+                <el-alert type="info" :closable="false" show-icon style="margin-bottom:14px;">
+                  <template #title>先选择要下发的操作，再点蓝色按钮；<code>user_edit</code> 在下方编辑（默认可直接改）。</template>
+                </el-alert>
                 <el-divider content-position="left"><span style="font-weight:600;color:#303133;">下发操作</span></el-divider>
                 <el-form label-width="120px" style="max-width:720px;">
                   <el-form-item label="操作类型">
@@ -393,10 +390,18 @@
                   <el-form-item label="目标参数">
                     <el-input v-model="deployForm.target" placeholder="前置检查填 gaussdb；install/upgrade 按脚本需要可留空" />
                   </el-form-item>
-                  <el-form-item>
-                    <el-button type="primary" size="large" @click="startDeploy" :loading="loading">写入配置并执行</el-button>
-                  </el-form-item>
                 </el-form>
+                <div style="margin:0 0 16px;display:flex;flex-wrap:wrap;gap:10px;">
+                  <el-button type="primary" size="large" @click="startDeploy" :loading="loading">写入配置并执行</el-button>
+                  <el-button size="large" @click="deployStep = 1">上一步</el-button>
+                </div>
+                <el-divider content-position="left"><span style="font-weight:600;color:#303133;">user_edit 配置</span></el-divider>
+                <p style="margin:0 0 8px;color:#606266;font-size:13px;">默认已填入模板；提交时会合并所选节点 IP，并写入远程 <code>user_edit_file.conf</code> 后执行上方操作。</p>
+                <el-input v-model="deployForm.user_edit_content" type="textarea" :rows="14" placeholder="[user_edit] ..." class="mono-ta" />
+                <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+                  <el-button @click="fillUserEditTemplate">恢复默认模板</el-button>
+                  <span class="hint" style="margin:0;">底部改完配置后，点上方「写入配置并执行」即可下发。</span>
+                </div>
               </div>
             </el-card>
 
