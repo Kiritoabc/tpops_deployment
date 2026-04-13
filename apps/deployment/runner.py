@@ -129,7 +129,7 @@ def _default_user_edit_path(host) -> str:
     return "%s/config/gaussdb/user_edit_file.conf" % _deploy_root(host)
 
 
-def _build_appctl_command(host, action: str, target: str) -> str:
+def _build_appctl_command(host, action: str, target: str, deploy_mode: str = None) -> str:
     root = _deploy_root(host)
     tgt = (target or "").strip()
 
@@ -148,10 +148,15 @@ def _build_appctl_command(host, action: str, target: str) -> str:
     else:
         raise ValueError("未知操作类型")
 
-    return (
-        "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
-        "cd %s && sh appctl.sh %s" % (root, sub)
-    )
+    # 单节点 install/upgrade 常见交互确认 (y/n)，SSH 无 TTY 时需自动应答
+    inner = "cd %s && sh appctl.sh %s" % (root, sub)
+    if deploy_mode == DeploymentTask.MODE_SINGLE and action in (
+        DeploymentTask.INSTALL,
+        DeploymentTask.UPGRADE,
+    ):
+        inner = "cd %s && yes y 2>/dev/null | sh appctl.sh %s" % (root, sub)
+
+    return "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; " + inner
 
 
 def run_task_async(task_id: int):
@@ -268,7 +273,7 @@ def _run_task(task_id: int):
     _emit(task_id, {"type": "log", "data": "配置文件已写入: %s\n" % path})
 
     try:
-        cmd = _build_appctl_command(h, task.action, task.target)
+        cmd = _build_appctl_command(h, task.action, task.target, task.deploy_mode)
     except ValueError as exc:
         task.status = DeploymentTask.STATUS_FAILED
         task.error_message = str(exc)

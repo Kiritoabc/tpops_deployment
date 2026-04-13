@@ -43,7 +43,7 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 
 - 安装前置检查：`sh appctl.sh precheck install <组件>`
 - 升级前置检查：`sh appctl.sh precheck upgrade <组件>`
-- 安装操作：`sh appctl.sh install`（可选再跟「目标参数」）
+- 安装操作：`sh appctl.sh install`（可选再跟「目标参数」）；**单节点**时通过 `yes y | sh appctl.sh …` 自动应答脚本中的 `(y/n)` 确认（非交互 SSH）。
 - 升级操作：`sh appctl.sh upgrade`（可选「目标参数」）
 - **install / upgrade**：直接轮询 `manifest.yaml` 与 `manifest_{node_ip}.yaml`（来自 `user_edit` 的 node1/2/3_ip）并**聚合**展示（不等待 init 标记文件）。
 - **precheck install / precheck upgrade**：**不轮询 manifest**。
