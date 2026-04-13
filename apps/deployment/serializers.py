@@ -4,10 +4,14 @@ from .models import DeploymentTask
 from .user_edit import parse_user_edit_block
 
 _VALID_ACTIONS = {
+    DeploymentTask.PRECHECK,
     DeploymentTask.PRECHECK_INSTALL,
     DeploymentTask.PRECHECK_UPGRADE,
     DeploymentTask.INSTALL,
     DeploymentTask.UPGRADE,
+    DeploymentTask.UNINSTALL_ALL,
+    DeploymentTask.ROLLBACK,
+    DeploymentTask.REPAIR,
 }
 
 
@@ -91,7 +95,6 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
                     {"host_node2": "单节点部署请勿选择节点 2 / 节点 3"}
                 )
         else:
-            # 三节点形态：至少选节点 1；节点 2/3 可选，未选时与节点 1 同机（配置里写同一 IP）
             if h1 is None:
                 raise serializers.ValidationError({"host": "请选择节点 1（执行机）"})
             chosen = [x.id for x in (h1, h2, h3) if x is not None]

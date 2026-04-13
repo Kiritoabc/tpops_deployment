@@ -71,8 +71,8 @@ def run_remote_command(
     timeout: int = 3600,
 ):
     """
-    Yields decoded stdout/stderr chunks from remote command (streaming).
-    Appends a final line __EXIT_CODE__:N for the caller to parse.
+    流式输出 stdout/stderr（小块及时 yield，便于 WebSocket 实时推送）。
+    末尾追加 __EXIT_CODE__:N
     """
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -95,33 +95,31 @@ def run_remote_command(
             command, get_pty=True, timeout=timeout
         )
         stdin.close()
-        channel = stdout.channel
+        ch = stdout.channel
 
         while True:
-            if channel.exit_status_ready() and not channel.recv_ready():
-                if not channel.recv_stderr_ready():
-                    break
-            rlist, _, _ = select.select([channel], [], [], 1.0)
-            if channel in rlist:
-                if channel.recv_ready():
-                    data = channel.recv(4096)
-                    if data:
-                        yield data.decode("utf-8", errors="replace")
-                if channel.recv_stderr_ready():
-                    data = channel.recv_stderr(4096)
-                    if data:
-                        yield data.decode("utf-8", errors="replace")
+            while ch.recv_ready():
+                data = ch.recv(4096)
+                if data:
+                    yield data.decode("utf-8", errors="replace")
+            while ch.recv_stderr_ready():
+                data = ch.recv_stderr(4096)
+                if data:
+                    yield data.decode("utf-8", errors="replace")
+            if ch.exit_status_ready():
+                break
+            select.select([ch], [], [], 0.05)
 
-        while channel.recv_ready():
-            data = channel.recv(4096)
+        while ch.recv_ready():
+            data = ch.recv(4096)
             if data:
                 yield data.decode("utf-8", errors="replace")
-        while channel.recv_stderr_ready():
-            data = channel.recv_stderr(4096)
+        while ch.recv_stderr_ready():
+            data = ch.recv_stderr(4096)
             if data:
                 yield data.decode("utf-8", errors="replace")
 
-        exit_code = channel.recv_exit_status()
+        exit_code = ch.recv_exit_status()
         yield "\n__EXIT_CODE__:%s\n" % exit_code
     finally:
         try:
@@ -166,7 +164,7 @@ def remote_cat_file(hostname, port, username, auth_method, secret, remote_path, 
         shlex.quote(remote_path),
         shlex.quote(remote_path),
     )
-    cmd = "bash -lc %s" % shlex.quote(inner)
+    cmd = "sh -c %s" % shlex.quote(inner)
     return run_remote_command_output(
         hostname, port, username, auth_method, secret, cmd, timeout=timeout
     )
@@ -182,7 +180,7 @@ def remote_mkdir_p(
     timeout: int = 60,
 ):
     inner = "mkdir -p %s" % shlex.quote(remote_dir)
-    cmd = "bash -lc %s" % shlex.quote(inner)
+    cmd = "sh -c %s" % shlex.quote(inner)
     _out, code = run_remote_command_output(
         hostname, port, username, auth_method, secret, cmd, timeout=timeout
     )
@@ -214,7 +212,7 @@ def resolve_user_edit_conf_path(
         "if [ -f \"$p\" ]; then echo \"$p\"; exit 0; fi; "
         "done; echo NOTFOUND; exit 2"
     ) % shlex.quote(root)
-    cmd = "bash -lc %s" % shlex.quote(inner)
+    cmd = "sh -c %s" % shlex.quote(inner)
     out, code = run_remote_command_output(
         hostname, port, username, auth_method, secret, cmd, timeout=timeout
     )

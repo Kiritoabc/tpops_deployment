@@ -3,18 +3,28 @@ from django.db import models
 
 
 class DeploymentTask(models.Model):
-    """远程: cd <根目录> && bash appctl.sh <子命令>"""
+    """远程: cd <根目录> && sh appctl.sh <子命令>（与现场脚本一致用 sh）"""
 
+    # 预检查
+    PRECHECK = "precheck"
     PRECHECK_INSTALL = "precheck_install"
     PRECHECK_UPGRADE = "precheck_upgrade"
+    # 安装 / 升级 / 卸载 / 回滚 / 修复（子命令后可选跟一个组件参数，由「目标参数」填写）
     INSTALL = "install"
     UPGRADE = "upgrade"
+    UNINSTALL_ALL = "uninstall_all"
+    ROLLBACK = "rollback"
+    REPAIR = "repair"
 
     ACTION_CHOICES = [
-        (PRECHECK_INSTALL, "安装前置检查 (precheck install)"),
-        (PRECHECK_UPGRADE, "升级前置检查 (precheck upgrade)"),
-        (INSTALL, "安装 (install)"),
-        (UPGRADE, "升级 (upgrade)"),
+        (PRECHECK, "预检查 (precheck)"),
+        (PRECHECK_INSTALL, "安装前置检查 (precheck install <组件>)"),
+        (PRECHECK_UPGRADE, "升级前置检查 (precheck upgrade <组件>)"),
+        (INSTALL, "安装 (install [组件])"),
+        (UPGRADE, "升级 (upgrade [组件])"),
+        (UNINSTALL_ALL, "卸载 (uninstall_all [组件])"),
+        (ROLLBACK, "回滚 (rollback [组件])"),
+        (REPAIR, "修复 (repair [组件])"),
     ]
 
     MODE_SINGLE = "single"
@@ -47,7 +57,7 @@ class DeploymentTask(models.Model):
         max_length=64,
         default="gaussdb",
         blank=True,
-        help_text="precheck install|upgrade 时传入的组件名，如 gaussdb；纯 install/upgrade 可留空",
+        help_text="precheck install|upgrade 必填组件名；install/upgrade/uninstall_all/rollback/repair 可选填组件",
     )
     deploy_mode = models.CharField(
         max_length=16,

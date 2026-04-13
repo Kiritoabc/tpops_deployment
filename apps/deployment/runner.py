@@ -75,7 +75,9 @@ def _build_appctl_command(host, action: str, target: str) -> str:
         raise ValueError("请先在服务器配置中填写部署根目录")
     tgt = (target or "").strip()
 
-    if action == DeploymentTask.PRECHECK_INSTALL:
+    if action == DeploymentTask.PRECHECK:
+        sub = "precheck"
+    elif action == DeploymentTask.PRECHECK_INSTALL:
         if not tgt:
             raise ValueError("安装前置检查需要填写目标组件（如 gaussdb）")
         sub = "precheck install %s" % tgt
@@ -87,12 +89,18 @@ def _build_appctl_command(host, action: str, target: str) -> str:
         sub = "install%s" % (" %s" % tgt if tgt else "")
     elif action == DeploymentTask.UPGRADE:
         sub = "upgrade%s" % (" %s" % tgt if tgt else "")
+    elif action == DeploymentTask.UNINSTALL_ALL:
+        sub = "uninstall_all%s" % (" %s" % tgt if tgt else "")
+    elif action == DeploymentTask.ROLLBACK:
+        sub = "rollback%s" % (" %s" % tgt if tgt else "")
+    elif action == DeploymentTask.REPAIR:
+        sub = "repair%s" % (" %s" % tgt if tgt else "")
     else:
         raise ValueError("未知操作类型")
 
     return (
         "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
-        "cd %s && bash appctl.sh %s" % (root, sub)
+        "cd %s && sh appctl.sh %s" % (root, sub)
     )
 
 
@@ -125,7 +133,6 @@ def _run_task(task_id: int):
         return
 
     h = task.host
-    # 按用户填写内容原样写入，不覆盖 node_ip 等（SSH 目标仅用于连接与执行 appctl）
     final_conf = task.user_edit_content or ""
     _, parse_err = parse_user_edit_block(final_conf)
     if parse_err:
@@ -138,7 +145,6 @@ def _run_task(task_id: int):
         _emit(task_id, {"type": "log", "data": parse_err + "\n"})
         return
 
-    # 2) 解析远程 user_edit 路径并写入
     path, perr = resolve_user_edit_conf_path(
         h.hostname,
         h.port,
@@ -257,7 +263,8 @@ def _run_task(task_id: int):
                     _emit(task_id, {"type": "log", "data": out})
                 buffer = ""
                 break
-            if len(buffer) > 2048:
+            # 更小缓冲，尽快推到 WebSocket
+            if len(buffer) >= 256:
                 _emit(task_id, {"type": "log", "data": buffer})
                 buffer = ""
         if buffer:
