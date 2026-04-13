@@ -46,7 +46,7 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 ```bash
 docker build -t tpops-deployment:latest .
 
-# 持久化数据库；默认账号 admin / 密码 Gauss_246（首次与每次启动会 migrate 并 ensure 该用户）
+# 持久化数据库；首次启动创建 admin / Gauss_246；再次启动不会改密码（仅保证超管权限）
 docker run -d --name tpops -p 8000:8000 \
   -v tpops-data:/data \
   -e DJANGO_SECRET_KEY='请替换为长随机串' \
