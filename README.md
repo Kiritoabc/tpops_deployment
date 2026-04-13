@@ -49,7 +49,7 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 
 ### 部署向导与 `user_edit_file.conf`
 
-1. 选择 **单节点** 或 **三节点**；三节点需选 3 台不同主机（节点 1 为执行 SSH 与写入配置的机器）。
+1. 选择 **单节点** 或 **三节点**（节点 1 为执行 SSH 与写入配置的机器）。三节点形态下**可只选节点 1**；未选节点 2/3 时，配置中的 node2/node3 等自动与节点 1 同 IP。
 2. 填写 **`[user_edit]`** 段配置文本；提交前会将所选主机的 **hostname** 写入 `node1_ip` / `node2_ip` / `node3_ip`、`node*_ip2`、`influxdb_install_ip*`、`sftp_install_ip*` 等字段（单节点只写 `node1_ip` / `node1_ip2`）。
 3. 后端在节点 1 上检测存在的文件并覆盖（与脚本一致）：
    - `<部署根>/config/gaussdb/user_edit_file.conf`

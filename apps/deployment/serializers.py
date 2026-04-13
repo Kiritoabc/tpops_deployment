@@ -91,13 +91,12 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
                     {"host_node2": "单节点部署请勿选择节点 2 / 节点 3"}
                 )
         else:
-            if h1 is None or h2 is None or h3 is None:
-                raise serializers.ValidationError(
-                    {"host_node3": "三节点部署需选择节点 1、节点 2、节点 3"}
-                )
-            ids = {h1.id, h2.id, h3.id}
-            if len(ids) != 3:
-                raise serializers.ValidationError({"host": "三个节点必须选择不同的主机"})
+            # 三节点形态：至少选节点 1；节点 2/3 可选，未选时与节点 1 同机（配置里写同一 IP）
+            if h1 is None:
+                raise serializers.ValidationError({"host": "请选择节点 1（执行机）"})
+            chosen = [x.id for x in (h1, h2, h3) if x is not None]
+            if len(chosen) != len(set(chosen)):
+                raise serializers.ValidationError({"host": "所选主机不能重复"})
 
         request = self.context.get("request")
         user = getattr(request, "user", None)

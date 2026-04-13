@@ -128,7 +128,10 @@ def _run_task(task_id: int):
     # 1) 合并节点 IP 到配置
     base_conf = task.user_edit_content or ""
     if task.deploy_mode == DeploymentTask.MODE_TRIPLE:
-        ips = [h.hostname, task.host_node2.hostname, task.host_node3.hostname]
+        n1 = h.hostname
+        n2 = task.host_node2.hostname if task.host_node2_id else n1
+        n3 = task.host_node3.hostname if task.host_node3_id else n1
+        ips = [n1, n2, n3]
     else:
         ips = [h.hostname]
     final_conf = apply_host_ips_to_config(base_conf, task.deploy_mode, ips)
