@@ -1,8 +1,6 @@
 import os
 import re
-import shlex
 import threading
-import time
 
 import yaml
 
@@ -42,15 +40,6 @@ def _deploy_root(host) -> str:
     return root or "/data/docker-service"
 
 
-def _init_marker_paths(host) -> list:
-    r = _deploy_root(host)
-    return [
-        "%s/config/gaussdb/init_manifest_successful" % r,
-        "%s/config/gaussdb/init_manifest_successful.txt" % r,
-        "%s/config/init_manifest_successful" % r,
-    ]
-
-
 def _remote_manifest_paths_for_nodes(host, user_edit_kv: dict) -> list:
     """本地节点用 manifest.yaml，其它 IP 用 manifest_{ip}.yaml"""
     root = _deploy_root(host)
@@ -78,63 +67,6 @@ def _remote_manifest_paths_for_nodes(host, user_edit_kv: dict) -> list:
 
 def _should_poll_manifest(action: str) -> bool:
     return action in (DeploymentTask.INSTALL, DeploymentTask.UPGRADE)
-
-
-def _wait_init_manifest(
-    task_id: int,
-    host,
-    secret: str,
-    stop_event: threading.Event,
-    timeout_sec: int = 7200,
-) -> bool:
-    """等待 init manifest 标记文件出现；推送 phase 消息。"""
-    paths = _init_marker_paths(host)
-    _emit(
-        task_id,
-        {
-            "type": "phase",
-            "phase": "wait_init_manifest",
-            "message": "等待初始化完成（init manifest successful）…",
-            "paths_tried": paths,
-        },
-    )
-    deadline = time.time() + timeout_sec
-    inner_check = "for p in %s; do test -f \"$p\" && echo FOUND && exit 0; done; exit 1" % " ".join(
-        shlex.quote(p) for p in paths
-    )
-    while not stop_event.is_set() and time.time() < deadline:
-        from apps.hosts.ssh_client import run_remote_command_output
-
-        cmd = "sh -c %s" % shlex.quote(inner_check)
-        out, code = run_remote_command_output(
-            host.hostname,
-            host.port,
-            host.username,
-            host.auth_method,
-            secret,
-            cmd,
-            timeout=30,
-        )
-        if code == 0 and "FOUND" in out:
-            _emit(
-                task_id,
-                {
-                    "type": "phase",
-                    "phase": "init_manifest_ready",
-                    "message": "初始化完成，开始轮询 manifest",
-                },
-            )
-            return True
-        time.sleep(2.0)
-    _emit(
-        task_id,
-        {
-            "type": "phase",
-            "phase": "init_manifest_timeout",
-            "message": "等待 init manifest 标记超时或未出现",
-        },
-    )
-    return False
 
 
 def _poll_manifest_loop(
@@ -366,13 +298,20 @@ def _run_task(task_id: int):
     stop_poll = threading.Event()
     poller = None
     if _should_poll_manifest(task.action):
-        if _wait_init_manifest(task_id, h, secret, stop_poll):
-            poller = threading.Thread(
-                target=_poll_manifest_loop,
-                args=(task_id, task.host_id, secret, stop_poll, manifest_paths),
-                daemon=True,
-            )
-            poller.start()
+        _emit(
+            task_id,
+            {
+                "type": "phase",
+                "phase": "manifest_poll",
+                "message": "开始轮询 manifest（install / upgrade）",
+            },
+        )
+        poller = threading.Thread(
+            target=_poll_manifest_loop,
+            args=(task_id, task.host_id, secret, stop_poll, manifest_paths),
+            daemon=True,
+        )
+        poller.start()
     else:
         _emit(
             task_id,

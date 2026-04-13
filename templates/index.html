@@ -447,7 +447,7 @@
                 <span><strong>阶段</strong>：</span>
                 <el-tag size="small" :type="flowS1 === 'done' ? 'success' : (flowS1 === 'active' ? 'warning' : 'info')">① appctl</el-tag>
                 <el-tag size="small" @click="openLogTail('precheck')" style="cursor:pointer" title="打开 precheck.log">② 前置日志</el-tag>
-                <el-tag size="small" :type="flowS3 === 'done' ? 'success' : (flowS3 === 'active' ? 'warning' : 'info')">③ init manifest</el-tag>
+                <el-tag size="small" :type="flowS3 === 'done' ? 'success' : (flowS3 === 'active' ? 'warning' : 'info')">③ manifest</el-tag>
                 <el-tag size="small" @click="openLogTail('install')" style="cursor:pointer" title="打开 install.log">④ 安装日志</el-tag>
                 <span style="margin-left:8px;" v-text="phaseBanner"></span>
               </div>
@@ -615,8 +615,8 @@ use_import_ca = no
         const phaseBanner = ref('');
         const flowS1 = ref('pending');
         const flowS2 = ref('pending');
-        const flowS3 = ref('pending');
-        const flowS4 = ref('pending');
+        const flowS3 = ref('pending'); // manifest 轮询
+        const flowS4 = ref('pending'); // install.log
         let socket = null;
         let logSocket = null;
 
@@ -829,22 +829,13 @@ use_import_ca = no
               phaseBanner.value = msg.message || '';
               phaseHint.value = (msg.paths_tried && msg.paths_tried.length) ? ('检测: ' + msg.paths_tried.join(', ')) : (msg.command || '');
               if (msg.phase === 'run_appctl') { flowS1.value = 'active'; }
-              if (msg.phase === 'wait_init_manifest') {
-                flowS1.value = 'done';
-                flowS2.value = 'done';
+              if (msg.phase === 'manifest_poll') {
+                flowS1.value = 'active';
                 flowS3.value = 'active';
-              }
-              if (msg.phase === 'init_manifest_ready') {
-                flowS3.value = 'done';
-                flowS4.value = 'active';
               }
               if (msg.phase === 'precheck_no_manifest') {
                 flowS3.value = 'skip';
                 flowS4.value = 'skip';
-              }
-              if (msg.phase === 'init_manifest_timeout') {
-                flowS3.value = 'pending';
-                phaseBanner.value = (msg.message || '') + '（manifest 可能仍会在后续出现）';
               }
             }
             if (msg.type === 'log' && msg.data) logText.value += msg.data;
@@ -852,6 +843,7 @@ use_import_ca = no
               if (msg.data.roots) treeRoots.value = msg.data.roots;
               manifestSummary.value = msg.data.summary || null;
               if (msg.data.manifest_paths) manifestPaths.value = msg.data.manifest_paths;
+              flowS3.value = 'active';
               flowS4.value = 'active';
             }
             if (msg.type === 'manifest_wait') {
