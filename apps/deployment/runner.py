@@ -41,27 +41,38 @@ def _deploy_root(host) -> str:
 
 
 def _remote_manifest_paths_for_nodes(host, user_edit_kv: dict) -> list:
-    """本地节点用 manifest.yaml，其它 IP 用 manifest_{ip}.yaml"""
+    """
+    在执行机（SSH 所在主机）上读取的 manifest 路径列表。
+
+    始终包含 ``<root>/config/gaussdb/manifest.yaml``：现场 install 一般只在
+    本机生成该文件；若 user_edit 里 node1_ip 与 SSH 主机名不一致，旧逻辑
+    只会去读 manifest_<node1_ip>.yaml，导致永远读不到本机 manifest.yaml。
+
+    其它节点 IP 再追加 ``manifest_<ip>.yaml``（与 node*_ip 一致的去重）。
+    """
     root = _deploy_root(host)
     base = "%s/config/gaussdb" % root
     local = (host.hostname or "").strip()
+    paths = []
+    seen = set()
+
+    def _add(p):
+        if p not in seen:
+            seen.add(p)
+            paths.append(p)
+
+    _add("%s/manifest.yaml" % base)
+
     ips = []
     for key in ("node1_ip", "node2_ip", "node3_ip"):
         v = (user_edit_kv or {}).get(key)
         if v and v.strip():
             ips.append(v.strip())
-    if not ips:
-        return ["%s/manifest.yaml" % base]
-    paths = []
-    seen = set()
     for ip in ips:
         if ip == local:
-            p = "%s/manifest.yaml" % base
+            _add("%s/manifest.yaml" % base)
         else:
-            p = "%s/manifest_%s.yaml" % (base, ip)
-        if p not in seen:
-            seen.add(p)
-            paths.append(p)
+            _add("%s/manifest_%s.yaml" % (base, ip))
     return paths
 
 
@@ -80,8 +91,9 @@ def _poll_manifest_once(task_id: int, host_id: int, secret: str, manifest_paths:
         host, kv
     )
     dicts = []
+    poll_details = []
     for p in paths:
-        raw, _code = remote_cat_file(
+        raw, cat_code = remote_cat_file(
             host.hostname,
             host.port,
             host.username,
@@ -91,13 +103,23 @@ def _poll_manifest_once(task_id: int, host_id: int, secret: str, manifest_paths:
             timeout=60,
         )
         if not (raw or "").strip():
+            poll_details.append(
+                "%s → 无内容或文件不存在（请确认路径与权限；sh 退出码 %s）"
+                % (p, cat_code)
+            )
             continue
         try:
             data = yaml.safe_load(raw)
-        except Exception:
+        except Exception as yerr:
+            poll_details.append("%s → YAML 解析失败: %s" % (p, str(yerr)[:200]))
             continue
-        if isinstance(data, dict):
-            dicts.append(data)
+        if not isinstance(data, dict):
+            poll_details.append(
+                "%s → 解析结果非字典（%s），跳过"
+                % (p, type(data).__name__)
+            )
+            continue
+        dicts.append(data)
     if dicts:
         if len(dicts) == 1:
             tree = manifest_to_tree(yaml.safe_dump(dicts[0], allow_unicode=True))
@@ -110,8 +132,9 @@ def _poll_manifest_once(task_id: int, host_id: int, secret: str, manifest_paths:
             task_id,
             {
                 "type": "manifest_wait",
-                "message": "manifest 文件尚未就绪或内容为空，继续等待…",
+                "message": "本轮未读到有效 manifest YAML，5s 后重试…",
                 "paths": paths,
+                "details": poll_details,
             },
         )
     return paths

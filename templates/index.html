@@ -1225,7 +1225,9 @@ use_import_ca = no
               flowS4.value = 'active';
             }
             if (msg.type === 'manifest_wait') {
-              phaseHint.value = (msg.message || '') + (msg.paths ? ' — ' + msg.paths.join(', ') : '');
+              let t = (msg.message || '') + (msg.paths ? ' — ' + msg.paths.join(', ') : '');
+              if (msg.details && msg.details.length) t += ' | ' + msg.details.join(' | ');
+              phaseHint.value = t;
             }
             if (msg.type === 'status') {
               taskStatus.value = msg.data;
