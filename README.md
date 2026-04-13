@@ -36,24 +36,6 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 | `DJANGO_DEBUG` | `1` / `0` |
 | `DJANGO_ALLOWED_HOSTS` | 逗号分隔，默认 `*`（仅建议开发环境） |
 | `DOCKER_SERVICE_ROOT` | 本机参考路径（当前 MVP 主要使用主机表中的远程路径） |
-| `DJANGO_SQLITE_PATH` | SQLite 绝对路径（Docker 默认 `/data/db.sqlite3`，需挂载卷持久化） |
-| `BOOTSTRAP_SUPERUSER_*` | 容器启动时创建/重置默认管理员（见下节 Docker） |
-
-## Docker 镜像
-
-构建与运行（HTTP + WebSocket 使用 **daphne**）：
-
-```bash
-docker build -t tpops-deployment:latest .
-
-# 持久化数据库；首次启动创建 admin / Gauss_246；再次启动不会改密码（仅保证超管权限）
-docker run -d --name tpops -p 8000:8000 \
-  -v tpops-data:/data \
-  -e DJANGO_SECRET_KEY='请替换为长随机串' \
-  tpops-deployment:latest
-```
-
-可选环境变量：`BOOTSTRAP_SUPERUSER_USERNAME`、`BOOTSTRAP_SUPERUSER_PASSWORD`、`BOOTSTRAP_SUPERUSER_EMAIL`（覆盖默认 admin / Gauss_246）。
 
 ## 远程执行命令
 
