@@ -4,14 +4,10 @@ from .models import DeploymentTask
 from .user_edit import parse_user_edit_block
 
 _VALID_ACTIONS = {
-    DeploymentTask.PRECHECK,
     DeploymentTask.PRECHECK_INSTALL,
     DeploymentTask.PRECHECK_UPGRADE,
-    DeploymentTask.INSTALL,
+    DeploymentTask.INSTALLL,
     DeploymentTask.UPGRADE,
-    DeploymentTask.UNINSTALL_ALL,
-    DeploymentTask.ROLLBACK,
-    DeploymentTask.REPAIR,
 }
 
 

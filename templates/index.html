@@ -381,18 +381,14 @@
                 <el-form label-width="120px" style="max-width:720px;">
                   <el-form-item label="操作类型">
                     <el-select v-model="deployForm.action" style="width:100%">
-                      <el-option label="预检查 (sh appctl.sh precheck)" value="precheck" />
-                      <el-option label="安装前置检查 (precheck install + 目标参数)" value="precheck_install" />
-                      <el-option label="升级前置检查 (precheck upgrade + 目标参数)" value="precheck_upgrade" />
-                      <el-option label="安装 (install [组件])" value="install" />
-                      <el-option label="升级 (upgrade [组件])" value="upgrade" />
-                      <el-option label="卸载 (uninstall_all [组件])" value="uninstall_all" />
-                      <el-option label="回滚 (rollback [组件])" value="rollback" />
-                      <el-option label="修复 (repair [组件])" value="repair" />
+                      <el-option label="安装前置检查 — sh appctl.sh precheck install" value="precheck_install" />
+                      <el-option label="升级前置检查 — sh appctl.sh precheck upgrade" value="precheck_upgrade" />
+                      <el-option label="安装操作 — sh appctl.sh installl" value="installl" />
+                      <el-option label="升级操作 — sh appctl.sh upgrade" value="upgrade" />
                     </el-select>
                   </el-form-item>
                   <el-form-item label="目标参数">
-                    <el-input v-model="deployForm.target" placeholder="precheck install/upgrade 必填 gaussdb；其余操作按脚本可选填组件或留空" />
+                    <el-input v-model="deployForm.target" placeholder="precheck install / precheck upgrade 必填组件（如 gaussdb）；installl / upgrade 按现场脚本可填或留空" />
                   </el-form-item>
                 </el-form>
                 <div style="margin:0 0 16px;display:flex;flex-wrap:wrap;gap:10px;">
