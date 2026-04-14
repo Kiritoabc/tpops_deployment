@@ -1919,11 +1919,30 @@ use_import_ca = no
           openLogTail(logKindForTask());
         };
 
-        const openSocket = (taskId) => {
+        /**
+         * 订阅任务 appctl 输出 WebSocket。
+         * - 同一任务且连接仍存活：不重连、不清缓冲（离开监控页再回来仍能看到已输出内容并继续收流）。
+         * - preserveLogAndManifest=true：重连同一任务时保留 logText / manifest 等（进程未结束时补连不断档）。
+         * - 切换任务：清空缓冲并 resetFlow。
+         */
+        const openSocket = (taskId, opts = {}) => {
+          const preserveLogAndManifest = opts.preserveLogAndManifest === true;
+          if (
+            currentTaskId.value === taskId &&
+            socket &&
+            socket.readyState === WebSocket.OPEN
+          ) {
+            return;
+          }
           closeSocket();
           closeLogSocket();
-          resetFlow();
-          logTailText.value = '';
+          if (!preserveLogAndManifest) {
+            resetFlow();
+            logText.value = '';
+            logTailText.value = '';
+          } else {
+            logTailText.value = '';
+          }
           const proto = location.protocol === 'https:' ? 'wss' : 'ws';
           const url = `${proto}://${location.host}/ws/deploy/${taskId}/?token=${encodeURIComponent(token.value)}`;
           socket = new WebSocket(url);
@@ -2196,18 +2215,22 @@ use_import_ca = no
         };
 
         const attachTask = async (row) => {
+          const prevId = currentTaskId.value;
+          const sameTask = prevId === row.id;
           currentTaskId.value = row.id;
           taskStatus.value = row.status;
           lastAction.value = row.action || '';
           currentTaskSnapshot.value = { ...row };
-          logText.value = '';
-          logTailText.value = '';
-          treeRoots.value = [];
-          manifestSummary.value = null;
-          manifestPaths.value = [];
-          manifestPayload.value = null;
-          selectedPipelineKey.value = '';
-          selectedLogHint.value = '';
+          if (!sameTask) {
+            logText.value = '';
+            logTailText.value = '';
+            treeRoots.value = [];
+            manifestSummary.value = null;
+            manifestPaths.value = [];
+            manifestPayload.value = null;
+            selectedPipelineKey.value = '';
+            selectedLogHint.value = '';
+          }
           activeMenu.value = 'deploy';
           deploySubView.value = 'monitor';
           try {
@@ -2215,7 +2238,7 @@ use_import_ca = no
             currentTaskSnapshot.value = data;
             taskStatus.value = data.status;
           } catch (_) {}
-          openSocket(row.id);
+          openSocket(row.id, { preserveLogAndManifest: sameTask });
           fetchTasks().catch(() => {});
           const st = (currentTaskSnapshot.value && currentTaskSnapshot.value.status) || row.status;
           if (st === 'running' || st === 'pending') {
