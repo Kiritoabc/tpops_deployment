@@ -68,6 +68,8 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+        # 部署任务在 HTTP 请求外的后台线程里写库；默认 SQLite 易「database is locked」导致线程静默失败、任务一直 pending
+        "OPTIONS": {"timeout": 30},
     }
 }
 

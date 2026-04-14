@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import threading
@@ -6,7 +7,10 @@ import yaml
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from django.db import close_old_connections
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 from apps.hosts.serializers import host_ssh_secret
 from apps.hosts.ssh_client import (
@@ -85,6 +89,8 @@ def _poll_manifest_once(task_id: int, host_id: int, secret: str, manifest_paths:
     """Return list of remote paths that were polled (for logging)."""
     from apps.hosts.models import Host
 
+    # 轮询在独立 daemon 线程中跑，须刷新/建立 ORM 连接（否则易 SQLite locked 或无效连接）
+    close_old_connections()
     host = Host.objects.get(pk=host_id)
     task = DeploymentTask.objects.filter(pk=task_id).only(
         "user_edit_content", "deploy_mode"
@@ -166,6 +172,7 @@ def _poll_manifest_loop(
     ``stop_event`` within that window, the loop body never runs and manifest
     is never fetched.
     """
+    close_old_connections()
     while not stop_event.is_set():
         try:
             _poll_manifest_once(task_id, host_id, secret, manifest_paths)
@@ -218,6 +225,65 @@ def run_task_async(task_id: int):
 
 
 def _run_task(task_id: int):
+    """
+    在 HTTP 请求结束后再启动的后台线程中执行 ORM/SSH。
+    必须 close_old_connections()，否则复用主线程已关闭的 DB 连接或触发 SQLite 锁，表现为任务未执行（一直 pending）。
+    """
+    close_old_connections()
+    try:
+        _run_task_body(task_id)
+    except Exception as exc:
+        logger.exception("deployment task %s runner crashed", task_id)
+        try:
+            close_old_connections()
+            task = DeploymentTask.objects.filter(pk=task_id).first()
+            if task and task.status in (
+                DeploymentTask.STATUS_PENDING,
+                DeploymentTask.STATUS_RUNNING,
+            ):
+                task.status = DeploymentTask.STATUS_FAILED
+                task.error_message = (
+                    "后台执行线程异常（请查看服务端日志）: %s" % str(exc)[:500]
+                )
+                task.exit_code = -1
+                task.finished_at = timezone.now()
+                task.save(
+                    update_fields=[
+                        "status",
+                        "error_message",
+                        "exit_code",
+                        "finished_at",
+                        "updated_at",
+                    ]
+                )
+                _emit(
+                    task_id,
+                    {
+                        "type": "log",
+                        "data": "\n[平台错误] 任务执行线程异常: %s\n" % str(exc)[:800],
+                    },
+                )
+                _emit(task_id, {"type": "status", "data": task.status})
+                _emit(
+                    task_id,
+                    {
+                        "type": "done",
+                        "exit_code": task.exit_code,
+                        "status": task.status,
+                        "finished_at": task.finished_at.isoformat()
+                        if task.finished_at
+                        else None,
+                    },
+                )
+        except Exception:
+            logger.exception(
+                "failed to persist crash state for deployment task %s", task_id
+            )
+    finally:
+        close_old_connections()
+
+
+def _run_task_body(task_id: int):
     task = (
         DeploymentTask.objects.select_related("host", "host_node2", "host_node3")
         .filter(pk=task_id)

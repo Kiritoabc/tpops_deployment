@@ -28,6 +28,10 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 2. 在「主机管理」填写远程 **部署根目录**（`appctl.sh` 所在目录，如 `/data/docker-service`）及 SSH 凭证  
 3. 在「部署任务」执行 **预检查** 或 **安装**，通过 WebSocket 查看日志与 manifest 树  
 
+### 任务一直「待执行」、远程无动作？
+
+默认使用 **SQLite**。创建任务后，执行逻辑在 **HTTP 请求外的后台线程**里跑；若未在子线程中刷新数据库连接，或并发写入触发 **`database is locked`**，可能出现任务不推进、界面无日志。当前版本已在执行线程入口调用 `close_old_connections()`，并为 SQLite 配置了 **`timeout: 30`**。生产环境仍建议使用 **PostgreSQL / MySQL** 等多连接数据库。
+
 ### 环境变量
 
 | 变量 | 说明 |
