@@ -17,8 +17,10 @@
       --ob-main-pad-x: clamp(10px, 1.6vw, 20px);
       --ob-main-pad-y: clamp(8px, 1.2vw, 16px);
       --ob-card-radius: 10px;
-      /* 副日志区高度占比（主日志由 flex 吃满剩余） */
-      --ob-log-sub-flex: 0 0 min(22dvh, 220px);
+      /* 监控页：文件日志区固定占比，appctl 占剩余 */
+      --ob-log-sub-flex: 0 0 clamp(140px, 26dvh, 240px);
+      /* 工作台：左侧流水线列宽（参考 OCP / Argo 控制台） */
+      --deploy-pipeline-col: minmax(280px, 38%);
     }
     * { box-sizing: border-box; }
     html, body, #app { height: 100%; margin: 0; }
@@ -190,41 +192,123 @@
     .deploy-monitor-stack > .deploy-status-strip {
       flex-shrink: 0;
     }
-    /* 监控页：双列平分高度，占满父级剩余区域 */
-    .deploy-monitor-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-      align-items: stretch;
+    /* 单卡片工作台：流水线 + 输出同在一个面板，中间细分割（业界常见「详情 + 终端」布局） */
+    .deploy-console-card.el-card {
       flex: 1 1 auto;
       min-height: 0;
-    }
-    @media (min-width: 992px) {
-      .deploy-monitor-grid {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      }
-    }
-    .deploy-monitor-grid.el-row {
-      display: grid !important;
-    }
-    .deploy-monitor-col {
       display: flex;
       flex-direction: column;
-      min-height: 0;
+      border-radius: var(--ob-card-radius);
+      overflow: hidden;
     }
-    .deploy-monitor-col .el-card {
+    .deploy-console-card > .el-card__header {
+      padding: 12px 16px;
+      background: linear-gradient(180deg, #fafbfd 0%, #f5f7fa 100%);
+      border-bottom: 1px solid #e4e7ed;
+    }
+    .deploy-console-card > .el-card__body {
       flex: 1;
-      display: flex;
-      flex-direction: column;
       min-height: 0;
-    }
-    .deploy-monitor-col .el-card .el-card__body {
-      flex: 1;
       display: flex;
       flex-direction: column;
+      padding: 0 !important;
+      overflow: hidden;
+    }
+    .deploy-console-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 16px;
+    }
+    .deploy-console-head .t { font-size: 15px; font-weight: 600; color: #1d2129; }
+    .deploy-console-head .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .deploy-console-phase {
+      margin: 0 16px 12px;
+      border-radius: 8px;
+    }
+    .deploy-console-phase-lab { font-size: 12px; color: #909399; font-weight: 500; }
+    .deploy-console-phase-val { flex: 1; min-width: 120px; font-size: 12px; color: #606266; }
+    .deploy-console-body {
+      display: grid;
+      grid-template-columns: 1fr;
+      flex: 1;
       min-height: 0;
       overflow: hidden;
     }
+    .deploy-console-body > * {
+      min-height: 0;
+    }
+    @media (min-width: 960px) {
+      .deploy-console-body {
+        grid-template-columns: var(--deploy-pipeline-col) 1px 1fr;
+      }
+    }
+    .deploy-console-gutter {
+      display: none;
+      background: #e4e7ed;
+    }
+    @media (min-width: 960px) {
+      .deploy-console-gutter { display: block; }
+    }
+    .deploy-console-left {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      min-width: 0;
+      padding: 12px 14px;
+      background: #fafbfc;
+      border-bottom: 1px solid #ebeef5;
+      overflow: hidden;
+    }
+    .deploy-console-left .pipeline-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    @media (min-width: 960px) {
+      .deploy-console-left {
+        border-bottom: none;
+        border-right: none;
+      }
+    }
+    .deploy-console-right {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      min-width: 0;
+      padding: 12px 14px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .deploy-log-stack {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .deploy-log-seg {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1 1 auto;
+    }
+    .deploy-log-seg--sub {
+      flex: var(--ob-log-sub-flex);
+      flex-shrink: 0;
+    }
+    .deploy-log-seg-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #606266;
+      letter-spacing: 0.02em;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .deploy-log-seg-title code { font-size: 11px; font-weight: 500; }
     .pipeline-scroll {
       flex: 1 1 auto;
       min-height: 120px;
@@ -260,16 +344,15 @@
     .pipeline-node-label { font-size: 13px; font-weight: 600; color: #1890ff; margin-bottom: 6px; font-family: ui-monospace, Menlo, Consolas, monospace; }
     .log-deploy-main {
       flex: 1 1 auto;
-      min-height: 140px;
+      min-height: 100px;
       height: auto;
       max-height: none;
     }
     .log-deploy-sub {
-      flex: var(--ob-log-sub-flex);
+      flex: 1 1 auto;
       min-height: 72px;
       height: auto;
-      max-height: min(26dvh, 260px);
-      margin-top: 8px;
+      max-height: none;
     }
     .phase-strip { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; background: #f5f7fa; border-radius: 6px; margin-bottom: 14px; font-size: 13px; color: #606266; }
     /* 主机管理页 */
@@ -945,19 +1028,29 @@
               </template>
             </el-alert>
 
-            <el-row :gutter="20" class="deploy-split deploy-monitor-grid">
-              <el-col :xs="24" :md="12" class="deploy-monitor-col">
-                <el-card shadow="never">
-                  <template #header>
-                    <span style="font-weight:600">{{ showManifestTree ? '安装流水线' : '部署流水线' }}</span>
-                    <span class="hint" style="margin-left:8px;">大层串行；层内多服务并发。<template v-if="showTripleNodeStrip">三节点时各节点并行安装，子步骤旁展示各 IP 状态。</template>点击步骤/子步骤，右侧打开日志。</span>
-                  </template>
-                  <div class="phase-strip">
+            <el-card shadow="never" class="deploy-split deploy-task-card deploy-console-card">
+              <template #header>
+                <div class="deploy-console-head">
+                  <div>
+                    <div class="t">部署执行 · 流水线与输出</div>
+                    <div class="hint" style="margin-top:4px;max-width:720px;">
+                      大层串行、层内并发；点击步骤或子步骤切换右侧文件日志。
+                      <template v-if="showTripleNodeStrip">三节点时子步骤按 IP 分组展示。</template>
+                    </div>
+                  </div>
+                  <div class="meta">
                     <el-tag size="small" @click="openLogTail('precheck')" style="cursor:pointer">precheck.log</el-tag>
                     <el-tag size="small" @click="openLogTail('install')" style="cursor:pointer">install.log</el-tag>
                     <el-tag size="small" type="danger" @click="openLogTail('uninstall')" style="cursor:pointer">uninstall.log</el-tag>
-                    <span v-text="phaseBanner" style="flex:1;min-width:120px;"></span>
                   </div>
+                </div>
+              </template>
+              <div class="phase-strip deploy-console-phase">
+                <span class="deploy-console-phase-lab">阶段</span>
+                <span class="deploy-console-phase-val" v-text="phaseBanner"></span>
+              </div>
+              <div class="deploy-console-body">
+                <div class="deploy-console-left">
                   <div v-if="showManifestTree && manifestSummary && manifestSummary.services_total != null" class="manifest-dash">
                     <div class="manifest-dash-top">
                       <div>
@@ -966,8 +1059,8 @@
                       </div>
                       <div class="manifest-dash-meta">
                         <div>已用时间 <strong>{{ deployElapsedHuman }}</strong></div>
-                        <div v-if="manifestEstimatedHuman">manifest 预估耗时合计 <strong>{{ manifestEstimatedHuman }}</strong></div>
-                        <div>层进度 <strong>{{ manifestSummary.levels_done || 0 }}/{{ manifestSummary.levels_total || 0 }}</strong></div>
+                        <div v-if="manifestEstimatedHuman">预估合计 <strong>{{ manifestEstimatedHuman }}</strong></div>
+                        <div>层 <strong>{{ manifestSummary.levels_done || 0 }}/{{ manifestSummary.levels_total || 0 }}</strong></div>
                         <div>服务 <strong>{{ manifestSummary.services_done || 0 }}/{{ manifestSummary.services_total || 0 }}</strong></div>
                       </div>
                     </div>
@@ -1057,25 +1150,32 @@
                       :description="showManifestTree ? '安装/升级期间，在执行机轮询 manifest：单节点为 manifest.yaml；三节点另读 manifest_<node2_ip>.yaml、manifest_<node3_ip>.yaml（与 user_edit 一致）。有有效 YAML 后即展示流水线。' : '当前为前置检查，无 manifest 流水线'"
                     />
                   </div>
-                </el-card>
-              </el-col>
-              <el-col :xs="24" :md="12" class="deploy-monitor-col">
-                <el-card shadow="never">
-                  <template #header>
-                    <span style="font-weight:600">日志</span>
-                    <span class="hint" v-if="selectedLogHint" style="margin-left:8px;" v-text="selectedLogHint"></span>
-                  </template>
-                  <div style="font-size:12px;color:#909399;margin-bottom:8px;">appctl 标准输出</div>
-                  <div ref="logAppctlEl" class="log-box log-deploy-main" v-text="logText"></div>
-                  <div style="font-size:12px;color:#909399;margin:12px 0 6px;">文件日志 <span class="hint" v-text="logTailLabel"></span></div>
-                  <div ref="logFileEl" class="log-box log-deploy-sub" v-text="logTailText"></div>
-                  <div style="margin-top:10px;font-size:12px;color:#909399;line-height:1.6;">
-                    <span v-if="liveTaskFinishedHint" v-text="liveTaskFinishedHint"></span>
-                    <span v-else>下方为实时流；已结束任务无历史回放时可点上方的 <code>precheck.log</code> / <code>install.log</code> 查看文件日志。</span>
+                </div>
+                <div class="deploy-console-gutter" aria-hidden="true"></div>
+                <div class="deploy-console-right">
+                  <div class="deploy-log-stack">
+                    <div class="deploy-log-seg">
+                      <div class="deploy-log-seg-title">
+                        <span>appctl 标准输出</span>
+                      </div>
+                      <div ref="logAppctlEl" class="log-box log-deploy-main" v-text="logText"></div>
+                    </div>
+                    <div class="deploy-log-seg deploy-log-seg--sub">
+                      <div class="deploy-log-seg-title">
+                        <span>文件日志</span>
+                        <span class="hint mono" v-if="selectedLogHint" v-text="selectedLogHint"></span>
+                        <span class="hint" v-else v-text="logTailLabel"></span>
+                      </div>
+                      <div ref="logFileEl" class="log-box log-deploy-sub" v-text="logTailText"></div>
+                    </div>
                   </div>
-                </el-card>
-              </el-col>
-            </el-row>
+                  <div class="hint" style="margin-top:8px;font-size:12px;line-height:1.55;">
+                    <span v-if="liveTaskFinishedHint" v-text="liveTaskFinishedHint"></span>
+                    <span v-else>实时流；任务结束后可点顶部 <code>precheck.log</code> / <code>install.log</code> 查看文件。</span>
+                  </div>
+                </div>
+              </div>
+            </el-card>
             </div>
             </template>
           </template>
