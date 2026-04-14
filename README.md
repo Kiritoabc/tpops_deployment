@@ -49,7 +49,7 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 - **install / upgrade**：appctl 启动后在**执行机**上按任务形态轮询 manifest：  
   - **单节点**：`<部署根>/config/gaussdb/manifest.yaml`  
   - **三节点**：同上 `manifest.yaml`（对应 `user_edit` 中 **node1_ip** 侧主文件），并追加 **`manifest_<node2_ip>.yaml`**、**`manifest_<node3_ip>.yaml`**（仅当 `user_edit` 中填写了 `node2_ip` / `node3_ip`）；多文件解析后**合并**为一条流水线。路径均在执行机本地可读（需保证其它节点 manifest 已同步到该目录，或现场脚本约定一致）。  
-  - **前端**：三节点安装时展示 **各节点独立进度条**（`summary.per_node_stats`），流水线子步骤旁展示 **各节点 IP 状态**（与合并 manifest 对齐）。
+  - **前端**：三节点安装时展示 **各节点独立进度条**（`summary.per_node_stats`）；流水线每层下按 **node1_ip / node2_ip / node3_ip** 分块列出子步骤及该节点状态。虚拟 **「步骤零：前置检查」** 在 patch 层未开始前保持 running；**当前进行的大层**自动高亮（类选中样式）。
 - **precheck install / precheck upgrade / uninstall_all**：**不轮询 manifest**。
 - 部署日志：`{log_path}/deploy/precheck.log`、`{log_path}/deploy/install.log`、`{log_path}/deploy/uninstall.log`；WebSocket `ws/deploy/<id>/log/?kind=precheck|install|uninstall` 或 `&rel=文件名`（仅 `log_path/deploy/` 下安全文件名）实时 tail。Manifest 每层服务以横向圆点链展示，点击圆点默认 tail 当前阶段对应日志。
 

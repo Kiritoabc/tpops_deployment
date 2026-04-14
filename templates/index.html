@@ -153,14 +153,33 @@
     .deploy-split { margin-top: 16px; }
     .deploy-split .el-col { min-height: 360px; }
     .pipeline-scroll { max-height: min(72vh, 760px); overflow-y: auto; padding-right: 6px; }
-    .pipeline-step { margin-bottom: 16px; padding: 12px 14px 12px 16px; background: #fafafa; border-radius: 8px; border: 1px solid #ebeef5; border-left: 4px solid #dcdfe6; }
-    .pipeline-step.sel { border-left-color: #1890ff; background: #f0f7ff; }
+    .pipeline-step { margin-bottom: 16px; padding: 12px 14px 12px 16px; background: #fafafa; border-radius: 8px; border: 1px solid #ebeef5; border-left: 4px solid #dcdfe6; transition: background .2s, border-color .2s, box-shadow .2s; }
+    .pipeline-step.sel { border-left-color: #1890ff; background: linear-gradient(90deg, #e6f4ff 0%, #f0f7ff 55%, #fafafa 100%); box-shadow: 0 0 0 1px rgba(24,144,255,.25), 0 4px 12px rgba(24,144,255,.12); }
     .pipeline-head { cursor: pointer; font-size: 15px; font-weight: 600; color: #303133; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
     .pipeline-head:hover { color: #1890ff; }
     .parallel-badge { font-size: 11px; color: #909399; font-weight: 400; }
     .pipeline-sub { margin: 10px 0 0 4px; padding-left: 12px; border-left: 2px dashed #dcdfe6; }
-    .pipeline-subline { font-size: 13px; color: #606266; padding: 4px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; cursor: pointer; }
-    .pipeline-subline:hover { color: #1890ff; }
+    .pipeline-subline { font-size: 13px; color: #303133; padding: 6px 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; cursor: pointer; border-radius: 6px; }
+    .pipeline-subline:hover { background: rgba(24,144,255,.08); color: #1890ff; }
+    .pipeline-lv-pill {
+      display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .pipeline-lv-pill.lv-done { background: #e7f6e9; color: #237804; border: 1px solid #95de64; }
+    .pipeline-lv-pill.lv-running { background: #fff7e6; color: #ad6800; border: 1px solid #ffc069; }
+    .pipeline-lv-pill.lv-retrying { background: #fff2e8; color: #ad4e00; border: 1px solid #ffbb96; }
+    .pipeline-lv-pill.lv-none { background: #f0f0f0; color: #434343; border: 1px solid #bfbfbf; }
+    .pipeline-lv-pill.lv-error { background: #fff1f0; color: #a8071a; border: 1px solid #ffa39e; }
+    .pipeline-lv-pill.lv-null { background: #f9f0ff; color: #531dab; border: 1px solid #d3adf7; }
+    .sub-st-pill { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 4px; }
+    .sub-st-pill.st-done { background: #e7f6e9; color: #237804; border: 1px solid #95de64; }
+    .sub-st-pill.st-running { background: #fff7e6; color: #ad6800; border: 1px solid #ffc069; }
+    .sub-st-pill.st-retrying { background: #fff2e8; color: #ad4e00; border: 1px solid #ffbb96; }
+    .sub-st-pill.st-none { background: #f0f0f0; color: #434343; border: 1px solid #bfbfbf; }
+    .sub-st-pill.st-error { background: #fff1f0; color: #a8071a; border: 1px solid #ffa39e; }
+    .sub-st-pill.st-null { background: #f9f0ff; color: #531dab; border: 1px solid #d3adf7; }
+    .pipeline-node-block { margin: 10px 0 0 8px; padding: 8px 10px 8px 12px; background: #fff; border-radius: 8px; border: 1px solid #e8e8e8; }
+    .pipeline-node-label { font-size: 13px; font-weight: 600; color: #1890ff; margin-bottom: 6px; font-family: ui-monospace, Menlo, Consolas, monospace; }
     .log-deploy-main { height: min(52vh, 560px); min-height: 280px; }
     .log-deploy-sub { height: 200px; margin-top: 12px; }
     .phase-strip { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; background: #f5f7fa; border-radius: 6px; margin-bottom: 14px; font-size: 13px; color: #606266; }
@@ -878,19 +897,40 @@
                     <div class="hint" style="margin-top:6px;word-break:break-all;" v-text="(manifestPaths || []).join(' · ')"></div>
                   </el-card>
                   <div class="pipeline-scroll">
-                    <template v-if="pipelineRows.length && showManifestTree">
+                    <template v-if="displayPipelineRows.length && showManifestTree">
                       <div
-                        v-for="row in pipelineRows"
+                        v-for="row in displayPipelineRows"
                         :key="row.key"
                         class="pipeline-step"
-                        :class="{ sel: selectedPipelineKey === row.key }"
+                        :class="{ sel: activePipelineKey === row.key }"
                       >
                         <div class="pipeline-head" @click="onPipelineStepClick(row)">
                           <span v-text="row.title"></span>
-                          <el-tag size="small" :type="row.level_status === 'done' ? 'success' : (row.level_status === 'error' ? 'danger' : (row.level_status === 'running' ? 'warning' : 'info'))" v-text="row.level_status"></el-tag>
+                          <span class="pipeline-lv-pill" :class="pipelineLvPillClass(row.level_status)" v-text="row.level_status"></span>
                           <span class="parallel-badge" v-text="'（' + row.parallel_note + '）'"></span>
                         </div>
                         <div class="pipeline-sub">
+                          <div v-if="row.key === '__precheck__'" class="hint" style="margin:4px 0 0 4px;">在 <strong>patch</strong> 层进入 running 之前，本步骤保持 <strong>running</strong>；不区分节点。</div>
+                          <template v-if="tripleGroupedSubs(row).length">
+                            <div
+                              v-for="grp in tripleGroupedSubs(row)"
+                              :key="row.key + '-' + grp.node_label"
+                              class="pipeline-node-block"
+                            >
+                              <div class="pipeline-node-label" v-text="grp.node_label + '：'"></div>
+                              <div
+                                v-for="sub in grp.subs"
+                                :key="sub.id + '-' + grp.node_label"
+                                class="pipeline-subline"
+                                @click.stop="onPipelineSubClick(sub, row)"
+                              >
+                                <span>·</span>
+                                <span v-text="subLabelWithoutStatus(sub)"></span>
+                                <span class="sub-st-pill" :class="subStPillClass(sub._nodeStatus || sub.status)" v-text="sub._nodeStatus || sub.status"></span>
+                              </div>
+                            </div>
+                          </template>
+                          <template v-else>
                           <div
                             v-for="sub in row.children"
                             :key="sub.id"
@@ -899,8 +939,8 @@
                           >
                             <span>·</span>
                             <span v-text="sub.label"></span>
-                            <el-tag size="small" type="info" v-text="sub.status"></el-tag>
-                            <div v-if="sub.node_details && sub.node_details.length" class="node-status-dots">
+                            <span class="sub-st-pill" :class="subStPillClass(sub.status)" v-text="sub.status"></span>
+                            <div v-if="sub.node_details && sub.node_details.length && !tripleDeployForManifest" class="node-status-dots">
                               <span
                                 v-for="nd in sub.node_details"
                                 :key="nd.node_index + '-' + nd.node_label"
@@ -910,6 +950,7 @@
                               ></span>
                             </div>
                           </div>
+                          </template>
                         </div>
                       </div>
                     </template>
@@ -1111,6 +1152,101 @@ use_import_ca = no
           if (p && p.pipeline && p.pipeline.length) return p.pipeline;
           return [];
         });
+
+        const patchRowFromPipeline = computed(() => {
+          const rows = pipelineRows.value || [];
+          return rows.find((r) => r && r.key === 'patch') || null;
+        });
+
+        const precheckVirtualRow = computed(() => {
+          if (!showManifestTree.value) return null;
+          const pr = patchRowFromPipeline.value;
+          if (!pr) return null;
+          const ps = (pr.level_status || 'none').toLowerCase();
+          const patchStarted = ps === 'running' || ps === 'retrying' || ps === 'done' || ps === 'error';
+          const lv = patchStarted ? 'done' : 'running';
+          return {
+            key: '__precheck__',
+            title: '步骤零：前置检查（precheck）',
+            level_status: lv,
+            parallel_note: '集群级，不区分节点',
+            children: [],
+          };
+        });
+
+        const displayPipelineRows = computed(() => {
+          const v = precheckVirtualRow.value;
+          const rest = pipelineRows.value || [];
+          if (v) return [v, ...rest];
+          return rest;
+        });
+
+        const activePipelineKey = computed(() => {
+          const rows = pipelineRows.value || [];
+          const pr = patchRowFromPipeline.value;
+          if (pr) {
+            const ps = (pr.level_status || 'none').toLowerCase();
+            if (ps !== 'running' && ps !== 'retrying' && ps !== 'done' && ps !== 'error') {
+              return '__precheck__';
+            }
+          }
+          for (const r of rows) {
+            if (!r) continue;
+            const lv = (r.level_status || 'none').toLowerCase();
+            if (lv === 'running' || lv === 'retrying') return r.key;
+          }
+          for (const r of rows) {
+            const ch = r.children || [];
+            for (const s of ch) {
+              const st = (s.status || 'none').toLowerCase();
+              if (st === 'running' || st === 'retrying') return r.key;
+            }
+          }
+          for (const r of rows) {
+            const lv = (r.level_status || 'none').toLowerCase();
+            if (lv !== 'done') return r.key;
+          }
+          return rows.length ? rows[rows.length - 1].key : '';
+        });
+
+        const tripleGroupedSubs = (row) => {
+          if (!tripleDeployForManifest.value || !row || row.key === '__precheck__') return [];
+          const ch0 = (row.children || [])[0];
+          if (!ch0 || !Array.isArray(ch0.node_details) || !ch0.node_details.length) return [];
+          const labels = tripleNodeProgressList.value.length
+            ? tripleNodeProgressList.value.map((p) => p.label)
+            : (ch0.node_details || []).map((d) => d.node_label);
+          if (!labels.length) return [];
+          return labels.map((node_label) => ({
+            node_label,
+            subs: (row.children || []).map((ch) => {
+              const nd = (ch.node_details || []).find((d) => d.node_label === node_label);
+              const st = nd ? nd.status : 'none';
+              return { ...ch, _nodeStatus: st };
+            }),
+          }));
+        };
+
+        const subLabelWithoutStatus = (sub) => (sub && sub.label) ? String(sub.label) : '';
+
+        const pipelineLvPillClass = (st) => {
+          const x = (st || 'none').toLowerCase();
+          if (x === 'done') return 'lv-done';
+          if (x === 'running' || x === 'retrying') return x === 'retrying' ? 'lv-retrying' : 'lv-running';
+          if (x === 'error' || x === 'failed') return 'lv-error';
+          if (x === 'null') return 'lv-null';
+          return 'lv-none';
+        };
+
+        const subStPillClass = (st) => {
+          const x = (st || 'none').toLowerCase();
+          if (x === 'done') return 'st-done';
+          if (x === 'running') return 'st-running';
+          if (x === 'retrying') return 'st-retrying';
+          if (x === 'error' || x === 'failed') return 'st-error';
+          if (x === 'null') return 'st-null';
+          return 'st-none';
+        };
 
         const formatDurationSec = (sec) => {
           if (sec == null || Number.isNaN(sec) || sec < 0) return '—';
@@ -1574,7 +1710,8 @@ use_import_ca = no
 
         const onPipelineSubClick = (sub, row) => {
           selectedPipelineKey.value = row.key || '';
-          selectedLogHint.value = (row.title || '') + ' → ' + (sub.label || '');
+          const lab = tripleDeployForManifest.value ? subLabelWithoutStatus(sub) : (sub.label || '');
+          selectedLogHint.value = (row.title || '') + ' → ' + lab;
           openLogTail(logKindForTask());
         };
 
@@ -1902,7 +2039,8 @@ use_import_ca = no
           deployElapsedHuman, manifestProgressPercent, manifestEstimatedHuman, manifestCurrentStepLine,
           logText, logTailText, logTailLabel, logAppctlEl, logFileEl, treeRoots, manifestSummary, manifestPaths, manifestPayload, taskStatus, currentTaskId,
           showManifestTree, showTripleNodeStrip, tripleNodeProgressList, tripleNodeRoleText, shortPath, subStatusDotClass,
-          pipelineRows, selectedPipelineKey, selectedLogHint, phaseHint, phaseBanner, flowS1, flowS2, flowS3, flowS4,
+          pipelineRows, displayPipelineRows, activePipelineKey, tripleGroupedSubs, subLabelWithoutStatus, pipelineLvPillClass, subStPillClass,
+          selectedPipelineKey, selectedLogHint, phaseHint, phaseBanner, flowS1, flowS2, flowS3, flowS4,
           openLogTail, openLogTailRel, onPipelineStepClick, onPipelineSubClick,
           isHostDisabledForNode1, isHostDisabledTriple, goDeployStep2, fillUserEditTemplate,
           authMethodLabel, formatHostTime, refreshHostsPage,
