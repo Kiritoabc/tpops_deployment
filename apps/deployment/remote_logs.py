@@ -11,6 +11,8 @@ def log_kind_for_action(action: str) -> str:
         return "precheck"
     if action == "install" or action == "upgrade":
         return "install"
+    if action == "uninstall_all":
+        return "uninstall"
     return "precheck"
 
 

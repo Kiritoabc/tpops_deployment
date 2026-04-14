@@ -8,6 +8,7 @@ _VALID_ACTIONS = {
     DeploymentTask.PRECHECK_UPGRADE,
     DeploymentTask.INSTALL,
     DeploymentTask.UPGRADE,
+    DeploymentTask.UNINSTALL_ALL,
 }
 
 

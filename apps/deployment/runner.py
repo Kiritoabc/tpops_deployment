@@ -156,14 +156,17 @@ def _build_appctl_command(host, action: str, target: str, deploy_mode: str = Non
         sub = "install%s" % (" %s" % tgt if tgt else "")
     elif action == DeploymentTask.UPGRADE:
         sub = "upgrade%s" % (" %s" % tgt if tgt else "")
+    elif action == DeploymentTask.UNINSTALL_ALL:
+        sub = "uninstall_all%s" % (" %s" % tgt if tgt else "")
     else:
         raise ValueError("未知操作类型")
 
-    # 单节点 install/upgrade 常见交互确认 (y/n)，SSH 无 TTY 时需自动应答
+    # install/upgrade/uninstall_all 在无 TTY 时可能提示 (y/n)，自动应答 y
     inner = "cd %s && sh appctl.sh %s" % (root, sub)
-    if deploy_mode == DeploymentTask.MODE_SINGLE and action in (
+    if action in (
         DeploymentTask.INSTALL,
         DeploymentTask.UPGRADE,
+        DeploymentTask.UNINSTALL_ALL,
     ):
         inner = "cd %s && yes y 2>/dev/null | sh appctl.sh %s" % (root, sub)
 
@@ -321,7 +324,11 @@ def _run_task(task_id: int):
             {
                 "type": "phase",
                 "phase": "precheck_no_manifest",
-                "message": "前置检查阶段不轮询 manifest",
+                "message": (
+                    "卸载流程不轮询 manifest"
+                    if task.action == DeploymentTask.UNINSTALL_ALL
+                    else "前置检查阶段不轮询 manifest"
+                ),
             },
         )
     else:

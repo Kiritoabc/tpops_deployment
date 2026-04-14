@@ -32,7 +32,7 @@ class DeployLogTailConsumer(AsyncWebsocketConsumer):
         query = parse_qs(self.scope.get("query_string", b"").decode())
         token = (query.get("token") or [""])[0]
         self.log_kind = (query.get("kind") or ["precheck"])[0]
-        if self.log_kind not in ("precheck", "install"):
+        if self.log_kind not in ("precheck", "install", "uninstall"):
             self.log_kind = "precheck"
         self.rel_file = (query.get("rel") or [""])[0].strip() or None
 

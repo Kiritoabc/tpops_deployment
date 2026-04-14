@@ -707,10 +707,11 @@
                             <el-radio-button label="precheck_upgrade">升级前置检查 — <code>precheck upgrade</code>（需填目标组件）</el-radio-button>
                             <el-radio-button label="install">安装 — <code>install</code></el-radio-button>
                             <el-radio-button label="upgrade">升级 — <code>upgrade</code></el-radio-button>
+                            <el-radio-button label="uninstall_all">卸载全部 — <code>uninstall_all</code>（高危；单/三节点均自动应答 y）</el-radio-button>
                           </el-radio-group>
                         </el-form-item>
                         <el-form-item label="目标参数">
-                          <el-input v-model="deployForm.target" placeholder="precheck 类必填组件名（如 gaussdb）；install / upgrade 按现场可留空" />
+                          <el-input v-model="deployForm.target" placeholder="precheck 类必填组件名（如 gaussdb）；install / upgrade / uninstall_all 按现场可留空" />
                         </el-form-item>
                         <el-form-item label="user_edit">
                           <el-input v-model="deployForm.user_edit_content" type="textarea" :rows="12" placeholder="[user_edit] ..." class="mono-ta" />
@@ -760,12 +761,13 @@
               <el-col :xs="24" :md="12">
                 <el-card shadow="never" style="height:100%;">
                   <template #header>
-                    <span style="font-weight:600">安装流水线</span>
-                    <span class="hint" style="margin-left:8px;">大层串行；层内子步骤并发。点击<strong>步骤</strong>或<strong>子步骤</strong>，右侧打开 <code>install.log</code>（前置操作为 <code>precheck.log</code>）</span>
+                    <span style="font-weight:600">{{ showManifestTree ? '安装流水线' : '部署流水线' }}</span>
+                    <span class="hint" style="margin-left:8px;">大层串行；层内子步骤并发。点击<strong>步骤</strong>或<strong>子步骤</strong>，右侧打开对应文件日志（见上方标签）</span>
                   </template>
                   <div class="phase-strip">
                     <el-tag size="small" @click="openLogTail('precheck')" style="cursor:pointer">precheck.log</el-tag>
                     <el-tag size="small" @click="openLogTail('install')" style="cursor:pointer">install.log</el-tag>
+                    <el-tag size="small" type="danger" @click="openLogTail('uninstall')" style="cursor:pointer">uninstall.log</el-tag>
                     <span v-text="phaseBanner" style="flex:1;min-width:120px;"></span>
                   </div>
                   <div v-if="showManifestTree && manifestSummary && manifestSummary.services_total != null" class="manifest-dash">
@@ -935,7 +937,7 @@ use_import_ca = no
         const logTailText = ref('');
         const logAppctlEl = ref(null);
         const logFileEl = ref(null);
-        const logTailLabel = ref('（点击左侧步骤或 precheck/install 标签）');
+        const logTailLabel = ref('（点击左侧步骤或日志标签）');
         const treeRoots = ref([]);
         const manifestPayload = ref(null);
         const manifestSummary = ref(null);
@@ -1217,6 +1219,7 @@ use_import_ca = no
             precheck_upgrade: '升级前置检查',
             install: '安装',
             upgrade: '升级',
+            uninstall_all: '卸载全部',
           };
           return m[a] || a || '—';
         };
@@ -1423,7 +1426,9 @@ use_import_ca = no
 
         const logKindForTask = () => {
           const a = lastAction.value || '';
-          return a.startsWith('precheck') ? 'precheck' : 'install';
+          if (a.startsWith('precheck')) return 'precheck';
+          if (a === 'uninstall_all') return 'uninstall';
+          return 'install';
         };
 
         const onPipelineStepClick = (row) => {
@@ -1546,7 +1551,7 @@ use_import_ca = no
               clearDeployElapsedTimer();
               flowS1.value = 'done';
               const a = lastAction.value || '';
-              if (a === 'precheck_install' || a === 'precheck_upgrade') {
+              if (a === 'precheck_install' || a === 'precheck_upgrade' || a === 'uninstall_all') {
                 flowS2.value = 'done';
                 flowS3.value = 'skip';
                 flowS4.value = 'skip';
