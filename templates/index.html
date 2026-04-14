@@ -267,6 +267,24 @@
     }
     .manifest-current-box .lab { font-size: 12px; color: #909399; margin-bottom: 4px; }
     .manifest-current-box .val { color: #303133; font-weight: 500; word-break: break-all; }
+    /* 三节点：各节点并行进度条 */
+    .triple-node-strip {
+      display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;
+    }
+    .triple-node-card {
+      flex: 1; min-width: 160px; max-width: 100%;
+      padding: 12px 14px; background: #fff; border: 1px solid #e4e7ed; border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,21,41,.05);
+    }
+    .triple-node-card .head { font-size: 13px; font-weight: 600; color: #303133; margin-bottom: 6px; word-break: break-all; }
+    .triple-node-card .role { font-size: 11px; color: #909399; margin-bottom: 8px; }
+    .triple-node-card .el-progress { margin-top: 4px; }
+    .node-status-dots { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+    .node-dot { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: #f5f7fa; border: 1px solid #ebeef5; }
+    .node-dot.done { background: #f0f9eb; border-color: #c2e7b0; color: #52c41a; }
+    .node-dot.running { background: #fdf6ec; border-color: #f5dab1; color: #e6a23c; }
+    .node-dot.error { background: #fef0f0; border-color: #fbc4c4; color: #f56c6c; }
+    .node-dot.none { color: #909399; }
     .deploy-page-toolbar {
       display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
       gap: 12px; margin-bottom: 16px;
@@ -815,7 +833,7 @@
                 <el-card shadow="never" style="height:100%;">
                   <template #header>
                     <span style="font-weight:600">{{ showManifestTree ? '安装流水线' : '部署流水线' }}</span>
-                    <span class="hint" style="margin-left:8px;">大层串行；层内子步骤并发。点击<strong>步骤</strong>或<strong>子步骤</strong>，右侧打开对应文件日志（见上方标签）</span>
+                    <span class="hint" style="margin-left:8px;">大层串行；层内多服务并发。<template v-if="showTripleNodeStrip">三节点时各节点并行安装，子步骤旁展示各 IP 状态。</template>点击步骤/子步骤，右侧打开日志。</span>
                   </template>
                   <div class="phase-strip">
                     <el-tag size="small" @click="openLogTail('precheck')" style="cursor:pointer">precheck.log</el-tag>
@@ -840,6 +858,14 @@
                     <div v-if="manifestCurrentStepLine" class="manifest-current-box">
                       <div class="lab">当前进行</div>
                       <div class="val" v-text="manifestCurrentStepLine"></div>
+                    </div>
+                    <div v-if="showTripleNodeStrip && tripleNodeProgressList.length" class="triple-node-strip">
+                      <div v-for="pn in tripleNodeProgressList" :key="pn.index" class="triple-node-card">
+                        <div class="head" v-text="pn.label"></div>
+                        <div class="role" v-text="tripleNodeRoleText(pn.role) + (pn.path ? ' · ' + shortPath(pn.path) : '')"></div>
+                        <div style="font-size:12px;color:#606266;">层 {{ pn.levels_done }}/{{ pn.levels_total }} · 服务 {{ pn.services_done }}/{{ pn.services_total }}</div>
+                        <el-progress :percentage="pn.progress_percent" :stroke-width="8" />
+                      </div>
                     </div>
                     <div class="hint" style="margin-top:10px;word-break:break-all;" v-text="'manifest: ' + ((manifestPaths || []).join(' · ') || '—')"></div>
                   </div>
@@ -874,6 +900,15 @@
                             <span>·</span>
                             <span v-text="sub.label"></span>
                             <el-tag size="small" type="info" v-text="sub.status"></el-tag>
+                            <div v-if="sub.node_details && sub.node_details.length" class="node-status-dots">
+                              <span
+                                v-for="nd in sub.node_details"
+                                :key="nd.node_index + '-' + nd.node_label"
+                                class="node-dot"
+                                :class="subStatusDotClass(nd.status)"
+                                v-text="nd.node_label + ':' + nd.status"
+                              ></span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1025,6 +1060,51 @@ use_import_ca = no
           const a = lastAction.value || '';
           return a === 'install' || a === 'upgrade';
         });
+
+        const tripleDeployForManifest = computed(() => {
+          const p = manifestPayload.value;
+          if (p && p.deploy_mode === 'triple') return true;
+          const snap = currentTaskSnapshot.value;
+          return snap && snap.deploy_mode === 'triple';
+        });
+
+        const showTripleNodeStrip = computed(() => {
+          const s = manifestSummary.value;
+          return Boolean(
+            showManifestTree.value
+            && tripleDeployForManifest.value
+            && s
+            && s.multi_node
+            && Array.isArray(s.per_node_stats)
+            && s.per_node_stats.length >= 2
+          );
+        });
+
+        const tripleNodeProgressList = computed(() => {
+          const s = manifestSummary.value;
+          if (!s || !Array.isArray(s.per_node_stats)) return [];
+          return s.per_node_stats;
+        });
+
+        const tripleNodeRoleText = (role) => {
+          const m = { node1: '节点1（manifest.yaml）', node2: '节点2', node3: '节点3' };
+          return m[role] || role || '节点';
+        };
+
+        const shortPath = (p) => {
+          if (!p) return '';
+          const s = String(p);
+          const i = s.lastIndexOf('/');
+          return i >= 0 ? s.slice(i + 1) : s;
+        };
+
+        const subStatusDotClass = (st) => {
+          const x = (st || '').toLowerCase();
+          if (x === 'done') return 'done';
+          if (x === 'running' || x === 'retrying') return 'running';
+          if (x === 'error' || x === 'failed') return 'error';
+          return 'none';
+        };
 
         const pipelineRows = computed(() => {
           const p = manifestPayload.value;
@@ -1821,7 +1901,8 @@ use_import_ca = no
           currentTaskSnapshot, deployStatusStripVisible, deployStatusStripTitle, deployStatusStripType, liveTaskFinishedHint,
           deployElapsedHuman, manifestProgressPercent, manifestEstimatedHuman, manifestCurrentStepLine,
           logText, logTailText, logTailLabel, logAppctlEl, logFileEl, treeRoots, manifestSummary, manifestPaths, manifestPayload, taskStatus, currentTaskId,
-          showManifestTree, pipelineRows, selectedPipelineKey, selectedLogHint, phaseHint, phaseBanner, flowS1, flowS2, flowS3, flowS4,
+          showManifestTree, showTripleNodeStrip, tripleNodeProgressList, tripleNodeRoleText, shortPath, subStatusDotClass,
+          pipelineRows, selectedPipelineKey, selectedLogHint, phaseHint, phaseBanner, flowS1, flowS2, flowS3, flowS4,
           openLogTail, openLogTailRel, onPipelineStepClick, onPipelineSubClick,
           isHostDisabledForNode1, isHostDisabledTriple, goDeployStep2, fillUserEditTemplate,
           authMethodLabel, formatHostTime, refreshHostsPage,

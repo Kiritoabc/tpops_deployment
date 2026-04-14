@@ -155,6 +155,84 @@ def _is_tpops_manifest(data: Any) -> bool:
     return False
 
 
+def _per_node_progress_from_dict(d: Dict[str, Any]) -> Dict[str, Any]:
+    """单份 manifest 字典上的层/服务完成度（用于三节点分列进度）。"""
+    lv_done = sum(
+        1
+        for lv in LEVEL_ORDER
+        if _norm_status(d.get("%s_status" % lv)) == "done"
+    )
+    st_done = 0
+    st_total = 0
+    for lv in LEVEL_ORDER:
+        block = d.get(lv)
+        if not isinstance(block, list):
+            continue
+        for item in block:
+            if isinstance(item, dict):
+                st_total += 1
+                if _norm_status(item.get("status")) == "done":
+                    st_done += 1
+    pct = int(round(100.0 * st_done / st_total)) if st_total else 0
+    return {
+        "levels_done": lv_done,
+        "levels_total": len(LEVEL_ORDER),
+        "services_done": st_done,
+        "services_total": st_total,
+        "progress_percent": min(100, max(0, pct)),
+    }
+
+
+def enrich_pipeline_multi_nodes(
+    pipeline: List[Dict[str, Any]],
+    roots: List[Dict[str, Any]],
+    nodes_meta: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """为 pipeline 子步骤附加各节点状态（三节点并行安装可视化）。"""
+    if not pipeline or not nodes_meta or len(nodes_meta) < 2:
+        return pipeline
+    labels = [
+        str(nm.get("label") or ("节点%s" % (nm.get("index", 0) + 1)))
+        for nm in nodes_meta
+    ]
+    root_by_id = {r.get("id"): r for r in roots if isinstance(r, dict)}
+    for row in pipeline:
+        root = root_by_id.get(row.get("key"))
+        if not root:
+            continue
+        by_child_id = {
+            c.get("id"): c
+            for c in (root.get("children") or [])
+            if isinstance(c, dict)
+        }
+        if len(nodes_meta) > 1:
+            row["parallel_note"] = "三节点并行安装（各节点 manifest 合并）"
+        for sub in row.get("children") or []:
+            ch = by_child_id.get(sub.get("id"))
+            if not ch:
+                continue
+            meta = ch.get("meta") if isinstance(ch.get("meta"), dict) else {}
+            nodes_part = meta.get("nodes")
+            if not isinstance(nodes_part, list) or not nodes_part:
+                continue
+            node_details = []
+            for nm_entry in nodes_part:
+                if not isinstance(nm_entry, dict):
+                    continue
+                idx = int(nm_entry.get("node_index", 0))
+                lab = labels[idx] if 0 <= idx < len(labels) else "节点%s" % (idx + 1)
+                node_details.append(
+                    {
+                        "node_index": idx,
+                        "node_label": lab,
+                        "status": _norm_status(nm_entry.get("status")),
+                    }
+                )
+            if node_details:
+                sub["node_details"] = node_details
+    return pipeline
+
+
 def build_pipeline_from_roots(roots: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     流水线：大层串行（顺序即 roots 顺序），每层内子服务并发（展示说明）。
@@ -404,7 +482,9 @@ def _agg_status(statuses: List[str]) -> str:
 
 
 def merge_tpops_manifest_dicts(
-    dicts: List[Dict[str, Any]], manifest_paths: Optional[List[str]] = None
+    dicts: List[Dict[str, Any]],
+    manifest_paths: Optional[List[str]] = None,
+    node1_ip: Optional[str] = None,
 ) -> Dict[str, Any]:
     """多节点 manifest 字典合并为一棵树（聚合各层/各服务状态）。"""
     if not dicts:
@@ -432,7 +512,20 @@ def merge_tpops_manifest_dicts(
                     label = m.group(1)
             elif p.endswith("/manifest.yaml") or p.endswith("manifest.yaml"):
                 label = "local"
-        nodes_meta.append({"index": i, "label": label})
+        nodes_meta.append(
+            {
+                "index": i,
+                "label": label,
+                "path": p if i < len(paths) else "",
+                "role": ("node1", "node2", "node3")[i] if i < 3 else "node_%s" % (i + 1),
+            }
+        )
+    n1 = (node1_ip or "").strip()
+    for nm in nodes_meta:
+        if nm.get("role") == "node1" and n1:
+            nm["label"] = n1
+        elif nm.get("label") == "local" and not n1:
+            nm["label"] = "节点1（manifest.yaml）"
 
     merged_levels = {}
     for level in LEVEL_ORDER:
@@ -524,6 +617,18 @@ def merge_tpops_manifest_dicts(
     )
     enrich_manifest_summary(summary, roots, None)
     summary["estimated_total_seconds"] = round(est_sum, 1)
+    summary["multi_node"] = len(dicts) > 1
+    summary["per_node_stats"] = [
+        {
+            "index": i,
+            "label": (nodes_meta[i].get("label") if i < len(nodes_meta) else "node_%s" % (i + 1)),
+            "role": (nodes_meta[i].get("role") if i < len(nodes_meta) else ""),
+            "path": (nodes_meta[i].get("path") if i < len(nodes_meta) else ""),
+            **_per_node_progress_from_dict(d),
+        }
+        for i, d in enumerate(dicts)
+        if isinstance(d, dict)
+    ]
 
     out = {
         "roots": roots,
@@ -531,7 +636,8 @@ def merge_tpops_manifest_dicts(
         "summary": summary,
         "nodes": nodes_meta,
     }
-    out["pipeline"] = build_pipeline_from_roots(roots)
+    pipe = build_pipeline_from_roots(roots)
+    out["pipeline"] = enrich_pipeline_multi_nodes(pipe, roots, nodes_meta)
     return out
 
 

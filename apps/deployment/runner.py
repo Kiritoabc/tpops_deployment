@@ -129,9 +129,14 @@ def _poll_manifest_once(task_id: int, host_id: int, secret: str, manifest_paths:
     if dicts:
         if len(dicts) == 1:
             tree = manifest_to_tree(yaml.safe_dump(dicts[0], allow_unicode=True))
+            if tree.get("summary") is not None:
+                tree["summary"]["multi_node"] = False
         else:
-            tree = merge_tpops_manifest_dicts(dicts, paths)
+            n1 = (kv.get("node1_ip") or "").strip()
+            tree = merge_tpops_manifest_dicts(dicts, paths, node1_ip=n1 or None)
         tree["manifest_paths"] = paths
+        if task:
+            tree["deploy_mode"] = task.deploy_mode
         _emit(task_id, {"type": "manifest", "data": tree})
     else:
         _emit(
