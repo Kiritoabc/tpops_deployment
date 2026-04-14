@@ -19,9 +19,9 @@
       --ob-card-radius: 10px;
       /* 工作台：左右等宽 */
       --deploy-console-col-w: minmax(0, 1fr);
-      /* 单块日志区高度；左右列总工作区高度一致（两格日志 + 标题/间距/底部说明） */
+      /* 单块日志区最大高度；左右列工作区同高（右侧含底部说明行） */
       --deploy-log-panel-max-h: min(56vh, 680px);
-      --deploy-log-stack-chrome: clamp(6.5rem, 14vh, 9rem);
+      --deploy-log-stack-chrome: clamp(9rem, 17vh, 12rem);
       --deploy-console-col-h: calc(var(--deploy-log-panel-max-h) * 2 + var(--deploy-log-stack-chrome));
     }
     * { box-sizing: border-box; }
@@ -280,12 +280,19 @@
       justify-content: flex-start;
       overflow: hidden;
     }
+    .deploy-console-right > .deploy-log-footer-hint {
+      flex-shrink: 0;
+      margin-top: 8px;
+    }
     .deploy-log-seg {
       display: flex;
       flex-direction: column;
+      flex: 1 1 0;
+      min-height: 0;
     }
     .deploy-log-seg--sub {
-      flex: 0 0 auto;
+      flex: 1 1 0;
+      min-height: 0;
     }
     .deploy-log-seg-title {
       font-size: 12px;
@@ -332,10 +339,10 @@
     .pipeline-node-label { font-size: 13px; font-weight: 600; color: #1890ff; margin-bottom: 6px; font-family: ui-monospace, Menlo, Consolas, monospace; }
     .log-deploy-main,
     .log-deploy-sub {
-      overflow: auto;
-      flex-shrink: 0;
+      flex: 1 1 0;
       min-height: 120px;
       max-height: var(--deploy-log-panel-max-h);
+      overflow: auto;
     }
     .phase-strip { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; background: #f5f7fa; border-radius: 6px; margin-bottom: 14px; font-size: 13px; color: #606266; }
     /* 主机管理页 */
@@ -1151,7 +1158,7 @@
                       <div ref="logFileEl" class="log-box log-deploy-sub" v-text="logTailText"></div>
                     </div>
                   </div>
-                  <div class="hint" style="margin-top:8px;font-size:12px;line-height:1.55;">
+                  <div class="hint deploy-log-footer-hint" style="font-size:12px;line-height:1.55;">
                     <span v-if="liveTaskFinishedHint" v-text="liveTaskFinishedHint"></span>
                     <span v-else>实时流；任务结束后可点顶部 <code>precheck.log</code> / <code>install.log</code> 查看文件。</span>
                   </div>
