@@ -7,10 +7,13 @@
   <link rel="stylesheet" href="https://unpkg.com/element-plus@2.4.4/dist/index.css" />
   <style>
     :root {
-      --ob-sidebar: #0b1f3a;
+      --ob-sidebar: #061a2e;
+      --ob-sidebar-mid: #0b2744;
       --ob-sidebar-active: #1890ff;
-      --ob-header-h: 56px;
-      --ob-bg: #f0f2f5;
+      --ob-header-h: 52px;
+      --ob-bg: #e8ecf1;
+      --ob-content-max: 1480px;
+      --ob-card-radius: 10px;
     }
     * { box-sizing: border-box; }
     html, body, #app { height: 100%; margin: 0; }
@@ -44,41 +47,70 @@
     .login-card .body { padding: 28px 32px 32px; background: #fff; }
     .layout-root { height: 100%; }
     .ob-aside {
-      background: var(--ob-sidebar);
+      background: linear-gradient(180deg, var(--ob-sidebar-mid) 0%, var(--ob-sidebar) 100%);
       color: #fff;
       display: flex;
       flex-direction: column;
-      border-right: 1px solid rgba(255,255,255,.06);
+      border-right: 1px solid rgba(255,255,255,.08);
+      transition: width 0.22s ease;
     }
+    .ob-aside--collapsed .ob-logo-text { display: none; }
+    .ob-aside--collapsed .ob-logo { justify-content: center; padding: 0 8px; }
     .ob-logo {
       height: var(--ob-header-h);
       display: flex;
       align-items: center;
-      padding: 0 20px;
+      padding: 0 16px;
       font-weight: 600;
-      font-size: 16px;
+      font-size: 15px;
       color: #fff;
-      border-bottom: 1px solid rgba(255,255,255,.08);
+      border-bottom: 1px solid rgba(255,255,255,.1);
       white-space: nowrap;
+      flex-shrink: 0;
     }
-    .ob-logo span { color: #69c0ff; margin-right: 8px; font-size: 20px; }
-    .ob-menu { border-right: none !important; flex: 1; background: transparent !important; }
-    .ob-menu.el-menu--dark { --el-menu-bg-color: transparent; --el-menu-hover-bg-color: rgba(255,255,255,.08); }
+    .ob-logo span { color: #69c0ff; margin-right: 8px; font-size: 18px; }
+    .ob-aside-toggle {
+      margin-top: auto; padding: 10px 12px;
+      border-top: 1px solid rgba(255,255,255,.1);
+    }
+    .ob-aside-toggle .el-button { width: 100%; color: rgba(255,255,255,.85); border-color: rgba(255,255,255,.2); background: rgba(255,255,255,.06); }
+    .ob-aside-toggle .el-button:hover { border-color: #69c0ff; color: #fff; background: rgba(24,144,255,.2); }
+    .ob-menu { border-right: none !important; flex: 1; background: transparent !important; padding: 8px 0; }
+    .ob-menu.el-menu--dark { --el-menu-bg-color: transparent; --el-menu-hover-bg-color: rgba(255,255,255,.1); }
+    .ob-menu .el-menu-item { border-radius: 8px; margin: 4px 8px; height: 44px; line-height: 44px; }
+    .ob-menu .el-menu-item.is-active {
+      background: linear-gradient(90deg, rgba(24,144,255,.35), rgba(24,144,255,.12)) !important;
+      border-left: 3px solid #69c0ff;
+    }
+    .ob-menu--collapse .el-menu-item.is-active { border-left: none; }
     .ob-header {
       height: var(--ob-header-h) !important;
-      background: #fff;
-      border-bottom: 1px solid #e8e8e8;
+      background: linear-gradient(180deg, #ffffff 0%, #fafbfd 100%);
+      border-bottom: 1px solid #e4e7ed;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 24px;
-      box-shadow: 0 1px 4px rgba(0,21,41,.08);
+      padding: 0 20px 0 24px;
+      box-shadow: 0 1px 2px rgba(0,21,41,.06);
     }
-    .ob-breadcrumb { font-size: 14px; color: #606266; }
-    .ob-breadcrumb strong { color: #303133; }
-    .ob-main { padding: 20px 24px 32px; background: var(--ob-bg); overflow: auto; }
-    .ob-page-title { font-size: 16px; font-weight: 600; color: #303133; margin: 0 0 16px; }
-    .stat-card { border-radius: 4px; }
+    .ob-breadcrumb { font-size: 13px; color: #606266; letter-spacing: .02em; }
+    .ob-breadcrumb strong { color: #1d2129; font-weight: 600; }
+    .ob-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ob-doc-link { font-size: 12px; color: #1890ff; text-decoration: none; margin-right: 4px; }
+    .ob-doc-link:hover { text-decoration: underline; }
+    .ob-main {
+      padding: 16px 20px 28px;
+      background: var(--ob-bg);
+      overflow: auto;
+      min-height: calc(100vh - var(--ob-header-h));
+    }
+    .ob-main-inner {
+      max-width: var(--ob-content-max);
+      margin: 0 auto;
+    }
+    .ob-page-title { font-size: 17px; font-weight: 600; color: #1d2129; margin: 0 0 4px; letter-spacing: .02em; }
+    .ob-page-sub { font-size: 13px; color: #86909c; margin: 0 0 18px; line-height: 1.5; }
+    .stat-card { border-radius: var(--ob-card-radius); border: 1px solid #ebeef5; }
     .stat-card .num { font-size: 28px; font-weight: 600; color: #1890ff; line-height: 1.2; }
     .stat-card .lab { font-size: 13px; color: #909399; margin-top: 4px; }
     .log-box {
@@ -150,7 +182,12 @@
     }
     .host-stat-pill .n { font-size: 22px; font-weight: 600; color: #1890ff; line-height: 1.2; }
     .host-stat-pill .l { font-size: 12px; color: #909399; margin-top: 4px; }
-    .host-card-accent { border-radius: 10px; overflow: hidden; border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); }
+    .ob-card-elevated {
+      border-radius: var(--ob-card-radius);
+      border: 1px solid #e4e7ed;
+      box-shadow: 0 2px 8px rgba(15, 37, 64, .06), 0 1px 2px rgba(15, 37, 64, .04);
+    }
+    .host-card-accent { border-radius: var(--ob-card-radius); overflow: hidden; border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); }
     .host-card-accent > .el-card__header {
       background: linear-gradient(90deg, #f6f9fc 0%, #fff 100%);
       border-bottom: 1px solid #ebeef5; font-weight: 600;
@@ -170,7 +207,7 @@
     .deploy-hero p { margin: 0; font-size: 12px; opacity: .9; line-height: 1.55; max-width: 640px; }
     .deploy-hero .el-button { border-color: rgba(255,255,255,.35); color: #fff; background: rgba(255,255,255,.1); }
     .deploy-hero .el-button--primary { background: #1890ff; border-color: #1890ff; color: #fff; }
-    .deploy-task-card { border-radius: 10px; overflow: hidden; border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); margin-bottom: 16px; }
+    .deploy-task-card { border-radius: var(--ob-card-radius); overflow: hidden; border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); margin-bottom: 16px; }
     .deploy-task-card > .el-card__header { background: linear-gradient(90deg, #f0f7ff 0%, #fff 100%); font-weight: 600; border-bottom: 1px solid #ebeef5; }
     .deploy-table .el-table__header th { background: #f5f7fa !important; color: #606266; font-weight: 600; }
     .deploy-table .row-current-task { background: #e6f7ff !important; }
@@ -245,7 +282,7 @@
       <div class="login-card">
         <div class="banner">
           <h1>TPOPS 部署平台</h1>
-          <p>集群部署 · 预检查 · 安装 · 进度与日志</p>
+          <p>集群部署 · 预检查 · 安装 · 卸载 · 进度与日志</p>
         </div>
         <div class="body">
           <el-form :model="loginForm" label-position="top" @keyup.enter="doLogin">
@@ -266,13 +303,16 @@
       </div>
     </div>
 
-    <!-- 主布局：侧栏 + 顶栏 + 内容区 -->
+    <!-- 主布局：侧栏 + 顶栏 + 内容区（参考 OAT/OCP：可折叠导航 + 居中内容区） -->
     <el-container v-else class="layout-root">
-      <el-aside width="220px" class="ob-aside">
-        <div class="ob-logo"><span>◆</span> TPOPS 部署</div>
+      <el-aside :width="sidebarCollapsed ? '64px' : '220px'" :class="['ob-aside', { 'ob-aside--collapsed': sidebarCollapsed }]">
+        <div class="ob-logo"><span>◆</span><span class="ob-logo-text"> TPOPS 部署</span></div>
         <el-menu
           class="ob-menu"
+          :class="{ 'ob-menu--collapse': sidebarCollapsed }"
           :default-active="activeMenu"
+          :collapse="sidebarCollapsed"
+          :collapse-transition="false"
           background-color="transparent"
           text-color="rgba(255,255,255,.75)"
           active-text-color="#fff"
@@ -288,54 +328,61 @@
             <span>部署任务</span>
           </el-menu-item>
         </el-menu>
+        <div class="ob-aside-toggle">
+          <el-button size="small" @click="sidebarCollapsed = !sidebarCollapsed">{{ sidebarCollapsed ? '展开' : '收起' }}</el-button>
+        </div>
       </el-aside>
       <el-container direction="vertical">
         <el-header class="ob-header">
           <div class="ob-breadcrumb">
             控制台 / <strong v-text="breadcrumbTitle"></strong>
           </div>
-          <div style="display:flex;align-items:center;gap:12px;">
+          <div class="ob-header-actions">
+            <a class="ob-doc-link" href="https://www.oceanbase.com/docs/common-oceanbase-database-cn-1000000005681930" target="_blank" rel="noopener noreferrer">OceanBase 文档</a>
+            <el-divider direction="vertical" style="margin:0;height:14px;" />
             <el-tag effect="plain" type="info" v-text="user.username || '-'"></el-tag>
             <el-button type="danger" link @click="logout">退出登录</el-button>
           </div>
         </el-header>
         <el-main class="ob-main">
+          <div class="ob-main-inner">
           <!-- 概览 -->
           <template v-if="activeMenu === 'overview'">
             <h2 class="ob-page-title">概览</h2>
+            <p class="ob-page-sub">资源与任务总览；部署形态与 appctl 流程说明见下方卡片。</p>
             <el-row :gutter="16" style="margin-bottom:20px;">
               <el-col :xs="24" :sm="8" :md="4">
-                <el-card shadow="hover" class="stat-card">
+                <el-card shadow="hover" class="stat-card ob-card-elevated">
                   <div class="num" v-text="hosts.length"></div>
                   <div class="lab">已配置主机</div>
                 </el-card>
               </el-col>
               <el-col :xs="24" :sm="8" :md="4">
-                <el-card shadow="hover" class="stat-card">
+                <el-card shadow="hover" class="stat-card ob-card-elevated">
                   <div class="num" v-text="tasks.length"></div>
                   <div class="lab">历史任务数</div>
                 </el-card>
               </el-col>
               <el-col :xs="24" :sm="8" :md="4">
-                <el-card shadow="hover" class="stat-card">
+                <el-card shadow="hover" class="stat-card ob-card-elevated">
                   <div class="num" style="color:#e6a23c;" v-text="runningCount"></div>
                   <div class="lab">进行中</div>
                 </el-card>
               </el-col>
               <el-col :xs="24" :sm="8" :md="4">
-                <el-card shadow="hover" class="stat-card">
+                <el-card shadow="hover" class="stat-card ob-card-elevated">
                   <div class="num" style="color:#52c41a;" v-text="successCount"></div>
                   <div class="lab">成功</div>
                 </el-card>
               </el-col>
               <el-col :xs="24" :sm="8" :md="4">
-                <el-card shadow="hover" class="stat-card">
+                <el-card shadow="hover" class="stat-card ob-card-elevated">
                   <div class="num" style="color:#f56c6c;" v-text="failedCount"></div>
                   <div class="lab">失败</div>
                 </el-card>
               </el-col>
               <el-col :xs="24" :sm="8" :md="4">
-                <el-card shadow="hover" class="stat-card">
+                <el-card shadow="hover" class="stat-card ob-card-elevated">
                   <div class="num" style="color:#909399;" v-text="(tasks.length ? Math.round(successCount * 100 / tasks.length) : 0) + '%'"></div>
                   <div class="lab">成功率</div>
                 </el-card>
@@ -343,7 +390,7 @@
             </el-row>
             <el-row :gutter="16" style="margin-bottom:20px;">
               <el-col :xs="24" :lg="14">
-                <el-card shadow="never">
+                <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">平台说明</span></template>
                   <p style="margin:0 0 10px;line-height:1.7;color:#606266;">
                     本控制台用于 <strong>TPOPS / GaussDB 容器化部署</strong>：在「主机管理」登记 SSH 可达的执行机（部署根目录需含 <code>appctl.sh</code>），在「部署任务」按向导填写
@@ -358,7 +405,7 @@
                 </el-card>
               </el-col>
               <el-col :xs="24" :lg="10">
-                <el-card shadow="never">
+                <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">快速开始</span></template>
                   <el-steps direction="vertical" :active="4" finish-status="success">
                     <el-step title="登记主机" description="SSH、部署根目录 /data/docker-service" />
@@ -372,7 +419,7 @@
 
             <el-row :gutter="16">
               <el-col :xs="24" :lg="14">
-                <el-card shadow="never">
+                <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">已纳管主机</span></template>
                   <el-table v-if="hosts.length" :data="hosts" stripe size="small" max-height="280" class="host-table">
                     <el-table-column prop="name" label="名称" width="120" show-overflow-tooltip />
@@ -393,7 +440,7 @@
                 </el-card>
               </el-col>
               <el-col :xs="24" :lg="10">
-                <el-card shadow="never">
+                <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">最近任务</span></template>
                   <el-table v-if="lastTasks.length" :data="lastTasks" stripe size="small" max-height="280">
                     <el-table-column prop="id" label="ID" width="56" />
@@ -417,6 +464,8 @@
           <!-- 主机管理：列表 / 纳管表单 -->
           <template v-else-if="activeMenu === 'hosts'">
             <template v-if="hostSubView === 'list'">
+            <h2 class="ob-page-title">主机管理</h2>
+            <p class="ob-page-sub">纳管执行机与部署根目录，供部署任务 SSH 下发使用。</p>
             <div class="host-hero">
               <div>
                 <h2>主机纳管</h2>
@@ -490,6 +539,8 @@
             </template>
 
             <template v-else-if="hostSubView === 'form'">
+            <h2 class="ob-page-title">纳管主机</h2>
+            <p class="ob-page-sub">填写 SSH 与远程 <code>appctl.sh</code> 所在目录；凭证加密存储。</p>
             <div class="deploy-page-toolbar">
               <div class="left">
                 <el-button @click="backToHostList">← 返回主机列表</el-button>
@@ -541,9 +592,11 @@
           <template v-else-if="activeMenu === 'deploy'">
             <!-- ① 部署记录列表（与新建入口同页） -->
             <template v-if="deploySubView === 'list'">
+            <h2 class="ob-page-title">部署任务</h2>
+            <p class="ob-page-sub">查看历史记录与结果；新建部署进入引导，查看详情进入实时监控（返回列表不断连）。</p>
             <div class="deploy-hero">
               <div>
-                <h2>部署任务</h2>
+                <h2 style="margin:0 0 6px;font-size:17px;font-weight:600;color:#fff;">任务列表</h2>
                 <p>本页为<strong>部署记录</strong>。点击<strong>新建部署</strong>进入引导页；下发或查看详情进入<strong>流水线与日志</strong>页。从监控页返回列表时<strong>不会断开实时连接</strong>，再次进入监控页可继续看到同一任务的输出。</p>
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:8px;">
@@ -851,6 +904,7 @@
             </el-row>
             </template>
           </template>
+          </div>
         </el-main>
       </el-container>
     </el-container>
@@ -888,6 +942,7 @@
         const refresh = ref(localStorage.getItem('refresh') || '');
         const user = ref(JSON.parse(localStorage.getItem('user') || '{}'));
         const loading = ref(false);
+        const sidebarCollapsed = ref(false);
         const activeMenu = ref('overview');
         const hosts = ref([]);
         const tasks = ref([]);
@@ -1757,7 +1812,7 @@ use_import_ca = no
         onUnmounted(() => { closeSocket(); closeLogSocket(); });
 
         return {
-          token, user, loading, activeMenu, breadcrumbTitle, runningCount, successCount, failedCount, lastTasks, onMenuSelect,
+          token, user, loading, sidebarCollapsed, activeMenu, breadcrumbTitle, runningCount, successCount, failedCount, lastTasks, onMenuSelect,
           hosts, hostsWithCredential, hostsKeyAuth, tasks, showRegister, loginForm, regForm, hostForm, deployForm, deployStep,
           hostSubView, openHostEnroll, backToHostList,
           deploySubView, openDeployWizard, backToDeployList,

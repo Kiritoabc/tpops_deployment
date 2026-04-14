@@ -1,6 +1,6 @@
 # TPOPS 白屏化部署工具 (MVP)
 
-基于 **Django 3.2 + DRF + Channels** 与 **Vue 3 + Element Plus（CDN）** 的最小可用白屏化部署界面：管理 SSH 目标机、通过 WebSocket 推送 `appctl.sh` 日志，并按设计文档轮询解析远程 `manifest.yaml` 为树形结构。
+基于 **Django 3.2 + DRF + Channels** 与 **Vue 3 + Element Plus（CDN）** 的最小可用白屏化部署界面：管理 SSH 目标机、通过 WebSocket 推送 `appctl.sh` 日志，并按设计文档轮询解析远程 `manifest.yaml` 为树形结构。前端布局参考 **OceanBase OAT/OCP 类控制台**（可折叠侧栏、顶栏面包屑、内容区最大宽度居中、卡片层次）；官方文档链接见页面顶栏。
 
 ## 环境说明
 
