@@ -906,7 +906,7 @@
                       >
                         <div class="pipeline-head" @click="onPipelineStepClick(row)">
                           <span v-text="row.title"></span>
-                          <span class="pipeline-lv-pill" :class="pipelineLvPillClass(row.level_status)" v-text="row.level_status"></span>
+                          <span class="pipeline-lv-pill" :class="pipelineLvPillClass(rowEffectiveLevelStatus(row))" v-text="rowEffectiveLevelStatus(row)"></span>
                           <span class="parallel-badge" v-text="'（' + row.parallel_note + '）'"></span>
                         </div>
                         <div class="pipeline-sub">
@@ -1158,12 +1158,33 @@ use_import_ca = no
           return rows.find((r) => r && r.key === 'patch') || null;
         });
 
+        const manifestInstallAllComplete = computed(() => {
+          const s = manifestSummary.value;
+          if (!s || s.services_total == null || s.services_total <= 0) return false;
+          return (s.services_done || 0) >= s.services_total;
+        });
+
+        const patchChildrenAllTerminal = (pr) => {
+          if (!pr) return false;
+          const ch = pr.children || [];
+          if (!ch.length) return false;
+          return ch.every((c) => {
+            const x = (c.status || 'none').toLowerCase();
+            return x === 'done' || x === 'error' || x === 'failed';
+          });
+        };
+
         const precheckVirtualRow = computed(() => {
           if (!showManifestTree.value) return null;
           const pr = patchRowFromPipeline.value;
           if (!pr) return null;
           const ps = (pr.level_status || 'none').toLowerCase();
-          const patchStarted = ps === 'running' || ps === 'retrying' || ps === 'done' || ps === 'error';
+          // 现场 manifest 可能不写 patch_status，仅靠子项 done；或已全部完成但顶层仍为 none
+          const patchStarted = (
+            ps === 'running' || ps === 'retrying' || ps === 'done' || ps === 'error'
+            || patchChildrenAllTerminal(pr)
+            || manifestInstallAllComplete.value
+          );
           const lv = patchStarted ? 'done' : 'running';
           return {
             key: '__precheck__',
@@ -1183,12 +1204,13 @@ use_import_ca = no
 
         const activePipelineKey = computed(() => {
           const rows = pipelineRows.value || [];
-          const pr = patchRowFromPipeline.value;
-          if (pr) {
-            const ps = (pr.level_status || 'none').toLowerCase();
-            if (ps !== 'running' && ps !== 'retrying' && ps !== 'done' && ps !== 'error') {
-              return '__precheck__';
-            }
+          const pre = precheckVirtualRow.value;
+          // 仅当虚拟前置检查仍为 running 时停留在该步（避免 patch_status 一直为 none 时永远卡在这一步）
+          if (pre && (pre.level_status || '').toLowerCase() === 'running') {
+            return '__precheck__';
+          }
+          if (manifestInstallAllComplete.value && rows.length) {
+            return rows[rows.length - 1].key;
           }
           for (const r of rows) {
             if (!r) continue;
@@ -1204,10 +1226,18 @@ use_import_ca = no
           }
           for (const r of rows) {
             const lv = (r.level_status || 'none').toLowerCase();
-            if (lv !== 'done') return r.key;
+            // 安装已完成时，不要把仍为 none 的空层当成「当前步」
+            if (manifestInstallAllComplete.value) continue;
+            if (lv !== 'done' && lv !== 'error') return r.key;
           }
           return rows.length ? rows[rows.length - 1].key : '';
         });
+
+        const rowEffectiveLevelStatus = (row) => {
+          if (!row || row.key === '__precheck__') return row ? row.level_status : 'none';
+          if (manifestInstallAllComplete.value) return 'done';
+          return row.level_status || 'none';
+        };
 
         const tripleGroupedSubs = (row) => {
           if (!tripleDeployForManifest.value || !row || row.key === '__precheck__') return [];
@@ -2039,7 +2069,7 @@ use_import_ca = no
           deployElapsedHuman, manifestProgressPercent, manifestEstimatedHuman, manifestCurrentStepLine,
           logText, logTailText, logTailLabel, logAppctlEl, logFileEl, treeRoots, manifestSummary, manifestPaths, manifestPayload, taskStatus, currentTaskId,
           showManifestTree, showTripleNodeStrip, tripleNodeProgressList, tripleNodeRoleText, shortPath, subStatusDotClass,
-          pipelineRows, displayPipelineRows, activePipelineKey, tripleGroupedSubs, subLabelWithoutStatus, pipelineLvPillClass, subStPillClass,
+          pipelineRows, displayPipelineRows, activePipelineKey, rowEffectiveLevelStatus, tripleGroupedSubs, subLabelWithoutStatus, pipelineLvPillClass, subStPillClass,
           selectedPipelineKey, selectedLogHint, phaseHint, phaseBanner, flowS1, flowS2, flowS3, flowS4,
           openLogTail, openLogTailRel, onPipelineStepClick, onPipelineSubClick,
           isHostDisabledForNode1, isHostDisabledTriple, goDeployStep2, fillUserEditTemplate,
