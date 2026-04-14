@@ -111,8 +111,6 @@
     .ob-breadcrumb { font-size: 13px; color: #606266; letter-spacing: .02em; }
     .ob-breadcrumb strong { color: #1d2129; font-weight: 600; }
     .ob-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .ob-doc-link { font-size: 12px; color: #1890ff; text-decoration: none; margin-right: 4px; }
-    .ob-doc-link:hover { text-decoration: underline; }
     .ob-main {
       padding: var(--ob-main-pad-y) var(--ob-main-pad-x);
       background: var(--ob-bg);
@@ -555,8 +553,6 @@
             控制台 / <strong v-text="breadcrumbTitle"></strong>
           </div>
           <div class="ob-header-actions">
-            <a class="ob-doc-link" href="https://www.oceanbase.com/docs/common-oceanbase-database-cn-1000000005681930" target="_blank" rel="noopener noreferrer">OceanBase 文档</a>
-            <el-divider direction="vertical" style="margin:0;height:14px;" />
             <el-tag effect="plain" type="info" v-text="user.username || '-'"></el-tag>
             <el-button type="danger" link @click="logout">退出登录</el-button>
           </div>
