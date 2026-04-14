@@ -17,10 +17,12 @@
       --ob-main-pad-x: clamp(10px, 1.6vw, 20px);
       --ob-main-pad-y: clamp(8px, 1.2vw, 16px);
       --ob-card-radius: 10px;
-      /* 工作台：左侧流水线列宽 */
-      --deploy-pipeline-col: minmax(280px, 38%);
+      /* 工作台：左 manifest / 流水线 | 右日志（略加左侧比例，减少右侧「空」感） */
+      --deploy-pipeline-col: minmax(300px, 44%);
+      /* 左侧整块（进度+流水线）最大高度，超出内部滚动 */
+      --deploy-left-scroll-max-h: min(56vh, 620px);
       /* 监控页右侧：appctl 与文件日志同高，内部滚动 */
-      --deploy-log-panel-max-h: min(32vh, 380px);
+      --deploy-log-panel-max-h: min(28vh, 340px);
     }
     * { box-sizing: border-box; }
     html, body, #app { height: 100%; margin: 0; }
@@ -215,12 +217,13 @@
     .deploy-console-body {
       display: grid;
       grid-template-columns: 1fr;
-      align-items: start;
+      align-items: stretch;
       overflow: visible;
     }
     @media (min-width: 960px) {
       .deploy-console-body {
         grid-template-columns: var(--deploy-pipeline-col) 1px 1fr;
+        align-items: stretch;
       }
     }
     .deploy-console-gutter {
@@ -236,6 +239,16 @@
       background: #fafbfc;
       border-bottom: 1px solid #ebeef5;
       overflow: visible;
+      display: flex;
+      flex-direction: column;
+    }
+    .deploy-console-left-scroll {
+      max-height: var(--deploy-left-scroll-max-h);
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 4px;
+      flex: 1 1 auto;
+      min-height: 0;
     }
     @media (min-width: 960px) {
       .deploy-console-left {
@@ -248,11 +261,16 @@
       padding: 12px 14px;
       background: #fff;
       overflow: visible;
+      display: flex;
+      flex-direction: column;
     }
     .deploy-log-stack {
       display: flex;
       flex-direction: column;
       gap: 10px;
+      flex: 1 1 auto;
+      min-height: 0;
+      justify-content: flex-start;
     }
     .deploy-log-seg {
       display: flex;
@@ -273,10 +291,9 @@
       gap: 8px;
     }
     .deploy-log-seg-title code { font-size: 11px; font-weight: 500; }
-    /* 流水线步骤随内容增高，整页用 .ob-main 滚动 */
     .pipeline-scroll {
       overflow: visible;
-      padding-right: 4px;
+      padding-right: 0;
     }
     .pipeline-step { margin-bottom: 16px; padding: 12px 14px 12px 16px; background: #fafafa; border-radius: 8px; border: 1px solid #ebeef5; border-left: 4px solid #dcdfe6; transition: background .2s, border-color .2s, box-shadow .2s; }
     .pipeline-step.sel { border-left-color: #1890ff; background: linear-gradient(90deg, #e6f4ff 0%, #f0f7ff 55%, #fafafa 100%); box-shadow: 0 0 0 1px rgba(24,144,255,.25), 0 4px 12px rgba(24,144,255,.12); }
@@ -1006,6 +1023,7 @@
               </div>
               <div class="deploy-console-body">
                 <div class="deploy-console-left">
+                  <div class="deploy-console-left-scroll">
                   <div v-if="showManifestTree && manifestSummary && manifestSummary.services_total != null" class="manifest-dash">
                     <div class="manifest-dash-top">
                       <div>
@@ -1104,6 +1122,7 @@
                       v-else
                       :description="showManifestTree ? '安装/升级期间，在执行机轮询 manifest：单节点为 manifest.yaml；三节点另读 manifest_<node2_ip>.yaml、manifest_<node3_ip>.yaml（与 user_edit 一致）。有有效 YAML 后即展示流水线。' : '当前为前置检查，无 manifest 流水线'"
                     />
+                  </div>
                   </div>
                 </div>
                 <div class="deploy-console-gutter" aria-hidden="true"></div>
