@@ -389,7 +389,7 @@
                       </template>
                     </el-table-column>
                   </el-table>
-                  <el-empty v-else description="暂无主机，请前往「主机管理」添加" />
+                  <el-empty v-else description="暂无主机，请前往「主机管理」点击纳管主机" />
                 </el-card>
               </el-col>
               <el-col :xs="24" :lg="10">
@@ -414,74 +414,37 @@
             </el-row>
           </template>
 
-          <!-- 主机管理 -->
+          <!-- 主机管理：列表 / 纳管表单 -->
           <template v-else-if="activeMenu === 'hosts'">
+            <template v-if="hostSubView === 'list'">
             <div class="host-hero">
               <div>
                 <h2>主机纳管</h2>
-                <p>维护 SSH 连接与远程部署根目录；列表展示端口、用户、认证方式、凭证是否已保存等。仅本人创建的主机及历史未绑定账号的主机对本账号可见。</p>
+                <p>本页展示已纳管主机列表。点击<strong>纳管主机</strong>填写 SSH 与部署根目录；仅本人创建及未绑定属主的主机对本账号可见。</p>
               </div>
-              <el-button :loading="loading" @click="refreshHostsPage">
-                <span style="margin-right:4px">↻</span> 刷新列表
-              </el-button>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <el-button :loading="loading" @click="refreshHostsPage">
+                  <span style="margin-right:4px">↻</span> 刷新列表
+                </el-button>
+                <el-button type="success" @click="openHostEnroll">纳管主机</el-button>
+              </div>
             </div>
             <div class="host-stat-row">
               <div class="host-stat-pill"><div class="n" v-text="hosts.length"></div><div class="l">已纳管主机</div></div>
               <div class="host-stat-pill"><div class="n" v-text="hostsWithCredential"></div><div class="l">已配置 SSH 凭证</div></div>
               <div class="host-stat-pill"><div class="n" v-text="hostsKeyAuth"></div><div class="l">密钥登录</div></div>
             </div>
-            <el-row :gutter="16">
-              <el-col :xs="24" :lg="9">
-                <el-card shadow="never" class="host-card-accent">
-                  <template #header><span>{{ hostForm.id ? '编辑主机' : '添加主机' }}</span></template>
-                  <el-form :model="hostForm" label-width="112px" size="default">
-                    <el-form-item label="显示名称">
-                      <el-input v-model="hostForm.name" placeholder="如：生产节点-1" />
-                    </el-form-item>
-                    <el-form-item label="IP / 域名">
-                      <el-input v-model="hostForm.hostname" placeholder="SSH 地址" />
-                    </el-form-item>
-                    <el-form-item label="SSH 端口">
-                      <el-input-number v-model="hostForm.port" :min="1" :max="65535" style="width:100%" />
-                    </el-form-item>
-                    <el-form-item label="SSH 用户">
-                      <el-input v-model="hostForm.username" placeholder="如 root" />
-                    </el-form-item>
-                    <el-form-item label="认证方式">
-                      <el-radio-group v-model="hostForm.auth_method">
-                        <el-radio label="password">密码</el-radio>
-                        <el-radio label="key">私钥</el-radio>
-                      </el-radio-group>
-                    </el-form-item>
-                    <el-form-item v-if="hostForm.auth_method==='password'" label="密码">
-                      <el-input v-model="hostForm.password" type="password" show-password placeholder="保存时写入" />
-                    </el-form-item>
-                    <el-form-item v-else label="私钥 PEM">
-                      <el-input v-model="hostForm.private_key" type="textarea" :rows="5" placeholder="-----BEGIN ... KEY-----" />
-                    </el-form-item>
-                    <el-form-item label="部署根目录">
-                      <el-input v-model="hostForm.docker_service_root" placeholder="/data/docker-service" />
-                      <div class="hint">与远程 <code>appctl.sh</code> 所在目录一致（如 <code>/data/docker-service</code>）。执行：<code>cd &lt;目录&gt; && sh appctl.sh ...</code>。进度文件：<code>&lt;目录&gt;/config/gaussdb/manifest.yaml</code>。</div>
-                    </el-form-item>
-                    <el-form-item>
-                      <el-button type="primary" @click="saveHost" :loading="loading">保存</el-button>
-                      <el-button @click="resetHostForm">清空表单</el-button>
-                    </el-form-item>
-                  </el-form>
-                </el-card>
-              </el-col>
-              <el-col :xs="24" :lg="15">
-                <el-card shadow="never" class="host-card-accent">
-                  <template #header>
-                    <span>主机列表</span>
-                    <span style="float:right;font-weight:400;font-size:12px;color:#909399">共 {{ hosts.length }} 台</span>
-                  </template>
+            <el-card shadow="never" class="host-card-accent">
+              <template #header>
+                <span>主机列表</span>
+                <span style="float:right;font-weight:400;font-size:12px;color:#909399">共 {{ hosts.length }} 台</span>
+              </template>
                   <el-table
                     :data="hosts"
                     stripe
                     style="width:100%"
                     class="host-table"
-                    empty-text="暂无主机，请在左侧填写并保存"
+                    empty-text="暂无主机，请点击「纳管主机」添加"
                     :default-sort="{ prop: 'created_at', order: 'descending' }"
                   >
                     <el-table-column prop="id" label="ID" width="64" sortable />
@@ -523,9 +486,55 @@
                       </template>
                     </el-table-column>
                   </el-table>
-                </el-card>
-              </el-col>
-            </el-row>
+            </el-card>
+            </template>
+
+            <template v-else-if="hostSubView === 'form'">
+            <div class="deploy-page-toolbar">
+              <div class="left">
+                <el-button @click="backToHostList">← 返回主机列表</el-button>
+                <h2 class="ob-page-title">{{ hostForm.id ? '编辑主机' : '纳管主机' }}</h2>
+              </div>
+            </div>
+            <el-card shadow="never" class="host-card-accent" style="max-width:720px;">
+              <template #header><span>{{ hostForm.id ? '修改配置' : '新增主机' }}</span></template>
+              <el-form :model="hostForm" label-width="112px" size="default">
+                <el-form-item label="显示名称">
+                  <el-input v-model="hostForm.name" placeholder="如：生产节点-1" />
+                </el-form-item>
+                <el-form-item label="IP / 域名">
+                  <el-input v-model="hostForm.hostname" placeholder="SSH 地址" />
+                </el-form-item>
+                <el-form-item label="SSH 端口">
+                  <el-input-number v-model="hostForm.port" :min="1" :max="65535" style="width:100%" />
+                </el-form-item>
+                <el-form-item label="SSH 用户">
+                  <el-input v-model="hostForm.username" placeholder="如 root" />
+                </el-form-item>
+                <el-form-item label="认证方式">
+                  <el-radio-group v-model="hostForm.auth_method">
+                    <el-radio label="password">密码</el-radio>
+                    <el-radio label="key">私钥</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+                <el-form-item v-if="hostForm.auth_method==='password'" label="密码">
+                  <el-input v-model="hostForm.password" type="password" show-password placeholder="保存时写入" />
+                </el-form-item>
+                <el-form-item v-else label="私钥 PEM">
+                  <el-input v-model="hostForm.private_key" type="textarea" :rows="5" placeholder="-----BEGIN ... KEY-----" />
+                </el-form-item>
+                <el-form-item label="部署根目录">
+                  <el-input v-model="hostForm.docker_service_root" placeholder="/data/docker-service" />
+                  <div class="hint">与远程 <code>appctl.sh</code> 所在目录一致（如 <code>/data/docker-service</code>）。执行：<code>cd &lt;目录&gt; && sh appctl.sh ...</code>。进度文件：<code>&lt;目录&gt;/config/gaussdb/manifest.yaml</code>。</div>
+                </el-form-item>
+                <el-form-item>
+                  <el-button type="primary" @click="saveHost" :loading="loading">保存</el-button>
+                  <el-button v-if="hostForm.id" @click="backToHostList">取消并返回列表</el-button>
+                  <el-button v-else @click="resetHostForm">清空表单</el-button>
+                </el-form-item>
+              </el-form>
+            </el-card>
+            </template>
           </template>
 
           <!-- 部署任务：列表 / 新建向导 / 执行监控 分屏 -->
@@ -1047,7 +1056,10 @@ use_import_ca = no
             if (deploySubView.value === 'monitor') return '部署任务 / 流水线与日志';
             return '部署任务 / 记录列表';
           }
-          const m = { overview: '概览', hosts: '主机管理' };
+          if (activeMenu.value === 'hosts') {
+            return hostSubView.value === 'form' ? '主机管理 / 纳管主机' : '主机管理 / 主机列表';
+          }
+          const m = { overview: '概览' };
           return m[activeMenu.value] || '';
         });
 
@@ -1061,6 +1073,8 @@ use_import_ca = no
         const deployStep = ref(0);
         /** deploy 子页: list | wizard | monitor */
         const deploySubView = ref('list');
+        /** hosts 子页: list | form */
+        const hostSubView = ref('list');
 
         const onMenuSelect = (key) => {
           activeMenu.value = key;
@@ -1068,6 +1082,19 @@ use_import_ca = no
             deploySubView.value = 'list';
             fetchTasks().catch(() => {});
           }
+          if (key === 'hosts' && token.value) {
+            hostSubView.value = 'list';
+          }
+        };
+
+        const openHostEnroll = () => {
+          resetHostForm();
+          hostSubView.value = 'form';
+        };
+
+        const backToHostList = () => {
+          hostSubView.value = 'list';
+          resetHostForm();
         };
 
         const openDeployWizard = () => {
@@ -1595,6 +1622,7 @@ use_import_ca = no
             }
             ElementPlus.ElMessage.success('已保存');
             resetHostForm();
+            hostSubView.value = 'list';
             await fetchHosts();
           } catch (e) {
             ElementPlus.ElMessage.error('保存失败');
@@ -1603,6 +1631,7 @@ use_import_ca = no
 
         const editHost = (row) => {
           Object.assign(hostForm, { ...row, password: '', private_key: '' });
+          hostSubView.value = 'form';
         };
 
         const testHost = async (row) => {
@@ -1626,7 +1655,10 @@ use_import_ca = no
           try {
             await api.delete('/hosts/' + row.id + '/');
             ElementPlus.ElMessage.success('已删除');
-            if (hostForm.id === row.id) resetHostForm();
+            if (hostForm.id === row.id) {
+              resetHostForm();
+              hostSubView.value = 'list';
+            }
             await fetchHosts();
           } catch (e) {
             ElementPlus.ElMessage.error('删除失败');
@@ -1722,6 +1754,7 @@ use_import_ca = no
         return {
           token, user, loading, activeMenu, breadcrumbTitle, runningCount, successCount, failedCount, lastTasks, onMenuSelect,
           hosts, hostsWithCredential, hostsKeyAuth, tasks, showRegister, loginForm, regForm, hostForm, deployForm, deployStep,
+          hostSubView, openHostEnroll, backToHostList,
           deploySubView, openDeployWizard, backToDeployList,
           deployWizardSteps, goDeployWizardStep,
           refreshTasksOnly, deployActionLabel, deployStatusLabel, deployStatusTagType, deployOutcomeTagType, deployTaskRowClass,
