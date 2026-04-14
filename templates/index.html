@@ -19,9 +19,8 @@
       --ob-card-radius: 10px;
       /* 工作台：左侧流水线列宽 */
       --deploy-pipeline-col: minmax(280px, 38%);
-      /* 监控页右侧日志：封顶高度，内部滚动（左侧 manifest/流水线随页面增高） */
-      --deploy-log-appctl-max-h: min(36vh, 420px);
-      --deploy-log-file-max-h: min(28vh, 300px);
+      /* 监控页右侧：appctl 与文件日志同高，内部滚动 */
+      --deploy-log-panel-max-h: min(32vh, 380px);
     }
     * { box-sizing: border-box; }
     html, body, #app { height: 100%; margin: 0; }
@@ -310,14 +309,8 @@
     .log-deploy-sub {
       overflow: auto;
       flex-shrink: 0;
-    }
-    .log-deploy-main {
       min-height: 120px;
-      max-height: var(--deploy-log-appctl-max-h);
-    }
-    .log-deploy-sub {
-      min-height: 96px;
-      max-height: var(--deploy-log-file-max-h);
+      max-height: var(--deploy-log-panel-max-h);
     }
     .phase-strip { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; background: #f5f7fa; border-radius: 6px; margin-bottom: 14px; font-size: 13px; color: #606266; }
     /* 主机管理页 */
