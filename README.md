@@ -15,12 +15,15 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 export DJANGO_SECRET_KEY='change-me'
+# 每次更新代码或新环境后务必执行；跳过会导致表结构不一致，任务/接口异常
 python3 manage.py migrate
 python3 manage.py createsuperuser
 
 # ASGI（HTTP + WebSocket）
 daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 ```
+
+> **注意**：若 SSH 断开后未在本机跑过 `migrate`，`db.sqlite3` 可能仍是旧结构，部署任务等接口会表现异常；连上后补跑一次即可。
 
 浏览器访问 `http://localhost:8000/`：
 
