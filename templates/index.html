@@ -535,7 +535,7 @@
             <div class="deploy-hero">
               <div>
                 <h2>部署任务</h2>
-                <p>本页为<strong>部署记录</strong>。点击<strong>新建部署</strong>进入独立引导页；创建或打开任务后进入<strong>安装流水线与日志</strong>监控页。</p>
+                <p>本页为<strong>部署记录</strong>。点击<strong>新建部署</strong>进入引导页；下发或查看详情进入<strong>流水线与日志</strong>页。从监控页返回列表时<strong>不会断开实时连接</strong>，再次进入监控页可继续看到同一任务的输出。</p>
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:8px;">
                 <el-button type="primary" :loading="loading" @click="refreshTasksOnly">刷新列表</el-button>
@@ -1076,25 +1076,8 @@ use_import_ca = no
         };
 
         const backToDeployList = () => {
+          // 仅隐藏监控 UI，不断开 WebSocket；再次进入「流水线与日志」可继续收流与历史缓冲
           deploySubView.value = 'list';
-          closeSocket();
-          closeLogSocket();
-          clearDeployElapsedTimer();
-          currentTaskId.value = null;
-          currentTaskSnapshot.value = null;
-          taskStatus.value = '';
-          lastAction.value = '';
-          logText.value = '';
-          logTailText.value = '';
-          manifestSummary.value = null;
-          manifestPaths.value = [];
-          manifestPayload.value = null;
-          treeRoots.value = [];
-          selectedPipelineKey.value = '';
-          selectedLogHint.value = '';
-          phaseHint.value = '';
-          phaseBanner.value = '';
-          resetFlow();
           fetchTasks().catch(() => {});
         };
 
