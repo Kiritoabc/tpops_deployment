@@ -12,8 +12,16 @@
       --ob-sidebar-active: #1890ff;
       --ob-header-h: 52px;
       --ob-bg: #e8ecf1;
-      --ob-content-max: 1480px;
+      /* 内容区：大屏有上限，小屏贴边留白 */
+      --ob-content-max: min(1480px, calc(100vw - 24px));
+      --ob-main-pad-x: clamp(12px, 2.4vw, 28px);
+      --ob-main-pad-y: clamp(12px, 2vw, 28px);
       --ob-card-radius: 10px;
+      /* 日志区：随视口高度变化 */
+      --ob-log-main-h: clamp(160px, 36vh, 620px);
+      --ob-log-sub-h: clamp(96px, 18vh, 280px);
+      --ob-pipeline-scroll-h: min(58vh, calc(100dvh - 320px));
+      --ob-monitor-min-h: min(520px, calc(100dvh - var(--ob-header-h) - 180px));
     }
     * { box-sizing: border-box; }
     html, body, #app { height: 100%; margin: 0; }
@@ -99,10 +107,10 @@
     .ob-doc-link { font-size: 12px; color: #1890ff; text-decoration: none; margin-right: 4px; }
     .ob-doc-link:hover { text-decoration: underline; }
     .ob-main {
-      padding: 16px 20px 28px;
+      padding: var(--ob-main-pad-y) var(--ob-main-pad-x);
       background: var(--ob-bg);
       overflow: auto;
-      min-height: calc(100vh - var(--ob-header-h));
+      min-height: calc(100dvh - var(--ob-header-h));
     }
     .ob-main-inner {
       max-width: var(--ob-content-max);
@@ -111,14 +119,17 @@
     .ob-page-title { font-size: 17px; font-weight: 600; color: #1d2129; margin: 0 0 4px; letter-spacing: .02em; }
     .ob-page-sub { font-size: 13px; color: #86909c; margin: 0 0 18px; line-height: 1.5; }
     .stat-card { border-radius: var(--ob-card-radius); border: 1px solid #ebeef5; }
-    .stat-card .num { font-size: 28px; font-weight: 600; color: #1890ff; line-height: 1.2; }
+    .stat-card .num { font-size: clamp(20px, 4vw, 30px); font-weight: 600; color: #1890ff; line-height: 1.2; }
     .stat-card .lab { font-size: 13px; color: #909399; margin-top: 4px; }
     .log-box {
       background: #1e1e1e;
       color: #d4d4d4;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 12px;
-      height: 360px;
+      font-size: clamp(11px, 1.1vw, 13px);
+      min-height: 120px;
+      max-height: min(50vh, 480px);
+      height: auto;
+      flex: 1 1 auto;
       overflow: auto;
       padding: 12px;
       border-radius: 4px;
@@ -151,8 +162,48 @@
     .flow-cap { font-size: 12px; color: #606266; line-height: 1.35; }
     .flow-sub { font-size: 11px; color: #909399; margin-top: 4px; }
     .deploy-split { margin-top: 16px; }
-    .deploy-split .el-col { min-height: 360px; }
-    .pipeline-scroll { max-height: min(72vh, 760px); overflow-y: auto; padding-right: 6px; }
+    /* 监控页：大屏双列等高；小屏单列堆叠 */
+    .deploy-monitor-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: clamp(12px, 2vw, 20px);
+      align-items: stretch;
+      min-height: 0;
+    }
+    @media (min-width: 992px) {
+      .deploy-monitor-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        min-height: var(--ob-monitor-min-h);
+      }
+    }
+    .deploy-monitor-col {
+      display: flex;
+      flex-direction: column;
+      min-height: min(70vh, 640px);
+    }
+    @media (min-width: 992px) {
+      .deploy-monitor-col { min-height: 0; }
+    }
+    .deploy-monitor-col .el-card {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .deploy-monitor-col .el-card .el-card__body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .pipeline-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: var(--ob-pipeline-scroll-h);
+      overflow-y: auto;
+      padding-right: 6px;
+    }
     .pipeline-step { margin-bottom: 16px; padding: 12px 14px 12px 16px; background: #fafafa; border-radius: 8px; border: 1px solid #ebeef5; border-left: 4px solid #dcdfe6; transition: background .2s, border-color .2s, box-shadow .2s; }
     .pipeline-step.sel { border-left-color: #1890ff; background: linear-gradient(90deg, #e6f4ff 0%, #f0f7ff 55%, #fafafa 100%); box-shadow: 0 0 0 1px rgba(24,144,255,.25), 0 4px 12px rgba(24,144,255,.12); }
     .pipeline-head { cursor: pointer; font-size: 15px; font-weight: 600; color: #303133; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
@@ -180,8 +231,19 @@
     .sub-st-pill.st-null { background: #f9f0ff; color: #531dab; border: 1px solid #d3adf7; }
     .pipeline-node-block { margin: 10px 0 0 8px; padding: 8px 10px 8px 12px; background: #fff; border-radius: 8px; border: 1px solid #e8e8e8; }
     .pipeline-node-label { font-size: 13px; font-weight: 600; color: #1890ff; margin-bottom: 6px; font-family: ui-monospace, Menlo, Consolas, monospace; }
-    .log-deploy-main { height: min(52vh, 560px); min-height: 280px; }
-    .log-deploy-sub { height: 200px; margin-top: 12px; }
+    .log-deploy-main {
+      height: var(--ob-log-main-h);
+      min-height: 140px;
+      max-height: min(52vh, 680px);
+      flex: 1 1 auto;
+    }
+    .log-deploy-sub {
+      height: var(--ob-log-sub-h);
+      min-height: 80px;
+      max-height: min(28vh, 320px);
+      flex: 0 0 auto;
+      margin-top: 12px;
+    }
     .phase-strip { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; background: #f5f7fa; border-radius: 6px; margin-bottom: 14px; font-size: 13px; color: #606266; }
     /* 主机管理页 */
     .host-hero {
@@ -243,7 +305,8 @@
     .deploy-wizard-shell .el-row { margin: 0 !important; }
     .deploy-wizard-nav {
       background: linear-gradient(180deg, #0d2844 0%, #0b1f3a 40%, #102a43 100%);
-      color: #fff; padding: 20px 0 24px; min-height: 420px;
+      color: #fff; padding: 20px 0 24px;
+      min-height: clamp(260px, 42vh, 560px);
     }
     .deploy-wizard-brand { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,.1); margin-bottom: 8px; }
     .deploy-wizard-brand h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; color: #fff; }
@@ -263,7 +326,7 @@
     .deploy-step-item.done .deploy-step-num { background: #52c41a; border-color: #52c41a; color: #fff; }
     .deploy-step-text .t { font-size: 14px; font-weight: 600; color: #fff; }
     .deploy-step-text .d { font-size: 12px; color: rgba(255,255,255,.65); margin-top: 4px; line-height: 1.45; }
-    .deploy-wizard-body { padding: 24px 28px 28px; background: #fafbfc; min-height: 420px; }
+    .deploy-wizard-body { padding: clamp(16px, 3vw, 28px); background: #fafbfc; min-height: clamp(260px, 42vh, 560px); }
     .deploy-wizard-body .panel-title { font-size: 15px; font-weight: 600; color: #303133; margin: 0 0 16px; }
     .deploy-wizard-footer {
       margin-top: 20px; padding-top: 16px; border-top: 1px solid #ebeef5;
@@ -310,6 +373,13 @@
     }
     .deploy-page-toolbar .left { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
     .deploy-page-toolbar h2.ob-page-title { margin: 0; }
+    /* 注册弹窗：窄屏不溢出 */
+    .el-dialog { max-width: calc(100vw - 24px) !important; }
+    @media (max-width: 576px) {
+      .ob-header { padding: 0 12px; flex-wrap: wrap; height: auto !important; min-height: var(--ob-header-h); padding-top: 8px; padding-bottom: 8px; }
+      .ob-breadcrumb { width: 100%; margin-bottom: 4px; }
+    }
+    .host-form-card-narrow { max-width: min(720px, 100%); }
   </style>
 </head>
 <body>
@@ -458,7 +528,7 @@
               <el-col :xs="24" :lg="14">
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">已纳管主机</span></template>
-                  <el-table v-if="hosts.length" :data="hosts" stripe size="small" max-height="280" class="host-table">
+                  <el-table v-if="hosts.length" :data="hosts" stripe size="small" max-height="40vh" class="host-table">
                     <el-table-column prop="name" label="名称" width="120" show-overflow-tooltip />
                     <el-table-column label="连接" min-width="150">
                       <template #default="{ row }">
@@ -479,7 +549,7 @@
               <el-col :xs="24" :lg="10">
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">最近任务</span></template>
-                  <el-table v-if="lastTasks.length" :data="lastTasks" stripe size="small" max-height="280">
+                  <el-table v-if="lastTasks.length" :data="lastTasks" stripe size="small" max-height="40vh">
                     <el-table-column prop="id" label="ID" width="56" />
                     <el-table-column prop="host_name" label="节点1" min-width="90" show-overflow-tooltip />
                     <el-table-column prop="deploy_mode" label="形态" width="72" />
@@ -584,7 +654,7 @@
                 <h2 class="ob-page-title">{{ hostForm.id ? '编辑主机' : '纳管主机' }}</h2>
               </div>
             </div>
-            <el-card shadow="never" class="host-card-accent" style="max-width:720px;">
+            <el-card shadow="never" class="host-card-accent host-form-card-narrow">
               <template #header><span>{{ hostForm.id ? '修改配置' : '新增主机' }}</span></template>
               <el-form :model="hostForm" label-width="112px" size="default">
                 <el-form-item label="显示名称">
@@ -655,7 +725,7 @@
                 empty-text="暂无记录，请点击右上角「新建部署」"
                 :default-sort="{ prop: 'created_at', order: 'descending' }"
                 :row-class-name="deployTaskRowClass"
-                max-height="520"
+                max-height="48vh"
               >
                 <el-table-column prop="id" label="任务 ID" width="88" sortable />
                 <el-table-column prop="created_at" label="触发时间" width="168" sortable>
@@ -847,9 +917,9 @@
               </template>
             </el-alert>
 
-            <el-row :gutter="20" class="deploy-split">
-              <el-col :xs="24" :md="12">
-                <el-card shadow="never" style="height:100%;">
+            <el-row :gutter="20" class="deploy-split deploy-monitor-grid">
+              <el-col :xs="24" :md="12" class="deploy-monitor-col">
+                <el-card shadow="never">
                   <template #header>
                     <span style="font-weight:600">{{ showManifestTree ? '安装流水线' : '部署流水线' }}</span>
                     <span class="hint" style="margin-left:8px;">大层串行；层内多服务并发。<template v-if="showTripleNodeStrip">三节点时各节点并行安装，子步骤旁展示各 IP 状态。</template>点击步骤/子步骤，右侧打开日志。</span>
@@ -961,8 +1031,8 @@
                   </div>
                 </el-card>
               </el-col>
-              <el-col :xs="24" :md="12">
-                <el-card shadow="never" style="height:100%;">
+              <el-col :xs="24" :md="12" class="deploy-monitor-col">
+                <el-card shadow="never">
                   <template #header>
                     <span style="font-weight:600">日志</span>
                     <span class="hint" v-if="selectedLogHint" style="margin-left:8px;" v-text="selectedLogHint"></span>
