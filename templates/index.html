@@ -230,6 +230,12 @@
     }
     .manifest-current-box .lab { font-size: 12px; color: #909399; margin-bottom: 4px; }
     .manifest-current-box .val { color: #303133; font-weight: 500; word-break: break-all; }
+    .deploy-page-toolbar {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 16px;
+    }
+    .deploy-page-toolbar .left { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .deploy-page-toolbar h2.ob-page-title { margin: 0; }
   </style>
 </head>
 <body>
@@ -522,33 +528,35 @@
             </el-row>
           </template>
 
-          <!-- 部署任务 -->
+          <!-- 部署任务：列表 / 新建向导 / 执行监控 分屏 -->
           <template v-else-if="activeMenu === 'deploy'">
+            <!-- ① 部署记录列表（与新建入口同页） -->
+            <template v-if="deploySubView === 'list'">
             <div class="deploy-hero">
               <div>
                 <h2>部署任务</h2>
-                <p>下方为<strong>历史部署记录</strong>，「<strong>结果</strong>」列一眼可见成功 / 失败 / 执行中。点<strong>查看详情</strong>后上方会显示<strong>当前任务状态条</strong>（与列表、数据库一致）；实时输出仅对进行中的任务推送，已结束任务可点标签看文件日志。</p>
+                <p>本页为<strong>部署记录</strong>。点击<strong>新建部署</strong>进入独立引导页；创建或打开任务后进入<strong>安装流水线与日志</strong>监控页。</p>
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:8px;">
                 <el-button type="primary" :loading="loading" @click="refreshTasksOnly">刷新列表</el-button>
-                <el-button @click="deployStep = 0">新建部署</el-button>
+                <el-button type="success" @click="openDeployWizard">新建部署</el-button>
               </div>
             </div>
 
             <el-card shadow="never" class="deploy-task-card">
               <template #header>
                 <span>部署记录</span>
-                <span style="float:right;font-weight:400;font-size:12px;color:#909399">共 {{ tasks.length }} 条 · 当前查看 #{{ currentTaskId || '—' }}</span>
+                <span style="float:right;font-weight:400;font-size:12px;color:#909399">共 {{ tasks.length }} 条</span>
               </template>
               <el-table
                 :data="tasks"
                 stripe
                 class="deploy-table"
                 style="width:100%"
-                empty-text="暂无部署记录，请先在下方向导中发起一次部署"
+                empty-text="暂无记录，请点击右上角「新建部署」"
                 :default-sort="{ prop: 'created_at', order: 'descending' }"
                 :row-class-name="deployTaskRowClass"
-                max-height="420"
+                max-height="520"
               >
                 <el-table-column prop="id" label="任务 ID" width="88" sortable />
                 <el-table-column prop="created_at" label="触发时间" width="168" sortable>
@@ -597,20 +605,29 @@
                 </el-table-column>
                 <el-table-column label="操作" width="120" fixed="right">
                   <template #default="{ row }">
-                    <el-button link type="primary" @click="attachTask(row)">{{ currentTaskId === row.id ? '已打开' : '查看详情' }}</el-button>
+                    <el-button link type="primary" @click="attachTask(row)">查看详情</el-button>
                   </template>
                 </el-table-column>
               </el-table>
             </el-card>
+            </template>
 
+            <!-- ② 新建部署（独立全页引导） -->
+            <template v-else-if="deploySubView === 'wizard'">
+            <div class="deploy-page-toolbar">
+              <div class="left">
+                <el-button @click="backToDeployList">← 返回部署列表</el-button>
+                <h2 class="ob-page-title">新建部署</h2>
+              </div>
+            </div>
             <el-card shadow="never" class="deploy-task-card" style="margin-bottom:16px;">
-              <template #header><span>集群部署引导</span><span style="float:right;font-size:12px;color:#909399;font-weight:400">参考 OceanBase 控制台：左侧步骤导航 · 右侧填写</span></template>
+              <template #header><span>集群部署引导</span><span style="float:right;font-size:12px;color:#909399;font-weight:400">左侧步骤 · 右侧填写，完成后点击「下发执行」</span></template>
               <div class="deploy-wizard-shell">
                 <el-row :gutter="0">
                   <el-col :xs="24" :md="7" class="deploy-wizard-nav">
                     <div class="deploy-wizard-brand">
                       <h3>创建部署任务</h3>
-                      <p>按顺序完成三步后下发；安装/升级任务创建后可在下方查看流水线与日志。</p>
+                      <p>按顺序完成三步后点击「下发执行」；将自动进入<strong>流水线与日志</strong>监控页。</p>
                     </div>
                     <div
                       v-for="(s, idx) in deployWizardSteps"
@@ -702,6 +719,18 @@
                 </el-row>
               </div>
             </el-card>
+            </template>
+
+            <!-- ③ 下发后：安装流水线 + 日志（独立页） -->
+            <template v-else-if="deploySubView === 'monitor'">
+            <div class="deploy-page-toolbar">
+              <div class="left">
+                <el-button @click="backToDeployList">← 返回部署列表</el-button>
+                <el-button type="primary" plain @click="openDeployWizard">新建部署</el-button>
+                <h2 class="ob-page-title" v-if="currentTaskId">任务 #{{ currentTaskId }} · 流水线与日志</h2>
+                <h2 class="ob-page-title" v-else>流水线与日志</h2>
+              </div>
+            </div>
 
             <el-alert
               v-if="currentTaskId && deployStatusStripVisible"
@@ -809,6 +838,7 @@
                 </el-card>
               </el-col>
             </el-row>
+            </template>
           </template>
         </el-main>
       </el-container>
@@ -1012,7 +1042,12 @@ use_import_ca = no
         };
 
         const breadcrumbTitle = computed(() => {
-          const m = { overview: '概览', hosts: '主机管理', deploy: '部署任务' };
+          if (activeMenu.value === 'deploy') {
+            if (deploySubView.value === 'wizard') return '部署任务 / 新建部署';
+            if (deploySubView.value === 'monitor') return '部署任务 / 流水线与日志';
+            return '部署任务 / 记录列表';
+          }
+          const m = { overview: '概览', hosts: '主机管理' };
           return m[activeMenu.value] || '';
         });
 
@@ -1024,12 +1059,43 @@ use_import_ca = no
         const hostsKeyAuth = computed(() => hosts.value.filter(h => h.auth_method === 'key').length);
 
         const deployStep = ref(0);
+        /** deploy 子页: list | wizard | monitor */
+        const deploySubView = ref('list');
 
         const onMenuSelect = (key) => {
           activeMenu.value = key;
           if (key === 'deploy' && token.value) {
+            deploySubView.value = 'list';
             fetchTasks().catch(() => {});
           }
+        };
+
+        const openDeployWizard = () => {
+          deploySubView.value = 'wizard';
+          deployStep.value = 0;
+        };
+
+        const backToDeployList = () => {
+          deploySubView.value = 'list';
+          closeSocket();
+          closeLogSocket();
+          clearDeployElapsedTimer();
+          currentTaskId.value = null;
+          currentTaskSnapshot.value = null;
+          taskStatus.value = '';
+          lastAction.value = '';
+          logText.value = '';
+          logTailText.value = '';
+          manifestSummary.value = null;
+          manifestPaths.value = [];
+          manifestPayload.value = null;
+          treeRoots.value = [];
+          selectedPipelineKey.value = '';
+          selectedLogHint.value = '';
+          phaseHint.value = '';
+          phaseBanner.value = '';
+          resetFlow();
+          fetchTasks().catch(() => {});
         };
 
         const isHostDisabledForNode1 = (hid) => {
@@ -1172,7 +1238,8 @@ use_import_ca = no
           return 'info';
         };
 
-        const deployTaskRowClass = ({ row }) => (currentTaskId.value && row.id === currentTaskId.value ? 'row-current-task' : '');
+        const deployTaskRowClass = ({ row }) =>
+          (deploySubView.value === 'monitor' && currentTaskId.value && row.id === currentTaskId.value ? 'row-current-task' : '');
 
         const applyLiveTaskPatch = (partial) => {
           const id = currentTaskId.value;
@@ -1618,6 +1685,7 @@ use_import_ca = no
             currentTaskId.value = data.id;
             taskStatus.value = data.status;
             currentTaskSnapshot.value = data;
+            deploySubView.value = 'monitor';
             openSocket(data.id);
             await fetchTasks();
             ElementPlus.ElMessage.success('任务已创建');
@@ -1645,6 +1713,7 @@ use_import_ca = no
           selectedPipelineKey.value = '';
           selectedLogHint.value = '';
           activeMenu.value = 'deploy';
+          deploySubView.value = 'monitor';
           try {
             const { data } = await api.get('/deployment/tasks/' + row.id + '/');
             currentTaskSnapshot.value = data;
@@ -1670,6 +1739,7 @@ use_import_ca = no
         return {
           token, user, loading, activeMenu, breadcrumbTitle, runningCount, successCount, failedCount, lastTasks, onMenuSelect,
           hosts, hostsWithCredential, hostsKeyAuth, tasks, showRegister, loginForm, regForm, hostForm, deployForm, deployStep,
+          deploySubView, openDeployWizard, backToDeployList,
           deployWizardSteps, goDeployWizardStep,
           refreshTasksOnly, deployActionLabel, deployStatusLabel, deployStatusTagType, deployOutcomeTagType, deployTaskRowClass,
           currentTaskSnapshot, deployStatusStripVisible, deployStatusStripTitle, deployStatusStripType, liveTaskFinishedHint,
