@@ -398,7 +398,7 @@
                     <code>config/gaussdb/user_edit_file.conf</code> 或 <code>config/user_edit_file.conf</code> 是否存在并<strong>覆盖写入</strong>，再执行所选 <code>appctl.sh</code> 操作。
                   </p>
                   <el-descriptions :column="1" border size="small">
-                    <el-descriptions-item label="Manifest">部署根目录下 <code>config/gaussdb/manifest.yaml</code>，任务运行中轮询解析进度树</el-descriptions-item>
+                    <el-descriptions-item label="Manifest">安装/升级时在执行机 <code>config/gaussdb/</code> 下轮询：<strong>单节点</strong>仅 <code>manifest.yaml</code>；<strong>三节点</strong>为 <code>manifest.yaml</code> + <code>manifest_&lt;node2_ip&gt;.yaml</code> + <code>manifest_&lt;node3_ip&gt;.yaml</code>（IP 来自 user_edit），合并展示流水线</el-descriptions-item>
                     <el-descriptions-item label="配置文件"><code>user_edit</code> 以页面填写为准原样下发；所选节点仅用于 SSH 连接与执行 appctl</el-descriptions-item>
                     <el-descriptions-item label="注意">docker-service 不建议并发执行多个 appctl；同一主机请避免并行任务。</el-descriptions-item>
                   </el-descriptions>
@@ -880,7 +880,7 @@
                     </template>
                     <el-empty
                       v-else
-                      :description="showManifestTree ? '安装/升级期间，后台会持续读取执行机「部署根目录」下 config/gaussdb/manifest.yaml；有有效 YAML 后即展示流水线。若长时间无数据，请核对主机上的部署根目录是否与 appctl 所在目录一致。' : '当前为前置检查，无 manifest 流水线'"
+                      :description="showManifestTree ? '安装/升级期间，在执行机轮询 manifest：单节点为 manifest.yaml；三节点另读 manifest_<node2_ip>.yaml、manifest_<node3_ip>.yaml（与 user_edit 一致）。有有效 YAML 后即展示流水线。' : '当前为前置检查，无 manifest 流水线'"
                     />
                   </div>
                 </el-card>

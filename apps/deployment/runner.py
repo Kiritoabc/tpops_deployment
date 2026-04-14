@@ -40,16 +40,41 @@ def _deploy_root(host) -> str:
     return root or "/data/docker-service"
 
 
-def _remote_manifest_paths(host) -> list:
+def _remote_manifest_paths_for_task(host, deploy_mode: str, user_edit_kv: dict) -> list:
     """
-    仅在执行机（SSH 目标）上读取的 manifest 路径。
+    在执行机（SSH 目标）上 cat 的 manifest 路径列表（相对部署根 config/gaussdb）。
 
-    固定为 ``<部署根目录>/config/gaussdb/manifest.yaml``，不解析 user_edit
-    中的 node*_ip，也不使用 manifest_<ip>.yaml 命名。
+    - **单节点**：只读 ``manifest.yaml``。
+    - **三节点**（与 user_edit 约定一致）：
+      - 节点 1（当前配置中的 node1_ip 对应现场主文件）：``manifest.yaml``
+      - 节点 2：``manifest_<node2_ip>.yaml``（来自 user_edit 的 node2_ip）
+      - 节点 3：``manifest_<node3_ip>.yaml``（来自 user_edit 的 node3_ip）
+      仅追加已填写的 node2_ip / node3_ip；空则不读对应文件。
     """
     root = _deploy_root(host)
     base = "%s/config/gaussdb" % root
-    return ["%s/manifest.yaml" % base]
+    paths = []
+    seen = set()
+
+    def _add(p):
+        if p not in seen:
+            seen.add(p)
+            paths.append(p)
+
+    if deploy_mode != DeploymentTask.MODE_TRIPLE:
+        _add("%s/manifest.yaml" % base)
+        return paths
+
+    kv = user_edit_kv or {}
+    n2 = (kv.get("node2_ip") or "").strip()
+    n3 = (kv.get("node3_ip") or "").strip()
+
+    _add("%s/manifest.yaml" % base)
+    if n2:
+        _add("%s/manifest_%s.yaml" % (base, n2))
+    if n3:
+        _add("%s/manifest_%s.yaml" % (base, n3))
+    return paths
 
 
 def _should_poll_manifest(action: str) -> bool:
@@ -61,7 +86,16 @@ def _poll_manifest_once(task_id: int, host_id: int, secret: str, manifest_paths:
     from apps.hosts.models import Host
 
     host = Host.objects.get(pk=host_id)
-    paths = list(manifest_paths) if manifest_paths else _remote_manifest_paths(host)
+    task = DeploymentTask.objects.filter(pk=task_id).only(
+        "user_edit_content", "deploy_mode"
+    ).first()
+    kv, _ = parse_user_edit_block((task.user_edit_content if task else "") or "")
+    dm = (task.deploy_mode if task else "") or DeploymentTask.MODE_SINGLE
+    paths = (
+        list(manifest_paths)
+        if manifest_paths
+        else _remote_manifest_paths_for_task(host, dm, kv)
+    )
     dicts = []
     poll_details = []
     for p in paths:
@@ -214,7 +248,7 @@ def _run_task(task_id: int):
         _emit(task_id, {"type": "log", "data": parse_err + "\n"})
         return
 
-    manifest_paths = _remote_manifest_paths(h)
+    manifest_paths = _remote_manifest_paths_for_task(h, task.deploy_mode, kv)
 
     path, perr = resolve_user_edit_conf_path(
         h.hostname,

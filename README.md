@@ -46,7 +46,9 @@ daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 - 安装操作：`sh appctl.sh install`（可选再跟「目标参数」）；**单节点**时通过 `yes y | sh appctl.sh …` 自动应答脚本中的 `(y/n)` 确认（非交互 SSH）。
 - 升级操作：`sh appctl.sh upgrade`（可选「目标参数」）
 - 卸载全部：`sh appctl.sh uninstall_all`（可选「目标参数」）；**通过 `yes y | sh appctl.sh …` 自动应答**脚本中可能出现的 `(y/n)` 确认（高危操作请谨慎）。
-- **install / upgrade**：appctl 启动后即轮询执行机上的 **`<部署根目录>/config/gaussdb/manifest.yaml`**（不根据 `user_edit` 里的 IP 拼其它文件名），可读且解析为有效 YAML 后推送到前端；流水线展示与日志 tail 规则同前。
+- **install / upgrade**：appctl 启动后在**执行机**上按任务形态轮询 manifest：  
+  - **单节点**：`<部署根>/config/gaussdb/manifest.yaml`  
+  - **三节点**：同上 `manifest.yaml`（对应 `user_edit` 中 **node1_ip** 侧主文件），并追加 **`manifest_<node2_ip>.yaml`**、**`manifest_<node3_ip>.yaml`**（仅当 `user_edit` 中填写了 `node2_ip` / `node3_ip`）；多文件解析后**合并**为一条流水线。路径均在执行机本地可读（需保证其它节点 manifest 已同步到该目录，或现场脚本约定一致）。
 - **precheck install / precheck upgrade / uninstall_all**：**不轮询 manifest**。
 - 部署日志：`{log_path}/deploy/precheck.log`、`{log_path}/deploy/install.log`、`{log_path}/deploy/uninstall.log`；WebSocket `ws/deploy/<id>/log/?kind=precheck|install|uninstall` 或 `&rel=文件名`（仅 `log_path/deploy/` 下安全文件名）实时 tail。Manifest 每层服务以横向圆点链展示，点击圆点默认 tail 当前阶段对应日志。
 
