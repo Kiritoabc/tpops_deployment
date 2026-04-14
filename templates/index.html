@@ -17,12 +17,12 @@
       --ob-main-pad-x: clamp(10px, 1.6vw, 20px);
       --ob-main-pad-y: clamp(8px, 1.2vw, 16px);
       --ob-card-radius: 10px;
-      /* 工作台：左 manifest / 流水线 | 右日志（略加左侧比例，减少右侧「空」感） */
-      --deploy-pipeline-col: minmax(300px, 44%);
-      /* 左侧整块（进度+流水线）最大高度，超出内部滚动 */
-      --deploy-left-scroll-max-h: min(112vh, 1240px);
-      /* 监控页右侧：appctl 与文件日志同高，内部滚动 */
+      /* 工作台：左右等宽 */
+      --deploy-console-col-w: minmax(0, 1fr);
+      /* 单块日志区高度；左右列总工作区高度一致（两格日志 + 标题/间距/底部说明） */
       --deploy-log-panel-max-h: min(56vh, 680px);
+      --deploy-log-stack-chrome: clamp(6.5rem, 14vh, 9rem);
+      --deploy-console-col-h: calc(var(--deploy-log-panel-max-h) * 2 + var(--deploy-log-stack-chrome));
     }
     * { box-sizing: border-box; }
     html, body, #app { height: 100%; margin: 0; }
@@ -222,7 +222,7 @@
     }
     @media (min-width: 960px) {
       .deploy-console-body {
-        grid-template-columns: var(--deploy-pipeline-col) 1px 1fr;
+        grid-template-columns: var(--deploy-console-col-w) 1px var(--deploy-console-col-w);
         align-items: stretch;
       }
     }
@@ -231,7 +231,11 @@
       background: #e4e7ed;
     }
     @media (min-width: 960px) {
-      .deploy-console-gutter { display: block; }
+      .deploy-console-gutter {
+        display: block;
+        min-height: var(--deploy-console-col-h);
+        height: 100%;
+      }
     }
     .deploy-console-left {
       min-width: 0;
@@ -241,14 +245,15 @@
       overflow: visible;
       display: flex;
       flex-direction: column;
+      min-height: var(--deploy-console-col-h);
+      height: var(--deploy-console-col-h);
     }
     .deploy-console-left-scroll {
-      max-height: var(--deploy-left-scroll-max-h);
+      flex: 1 1 auto;
+      min-height: 0;
       overflow-y: auto;
       overflow-x: hidden;
       padding-right: 4px;
-      flex: 1 1 auto;
-      min-height: 0;
     }
     @media (min-width: 960px) {
       .deploy-console-left {
@@ -260,9 +265,11 @@
       min-width: 0;
       padding: 12px 14px;
       background: #fff;
-      overflow: visible;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
+      min-height: var(--deploy-console-col-h);
+      height: var(--deploy-console-col-h);
     }
     .deploy-log-stack {
       display: flex;
@@ -271,6 +278,7 @@
       flex: 1 1 auto;
       min-height: 0;
       justify-content: flex-start;
+      overflow: hidden;
     }
     .deploy-log-seg {
       display: flex;
