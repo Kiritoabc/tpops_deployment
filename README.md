@@ -23,6 +23,19 @@ python3 manage.py createsuperuser
 daphne -b 0.0.0.0 -p 8000 tpops_deployment.asgi:application
 ```
 
+### 在远程服务器上启动（不依赖 PyCharm Run）
+
+若 PyCharm 远程运行报 **`Failed to prepare environment`** 等，可在 **SSH 登录服务器** 后在项目根执行：
+
+```bash
+cd /data/tpops_deployment   # 按你的实际路径
+chmod +x scripts/run_daphne.sh
+export DJANGO_SECRET_KEY='你的密钥'
+./scripts/run_daphne.sh
+```
+
+等价于 `python -m daphne ...`；可用 `DAPHNE_BIND`、`DAPHNE_PORT` 覆盖监听地址与端口。**开发时**仍建议用 PyCharm 编辑代码 + 远程解释器做检查，服务在 SSH 终端里用上述方式启动。
+
 > **注意**：若 SSH 断开后未在本机跑过 `migrate`，`db.sqlite3` 可能仍是旧结构，部署任务等接口会表现异常；连上后补跑一次即可。
 
 浏览器访问 `http://localhost:8000/`：
