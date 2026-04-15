@@ -94,6 +94,18 @@ export DJANGO_SECRET_KEY='你的密钥'
 - `apps/logs`：WebSocket 路由与消费者
 - `templates/index.html`：Vue3 + Element Plus 单页（CDN）
 
+## 安装包管理（设计约定，待实现）
+
+与华为 TPOPS 安装文档中介质准备思路一致：**安装包仅用于安装 TPOPS，不通过 `appctl.sh` 传参**；下发时在执行机写入约定目录即可。
+
+| 约定 | 说明 |
+|------|------|
+| **上传目标机** | **仅节点 1**（与部署任务一致：即 **`host` / 第一个执行节点**），不向节点 2/3 传包。 |
+| **远端目录** | **扁平**：`<部署根>/pkgs/`，即 **`{docker_service_root}/pkgs/`**（如 `/data/docker-service/pkgs/`）。**不按版本建子目录**；文件名由上传时原名或平台规范化保证不冲突。 |
+| **与 appctl** | 同步完包后**照常**执行现有 `sh appctl.sh ...`；**不把包路径拼进 appctl 命令行**，由现场脚本从 `pkgs/` 取用。 |
+
+实现时可复用现有 SSH/SFTP；部署任务上增加「版本 / 勾选包」等字段，runner 在写 `user_edit` 之后、`appctl` 之前执行 `mkdir -p` + 上传选中文件。
+
 ## API 前缀
 
 - `/api/auth/` — 注册、登录、刷新 Token、个人信息  
