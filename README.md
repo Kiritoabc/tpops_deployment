@@ -36,6 +36,44 @@ export DJANGO_SECRET_KEY='你的密钥'
 
 等价于 `python -m daphne ...`；可用 `DAPHNE_BIND`、`DAPHNE_PORT` 覆盖监听地址与端口。**开发时**仍建议用 PyCharm 编辑代码 + 远程解释器做检查，服务在 SSH 终端里用上述方式启动。
 
+### 本地 PyCharm 断点调试「远程已启动」的 daphne（推荐：debugpy 附加）
+
+当 **PyCharm 远程 Run** 报 `Failed to prepare environment` 时，不必让 IDE 在远程「替你启动」进程；改为：**远程 SSH 里启动带 debugpy 的 daphne**，本机 PyCharm **附加调试器**（断点、单步仍在本机 IDE 里操作）。
+
+1. **在远程 venv 安装 debugpy**（只需一次）：
+
+   ```bash
+   pip install -r requirements-dev.txt
+   # 或: pip install 'debugpy>=1.6,<2'
+   ```
+
+2. **本机开一个 SSH 端口转发**（把远程 `5678` 映到本机，供 PyCharm 连 debugpy；另开一个终端保持不关）：
+
+   ```bash
+   ssh -N -L 5678:127.0.0.1:5678 你的用户@远程主机
+   ```
+
+3. **再 SSH 登录远程**，在项目根执行（脚本默认 debugpy 只监听 `127.0.0.1:5678`，配合上面转发较安全）：
+
+   ```bash
+   cd /data/tpops_deployment
+   chmod +x scripts/run_daphne_debugpy.sh
+   export DJANGO_SECRET_KEY='你的密钥'
+   ./scripts/run_daphne_debugpy.sh
+   ```
+
+   终端会停在 **等待调试器附加**（`--wait-for-client`），直到你在 PyCharm 里点附加后才会继续起 daphne。
+
+4. **PyCharm（本机）**：**Run → Attach to Process…**（或 **Attach Debugger**）→ 选择 **Python**、**Using debugpy** → **Host** `127.0.0.1`，**Port** `5678` → 确定。
+
+5. 附加成功后，在 **本机已打开的同一份工程** 里下断点，浏览器访问 **远程 HTTP 地址**（如 `http://远程IP:8000`）即可命中断点。
+
+说明：
+
+- **代码路径**：远程上的项目路径应与 PyCharm 里 **SSH 解释器的 Path mappings** 一致（例如本机 `D:\tpops_deployment` ↔ 远程 `/data/tpops_deployment`），否则断点行可能对不齐。
+- **仅内网直连**、不用 SSH 转发时，可在远程设 `DEBUGPY_HOST=0.0.0.0`，本机 PyCharm 里 Host 填 **远程 IP**（注意防火墙与安全性）。
+- 结束调试：先停 PyCharm 附加会话，再在远程终端 `Ctrl+C` 停 daphne。
+
 > **注意**：若 SSH 断开后未在本机跑过 `migrate`，`db.sqlite3` 可能仍是旧结构，部署任务等接口会表现异常；连上后补跑一次即可。
 
 浏览器访问 `http://localhost:8000/`：
