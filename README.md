@@ -64,6 +64,9 @@ export DJANGO_SECRET_KEY='你的密钥'
 
    终端会停在 **等待调试器附加**（`--wait-for-client`），直到你在 PyCharm 里点附加后才会继续起 daphne。
 
+   若出现 **`/usr/bin/env: 'bash\r': No such file or directory`**，说明脚本被保存成了 Windows 换行（CRLF）。仓库已用 `.gitattributes` 强制 `*.sh` 为 LF；请 **`git pull`** 后重试，或在服务器执行一次：  
+   `sed -i 's/\r$//' scripts/run_daphne.sh scripts/run_daphne_debugpy.sh`
+
 4. **PyCharm（本机）**：**Run → Attach to Process…**（或 **Attach Debugger**）→ 选择 **Python**、**Using debugpy** → **Host** `127.0.0.1`，**Port** `5678` → 确定。
 
 5. 附加成功后，在 **本机已打开的同一份工程** 里下断点，浏览器访问 **远程 HTTP 地址**（如 `http://远程IP:8000`）即可命中断点。
