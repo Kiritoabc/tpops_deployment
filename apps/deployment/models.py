@@ -82,6 +82,25 @@ class DeploymentTask(models.Model):
         blank=True,
         verbose_name="实际写入的远程路径",
     )
+    package_release = models.ForeignKey(
+        "packages.PackageRelease",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="deployment_tasks",
+        verbose_name="安装包版本",
+    )
+    package_artifact_ids = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="下发的安装包 ID 列表",
+        help_text="来自所选版本的 Artifact 主键列表；空且未勾选跳过时不下发",
+    )
+    skip_package_sync = models.BooleanField(
+        default=False,
+        verbose_name="跳过安装包同步",
+        help_text="为 True 时不向远端 pkgs 上传（使用环境已有包）",
+    )
     status = models.CharField(
         max_length=32, choices=STATUS_CHOICES, default=STATUS_PENDING
     )

@@ -103,6 +103,7 @@ export DJANGO_SECRET_KEY='你的密钥'
 - `/api/auth/` — 注册、登录、刷新 Token、个人信息  
 - `/api/hosts/` — 主机 CRUD、连通性测试  
 - `/api/deployment/tasks/` — 创建 / 列表 / 详情任务  
+- `/api/packages/releases/`、`/api/packages/artifacts/` — 安装包版本与文件上传（multipart）  
 - `/ws/deploy/<task_id>/?token=<access_jwt>` — 任务 appctl 输出与 manifest 推送  
 - `/ws/deploy/<task_id>/log/?token=<jwt>&kind=precheck|install|uninstall` — `deploy/*.log`  
 - `/ws/deploy/<task_id>/log/?token=<jwt>&rel=precheck.log` — 同上目录指定文件名  

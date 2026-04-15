@@ -28,9 +28,13 @@ INSTALLED_APPS = [
     "apps.tpops_auth",
     "apps.hosts",
     "apps.deployment",
+    "apps.packages",
     "apps.manifest",
     "apps.logs",
 ]
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

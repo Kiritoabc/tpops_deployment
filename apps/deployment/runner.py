@@ -18,6 +18,7 @@ from apps.hosts.ssh_client import (
     resolve_user_edit_conf_path,
     remote_cat_file,
     run_remote_command,
+    sftp_put_file,
     write_remote_file_utf8,
 )
 
@@ -184,6 +185,74 @@ def _poll_manifest_loop(
 
 def _default_user_edit_path(host) -> str:
     return "%s/config/gaussdb/user_edit_file.conf" % _deploy_root(host)
+
+
+def _remote_pkgs_dir(host) -> str:
+    return "%s/pkgs" % _deploy_root(host)
+
+
+def _sync_pkgs_to_remote(task_id: int, task, secret: str) -> tuple:
+    """
+    将任务勾选的安装包同步到执行机 <部署根>/pkgs/（扁平文件名）。
+    返回 (ok: bool, error_message: str)
+    """
+    from apps.packages.models import PackageArtifact
+
+    if getattr(task, "skip_package_sync", False):
+        _emit(task_id, {"type": "log", "data": "[pkgs] 已跳过安装包同步（使用环境已有包）\n"})
+        return True, ""
+
+    ids = getattr(task, "package_artifact_ids", None) or []
+    if not ids:
+        return True, ""
+
+    rel = getattr(task, "package_release", None)
+    if rel is None:
+        return False, "已填写安装包 ID 但未关联版本"
+
+    pkgs = _remote_pkgs_dir(task.host)
+    if not remote_mkdir_p(
+        task.host.hostname,
+        task.host.port,
+        task.host.username,
+        task.host.auth_method,
+        secret,
+        pkgs,
+    ):
+        return False, "无法创建远程目录 %s" % pkgs
+
+    qs = PackageArtifact.objects.filter(release=rel, pk__in=ids)
+    if qs.count() != len(set(int(x) for x in ids)):
+        return False, "安装包列表与版本不一致或存在无效 ID"
+
+    uploaded = []
+    for art in qs:
+        local_path = art.file.path if art.file else ""
+        if not local_path or not os.path.isfile(local_path):
+            return False, "本地找不到安装包文件 id=%s" % art.id
+        remote_path = "%s/%s" % (pkgs, art.remote_basename)
+        ok, msg = sftp_put_file(
+            task.host.hostname,
+            task.host.port,
+            task.host.username,
+            task.host.auth_method,
+            secret,
+            local_path,
+            remote_path,
+        )
+        if not ok:
+            return False, "上传 %s 失败: %s" % (art.remote_basename, msg)
+        uploaded.append(art.remote_basename)
+
+    _emit(
+        task_id,
+        {
+            "type": "log",
+            "data": "[pkgs] 已同步到 %s: %s\n"
+            % (pkgs, ", ".join(uploaded) if uploaded else "(无)"),
+        },
+    )
+    return True, ""
 
 
 def _build_appctl_command(host, action: str, target: str, deploy_mode: str = None) -> str:
@@ -390,6 +459,17 @@ def _run_task_body(task_id: int):
     task.remote_user_edit_path = path
     task.save(update_fields=["remote_user_edit_path", "updated_at"])
     _emit(task_id, {"type": "log", "data": "配置文件已写入: %s\n" % path})
+
+    ok_pkg, perr = _sync_pkgs_to_remote(task_id, task, secret)
+    if not ok_pkg:
+        task.status = DeploymentTask.STATUS_FAILED
+        task.error_message = perr or "安装包同步失败"
+        task.finished_at = timezone.now()
+        task.save(
+            update_fields=["status", "error_message", "finished_at", "updated_at"]
+        )
+        _emit(task_id, {"type": "log", "data": (perr or "安装包同步失败") + "\n"})
+        return
 
     try:
         cmd = _build_appctl_command(h, task.action, task.target, task.deploy_mode)

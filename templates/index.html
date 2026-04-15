@@ -467,6 +467,8 @@
     .node-dot.running { background: #fdf6ec; border-color: #f5dab1; color: #e6a23c; }
     .node-dot.error { background: #fef0f0; border-color: #fbc4c4; color: #f56c6c; }
     .node-dot.none { color: #909399; }
+    .pkg-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .pkg-meta { font-size: 12px; color: #909399; }
     .deploy-page-toolbar {
       display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
       gap: 8px; margin-bottom: 8px;
@@ -533,6 +535,9 @@
           </el-menu-item>
           <el-menu-item index="deploy">
             <span>部署任务</span>
+          </el-menu-item>
+          <el-menu-item index="packages">
+            <span>安装包管理</span>
           </el-menu-item>
         </el-menu>
         <div class="ob-aside-toggle">
@@ -794,6 +799,88 @@
           </template>
 
           <!-- 部署任务：列表 / 新建向导 / 执行监控 分屏 -->
+          <template v-else-if="activeMenu === 'packages'">
+            <h2 class="ob-page-title">安装包管理</h2>
+            <p class="ob-page-sub">维护 TPOPS 安装介质版本；下发时在<strong>节点 1</strong>写入 <code>&lt;部署根&gt;/pkgs/</code>（扁平文件名），不传入 <code>appctl.sh</code>。</p>
+            <template v-if="packageSubView === 'list'">
+              <div class="pkg-toolbar">
+                <el-button type="primary" @click="openPackageReleaseForm">新建版本</el-button>
+                <el-button :loading="loading" @click="fetchPackageReleases">刷新</el-button>
+              </div>
+              <el-card shadow="never" class="deploy-task-card">
+                <el-table :data="packageReleases" stripe style="width:100%" empty-text="暂无版本，请点击「新建版本」">
+                  <el-table-column prop="id" label="ID" width="72" />
+                  <el-table-column prop="name" label="版本名称" min-width="140" />
+                  <el-table-column prop="artifact_count" label="包数量" width="88" align="center" />
+                  <el-table-column prop="created_by_username" label="创建人" width="100" />
+                  <el-table-column prop="created_at" label="创建时间" width="168">
+                    <template #default="{ row }"><span class="mono" style="font-size:12px;color:#606266">{{ formatHostTime(row.created_at) }}</span></template>
+                  </el-table-column>
+                  <el-table-column label="操作" width="200" fixed="right">
+                    <template #default="{ row }">
+                      <el-button link type="primary" @click="openPackageDetail(row)">管理包</el-button>
+                      <el-button link type="danger" @click="deletePackageRelease(row)">删除</el-button>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </el-card>
+            </template>
+            <template v-else-if="packageSubView === 'form'">
+              <div class="pkg-toolbar">
+                <el-button @click="backPackageList">← 返回列表</el-button>
+                <span class="pkg-meta">新建安装包版本</span>
+              </div>
+              <el-card shadow="never" class="deploy-task-card">
+                <el-form label-width="100px" style="max-width:560px;">
+                  <el-form-item label="版本名称"><el-input v-model="packageReleaseForm.name" placeholder="如 TPOPS-1.0" /></el-form-item>
+                  <el-form-item label="说明"><el-input v-model="packageReleaseForm.description" type="textarea" :rows="3" /></el-form-item>
+                  <el-form-item>
+                    <el-button type="primary" :loading="loading" @click="savePackageRelease">保存</el-button>
+                    <el-button @click="backPackageList">取消</el-button>
+                  </el-form-item>
+                </el-form>
+              </el-card>
+            </template>
+            <template v-else-if="packageSubView === 'detail' && packageDetailRelease">
+              <div class="pkg-toolbar">
+                <el-button @click="backPackageList">← 返回列表</el-button>
+                <span style="font-weight:600">版本：{{ packageDetailRelease.name }}</span>
+                <el-button type="primary" :loading="loading" @click="fetchPackageArtifacts(packageDetailRelease.id)">刷新包列表</el-button>
+              </div>
+              <el-card shadow="never" class="deploy-task-card" style="margin-bottom:12px;">
+                <template #header><span>上传安装包</span><span class="hint" style="float:right;font-weight:400">不限制大小与后缀；同名将覆盖该版本下已有记录</span></template>
+                <el-upload
+                  :action="packageUploadAction"
+                  :headers="packageUploadHeaders"
+                  name="file"
+                  :data="{ release: packageDetailRelease.id }"
+                  :on-success="onPackageUploadSuccess"
+                  :on-error="onPackageUploadError"
+                  :show-file-list="false"
+                >
+                  <el-button type="primary">选择文件上传</el-button>
+                </el-upload>
+              </el-card>
+              <el-card shadow="never" class="deploy-task-card">
+                <template #header><span>包列表</span></template>
+                <el-table :data="packageArtifacts" stripe style="width:100%" empty-text="暂无文件">
+                  <el-table-column prop="id" label="ID" width="72" />
+                  <el-table-column prop="remote_basename" label="远端文件名" min-width="160" show-overflow-tooltip />
+                  <el-table-column prop="original_name" label="原始名" min-width="120" show-overflow-tooltip />
+                  <el-table-column prop="size" label="大小(字节)" width="120" align="right" />
+                  <el-table-column prop="sha256" label="SHA256" min-width="120" show-overflow-tooltip>
+                    <template #default="{ row }"><span class="mono" style="font-size:11px">{{ (row.sha256 || '').slice(0, 16) }}…</span></template>
+                  </el-table-column>
+                  <el-table-column label="操作" width="88" fixed="right">
+                    <template #default="{ row }">
+                      <el-button link type="danger" @click="deletePackageArtifact(row)">删除</el-button>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </el-card>
+            </template>
+          </template>
+
           <template v-else-if="activeMenu === 'deploy'">
             <!-- ① 部署记录列表（与新建入口同页） -->
             <template v-if="deploySubView === 'list'">
@@ -848,6 +935,13 @@
                   </template>
                 </el-table-column>
                 <el-table-column prop="target" label="目标" width="96" show-overflow-tooltip />
+                <el-table-column label="安装包" min-width="120" show-overflow-tooltip>
+                  <template #default="{ row }">
+                    <span v-if="row.skip_package_sync" class="hint">已跳过</span>
+                    <span v-else-if="row.package_release_name" v-text="row.package_release_name + '（' + ((row.package_artifact_ids || []).length) + ' 个）'"></span>
+                    <span v-else class="hint">—</span>
+                  </template>
+                </el-table-column>
                 <el-table-column label="结果" width="100" align="center">
                   <template #default="{ row }">
                     <el-tag size="small" :type="deployOutcomeTagType(row.status)" effect="dark">{{ row.outcome_label || deployStatusLabel(row.status) }}</el-tag>
@@ -969,6 +1063,26 @@
                         </el-form-item>
                         <el-form-item label="目标参数">
                           <el-input v-model="deployForm.target" placeholder="precheck 类必填组件名（如 gaussdb）；install / upgrade / uninstall_all 按现场可留空" />
+                        </el-form-item>
+                        <el-form-item label="安装包">
+                          <div style="width:100%;">
+                            <el-checkbox v-model="deployForm.skip_package_sync" @change="onSkipPackageChange">跳过同步（远端 <code>pkgs/</code> 已有介质）</el-checkbox>
+                            <div v-if="!deployForm.skip_package_sync" style="margin-top:10px;">
+                              <el-select v-model="deployForm.package_release" clearable filterable placeholder="选择安装包版本" style="width:100%;max-width:480px;margin-bottom:10px;" @change="onDeployPackageReleaseChange">
+                                <el-option v-for="r in packageReleases" :key="r.id" :label="r.name + '（' + (r.artifact_count || 0) + ' 个包）'" :value="r.id" />
+                              </el-select>
+                              <div v-if="deployForm.package_release" style="max-height:220px;overflow:auto;border:1px solid #ebeef5;border-radius:8px;padding:10px 12px;background:#fafbfc;">
+                                <div v-if="!deployWizardArtifacts.length" class="hint">该版本下暂无包，请先到「安装包管理」上传。</div>
+                                <el-checkbox-group v-else v-model="deployForm.package_artifact_ids" style="display:flex;flex-direction:column;gap:8px;">
+                                  <el-checkbox v-for="a in deployWizardArtifacts" :key="a.id" :label="a.id">
+                                    <span v-text="a.remote_basename"></span>
+                                    <span class="hint" style="margin-left:8px;">{{ a.size }} B</span>
+                                  </el-checkbox>
+                                </el-checkbox-group>
+                              </div>
+                              <div v-else class="hint" style="margin-top:6px;">请先选择版本；不选版本则不下发安装包。</div>
+                            </div>
+                          </div>
                         </el-form-item>
                         <el-form-item label="user_edit">
                           <el-input v-model="deployForm.user_edit_content" type="textarea" :rows="12" placeholder="[user_edit] ..." class="mono-ta" />
@@ -1251,7 +1365,127 @@ use_import_ca = no
           user_edit_content: USER_EDIT_TEMPLATE,
           action: 'precheck_install',
           target: 'gaussdb',
+          package_release: null,
+          package_artifact_ids: [],
+          skip_package_sync: false,
         });
+        const packageReleases = ref([]);
+        const packageSubView = ref('list');
+        const packageReleaseForm = reactive({ name: '', description: '' });
+        const packageDetailRelease = ref(null);
+        const packageArtifacts = ref([]);
+        const deployWizardArtifacts = ref([]);
+
+        const packageUploadAction = computed(() => `${location.origin}/api/packages/artifacts/`);
+        const packageUploadHeaders = computed(() => (token.value ? { Authorization: 'Bearer ' + token.value } : {}));
+
+        const fetchPackageReleases = async () => {
+          try {
+            const { data } = await api.get('/packages/releases/');
+            packageReleases.value = Array.isArray(data) ? data : (data.results || []);
+          } catch { packageReleases.value = []; }
+        };
+
+        const openPackageReleaseForm = () => {
+          packageReleaseForm.name = '';
+          packageReleaseForm.description = '';
+          packageSubView.value = 'form';
+        };
+
+        const backPackageList = () => {
+          packageSubView.value = 'list';
+          packageDetailRelease.value = null;
+          packageArtifacts.value = [];
+          fetchPackageReleases().catch(() => {});
+        };
+
+        const savePackageRelease = async () => {
+          if (!(packageReleaseForm.name || '').trim()) return ElementPlus.ElMessage.warning('请填写版本名称');
+          loading.value = true;
+          try {
+            await api.post('/packages/releases/', {
+              name: packageReleaseForm.name.trim(),
+              description: (packageReleaseForm.description || '').trim(),
+            });
+            ElementPlus.ElMessage.success('已创建');
+            backPackageList();
+          } catch (e) {
+            ElementPlus.ElMessage.error(e.response?.data ? JSON.stringify(e.response.data) : '保存失败');
+          } finally { loading.value = false; }
+        };
+
+        const openPackageDetail = async (row) => {
+          packageDetailRelease.value = row;
+          packageSubView.value = 'detail';
+          await fetchPackageArtifacts(row.id);
+        };
+
+        const fetchPackageArtifacts = async (releaseId) => {
+          if (!releaseId) return;
+          loading.value = true;
+          try {
+            const { data } = await api.get('/packages/artifacts/', { params: { release: releaseId } });
+            packageArtifacts.value = Array.isArray(data) ? data : (data.results || []);
+          } catch { packageArtifacts.value = []; }
+          finally { loading.value = false; }
+        };
+
+        const deletePackageRelease = async (row) => {
+          try {
+            await ElementPlus.ElMessageBox.confirm('确定删除版本「' + row.name + '」及其下所有安装包？', '确认', { type: 'warning' });
+          } catch { return; }
+          loading.value = true;
+          try {
+            await api.delete('/packages/releases/' + row.id + '/');
+            ElementPlus.ElMessage.success('已删除');
+            fetchPackageReleases().catch(() => {});
+            if (packageDetailRelease.value && packageDetailRelease.value.id === row.id) backPackageList();
+          } catch { ElementPlus.ElMessage.error('删除失败'); }
+          finally { loading.value = false; }
+        };
+
+        const deletePackageArtifact = async (row) => {
+          try {
+            await ElementPlus.ElMessageBox.confirm('确定删除文件「' + row.remote_basename + '」？', '确认', { type: 'warning' });
+          } catch { return; }
+          loading.value = true;
+          try {
+            await api.delete('/packages/artifacts/' + row.id + '/');
+            ElementPlus.ElMessage.success('已删除');
+            if (packageDetailRelease.value) await fetchPackageArtifacts(packageDetailRelease.value.id);
+            fetchPackageReleases().catch(() => {});
+          } catch { ElementPlus.ElMessage.error('删除失败'); }
+          finally { loading.value = false; }
+        };
+
+        const onPackageUploadSuccess = () => {
+          ElementPlus.ElMessage.success('上传成功');
+          if (packageDetailRelease.value) fetchPackageArtifacts(packageDetailRelease.value.id);
+          fetchPackageReleases().catch(() => {});
+        };
+        const onPackageUploadError = () => ElementPlus.ElMessage.error('上传失败');
+
+        const loadDeployWizardArtifacts = async (releaseId) => {
+          deployWizardArtifacts.value = [];
+          if (!releaseId) return;
+          try {
+            const { data } = await api.get('/packages/artifacts/', { params: { release: releaseId } });
+            deployWizardArtifacts.value = Array.isArray(data) ? data : (data.results || []);
+          } catch { deployWizardArtifacts.value = []; }
+        };
+
+        const onDeployPackageReleaseChange = () => {
+          deployForm.package_artifact_ids = [];
+          loadDeployWizardArtifacts(deployForm.package_release);
+        };
+
+        const onSkipPackageChange = () => {
+          if (deployForm.skip_package_sync) {
+            deployForm.package_release = null;
+            deployForm.package_artifact_ids = [];
+            deployWizardArtifacts.value = [];
+          }
+        };
         const logText = ref('');
         const logTailText = ref('');
         const logAppctlEl = ref(null);
@@ -1551,6 +1785,11 @@ use_import_ca = no
           if (activeMenu.value === 'hosts') {
             return hostSubView.value === 'form' ? '主机管理 / 纳管主机' : '主机管理 / 主机列表';
           }
+          if (activeMenu.value === 'packages') {
+            if (packageSubView.value === 'form') return '安装包管理 / 新建版本';
+            if (packageSubView.value === 'detail') return '安装包管理 / 包文件';
+            return '安装包管理 / 版本列表';
+          }
           const m = { overview: '概览' };
           return m[activeMenu.value] || '';
         });
@@ -1577,6 +1816,10 @@ use_import_ca = no
           if (key === 'hosts' && token.value) {
             hostSubView.value = 'list';
           }
+          if (key === 'packages' && token.value) {
+            packageSubView.value = 'list';
+            fetchPackageReleases().catch(() => {});
+          }
         };
 
         const openHostEnroll = () => {
@@ -1592,6 +1835,7 @@ use_import_ca = no
         const openDeployWizard = () => {
           deploySubView.value = 'wizard';
           deployStep.value = 0;
+          fetchPackageReleases().catch(() => {});
         };
 
         const backToDeployList = () => {
@@ -2184,6 +2428,8 @@ use_import_ca = no
           if (!deployForm.host) return ElementPlus.ElMessage.warning('请选择节点 1');
           if (!(deployForm.user_edit_content || '').trim())
             return ElementPlus.ElMessage.warning('请填写或保留默认 user_edit 配置');
+          if (!deployForm.skip_package_sync && deployForm.package_release && (!deployForm.package_artifact_ids || !deployForm.package_artifact_ids.length))
+            return ElementPlus.ElMessage.warning('请选择要下发的安装包，或勾选跳过同步');
           if (deployForm.deploy_mode === 'triple') {
             const ids = [deployForm.host, deployForm.host_node2, deployForm.host_node3].filter(Boolean);
             if (new Set(ids).size !== ids.length)
@@ -2206,6 +2452,9 @@ use_import_ca = no
               user_edit_content: deployForm.user_edit_content,
               action: deployForm.action,
               target: deployForm.target,
+              skip_package_sync: !!deployForm.skip_package_sync,
+              package_release: deployForm.skip_package_sync ? null : deployForm.package_release,
+              package_artifact_ids: deployForm.skip_package_sync ? [] : (deployForm.package_artifact_ids || []).slice(),
             };
             if (deployForm.deploy_mode === 'triple') {
               body.host_node2 = deployForm.host_node2;
@@ -2265,7 +2514,7 @@ use_import_ca = no
 
         onMounted(async () => {
           if (token.value) {
-            try { await fetchHosts(); await fetchTasks(); } catch {}
+            try { await fetchHosts(); await fetchTasks(); await fetchPackageReleases(); } catch {}
           }
         });
         onUnmounted(() => { closeSocket(); closeLogSocket(); });
@@ -2287,6 +2536,12 @@ use_import_ca = no
           isHostDisabledForNode1, isHostDisabledTriple, goDeployStep2, fillUserEditTemplate,
           authMethodLabel, formatHostTime, refreshHostsPage,
           doLogin, doRegister, logout, saveHost, resetHostForm, editHost, testHost, deleteHost, startDeploy, attachTask,
+          packageReleases, packageSubView, packageReleaseForm, packageDetailRelease, packageArtifacts,
+          packageUploadAction, packageUploadHeaders,
+          fetchPackageReleases, openPackageReleaseForm, backPackageList, savePackageRelease,
+          openPackageDetail, fetchPackageArtifacts, deletePackageRelease, deletePackageArtifact,
+          onPackageUploadSuccess, onPackageUploadError, loadDeployWizardArtifacts, onDeployPackageReleaseChange, onSkipPackageChange,
+          deployWizardArtifacts,
         };
       }
     }).use(ElementPlus).mount('#app');

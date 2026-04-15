@@ -132,6 +132,65 @@ def run_remote_command(
             pass
 
 
+def sftp_put_file(
+    hostname: str,
+    port: int,
+    username: str,
+    auth_method: str,
+    secret: str,
+    local_path: str,
+    remote_path: str,
+    timeout: int = 3600,
+):
+    """
+    将本地文件上传到远端路径（原子替换：先写 .tmp 再 rename）。
+    返回 (ok: bool, message: str)
+    """
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    connect_kwargs = {
+        "hostname": hostname,
+        "port": port,
+        "username": username,
+        "timeout": 30,
+        "allow_agent": False,
+        "look_for_keys": False,
+    }
+    if auth_method == Host.AUTH_KEY:
+        connect_kwargs["pkey"] = _load_pkey(secret)
+    else:
+        connect_kwargs["password"] = secret
+    client.connect(**connect_kwargs)
+    sftp = None
+    tmp = "%s.tmp.%d" % (remote_path, id(client))
+    try:
+        sftp = client.open_sftp()
+        sftp.put(local_path, tmp)
+        try:
+            sftp.remove(remote_path)
+        except IOError:
+            pass
+        sftp.rename(tmp, remote_path)
+        return True, "ok"
+    except Exception as exc:
+        if sftp is not None:
+            try:
+                sftp.remove(tmp)
+            except Exception:
+                pass
+        return False, str(exc)
+    finally:
+        if sftp is not None:
+            try:
+                sftp.close()
+            except Exception:
+                pass
+        try:
+            client.close()
+        except Exception:
+            pass
+
+
 def run_remote_command_output(
     hostname: str,
     port: int,

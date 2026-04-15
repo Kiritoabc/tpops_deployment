@@ -1,6 +1,6 @@
 # Plan：TPOPS 安装包管理
 
-**状态**：待实现  
+**状态**：已实现（MVP）  
 **关联**：华为 TPOPS 安装准备类文档（如 EDOC1100484838）；与现有「部署任务 / SSH / `appctl.sh`」衔接。
 
 ---
@@ -113,4 +113,4 @@
 
 ## 10. 实现记录
 
-（实现完成后在此填写 PR / 日期 / 主要文件路径。）
+- **2026-04**：`apps.packages`（`PackageRelease` / `PackageArtifact`）、`MEDIA_ROOT`、`/api/packages/`、`DeploymentTask` 扩展字段、`runner` 在 `user_edit` 后同步 `pkgs/`；前端「安装包管理」+ 部署向导勾选；**不设**文件大小上限、后缀白名单、Release 下线逻辑（与产品约定一致）。

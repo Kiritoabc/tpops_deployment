@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from apps.packages.models import PackageArtifact
+
 from .models import DeploymentTask
 from .user_edit import parse_user_edit_block
 
@@ -18,6 +20,9 @@ class DeploymentTaskSerializer(serializers.ModelSerializer):
     host_node3_name = serializers.CharField(source="host_node3.name", read_only=True)
     created_by_username = serializers.SerializerMethodField()
     outcome_label = serializers.SerializerMethodField()
+    package_release_name = serializers.CharField(
+        source="package_release.name", read_only=True, allow_null=True
+    )
 
     class Meta:
         model = DeploymentTask
@@ -32,6 +37,10 @@ class DeploymentTaskSerializer(serializers.ModelSerializer):
             "deploy_mode",
             "user_edit_content",
             "remote_user_edit_path",
+            "package_release",
+            "package_release_name",
+            "package_artifact_ids",
+            "skip_package_sync",
             "action",
             "target",
             "status",
@@ -57,6 +66,7 @@ class DeploymentTaskSerializer(serializers.ModelSerializer):
             "remote_user_edit_path",
             "created_by_username",
             "outcome_label",
+            "package_release_name",
         )
 
     def get_created_by_username(self, obj):
@@ -79,6 +89,10 @@ class DeploymentTaskSerializer(serializers.ModelSerializer):
 
 
 class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
+    package_artifact_ids = serializers.ListField(
+        child=serializers.IntegerField(), required=False, allow_empty=True, default=list
+    )
+
     class Meta:
         model = DeploymentTask
         fields = (
@@ -89,6 +103,9 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
             "user_edit_content",
             "action",
             "target",
+            "package_release",
+            "package_artifact_ids",
+            "skip_package_sync",
         )
 
     def validate(self, attrs):
@@ -131,6 +148,40 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
                 if hx.created_by_id and hx.created_by_id != user.id:
                     raise serializers.ValidationError({label: "无权使用该主机"})
 
+        rel = attrs.get("package_release")
+        skip = bool(attrs.get("skip_package_sync"))
+        ids = attrs.get("package_artifact_ids") or []
+        if isinstance(ids, list):
+            ids = [int(x) for x in ids if x is not None]
+        else:
+            ids = []
+        attrs["package_artifact_ids"] = ids
+
+        if skip:
+            attrs["package_release"] = None
+            attrs["package_artifact_ids"] = []
+        elif rel is not None:
+            if user and user.is_authenticated and not user.is_staff:
+                if rel.created_by_id and rel.created_by_id != user.id:
+                    raise serializers.ValidationError(
+                        {"package_release": "无权使用该安装包版本"}
+                    )
+            if not ids:
+                raise serializers.ValidationError(
+                    {"package_artifact_ids": "请选择要下发的安装包，或勾选跳过安装包同步"}
+                )
+            qs = PackageArtifact.objects.filter(release=rel, pk__in=ids)
+            if qs.count() != len(set(ids)):
+                raise serializers.ValidationError(
+                    {"package_artifact_ids": "存在无效的安装包 ID 或所选包不属于该版本"}
+                )
+        else:
+            if ids:
+                raise serializers.ValidationError(
+                    {"package_release": "已选择安装包时必须指定安装包版本"}
+                )
+            attrs["package_artifact_ids"] = []
+
         return attrs
 
     def create(self, validated_data):
@@ -141,4 +192,7 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
         if mode == DeploymentTask.MODE_SINGLE:
             validated_data["host_node2"] = None
             validated_data["host_node3"] = None
+        if validated_data.get("skip_package_sync"):
+            validated_data["package_release"] = None
+            validated_data["package_artifact_ids"] = []
         return super().create(validated_data)
