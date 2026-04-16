@@ -831,16 +831,14 @@
               <el-card shadow="never" class="deploy-task-card">
                 <template #header><span style="font-weight:600">版本列表</span></template>
                 <div class="pkg-table-scroll">
-                  <el-empty v-if="!packageReleases.length && !loading" description="暂无版本，请点击「新建版本」" />
                   <el-table
-                    v-else
                     :data="packageReleases"
                     stripe
                     border
                     class="pkg-release-table"
                     style="width:100%"
                     row-key="id"
-                    table-layout="fixed"
+                    empty-text="暂无版本，请点击「新建版本」"
                   >
                     <el-table-column label="ID" width="80" align="center">
                       <template #default="{ row }"><span class="mono" v-text="row.id"></span></template>
@@ -906,16 +904,14 @@
               <el-card shadow="never" class="deploy-task-card">
                 <template #header><span style="font-weight:600">包列表</span></template>
                 <div class="pkg-table-scroll">
-                  <el-empty v-if="!packageArtifacts.length && !loading" description="暂无文件，请上传" />
                   <el-table
-                    v-else
                     :data="packageArtifacts"
                     stripe
                     border
                     class="pkg-artifact-table"
                     style="width:100%"
                     row-key="id"
-                    table-layout="fixed"
+                    empty-text="暂无文件，请上传"
                   >
                     <el-table-column label="ID" width="80" align="center">
                       <template #default="{ row }"><span class="mono" v-text="row.id"></span></template>
@@ -1480,7 +1476,9 @@ use_import_ca = no
             ElementPlus.ElMessage.success('已创建');
             backPackageList();
           } catch (e) {
-            ElementPlus.ElMessage.error(e.response?.data ? JSON.stringify(e.response.data) : '保存失败');
+            ElementPlus.ElMessage.error(
+              e.response && e.response.data ? JSON.stringify(e.response.data) : '保存失败'
+            );
           } finally { loading.value = false; }
         };
 
@@ -2401,7 +2399,9 @@ use_import_ca = no
             await fetchHosts();
             await fetchTasks();
           } catch (e) {
-            ElementPlus.ElMessage.error(e.response?.data?.detail || '登录失败');
+            ElementPlus.ElMessage.error(
+              (e.response && e.response.data && e.response.data.detail) || '登录失败'
+            );
           } finally { loading.value = false; }
         };
 
@@ -2542,7 +2542,7 @@ use_import_ca = no
             deployForm.host_node2 = null;
             deployForm.host_node3 = null;
           } catch (e) {
-            const msg = e.response?.data;
+            const msg = e.response && e.response.data;
             const t = typeof msg === 'object' ? JSON.stringify(msg) : (msg || '创建任务失败');
             ElementPlus.ElMessage.error(t);
           } finally { loading.value = false; }
