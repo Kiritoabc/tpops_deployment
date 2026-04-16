@@ -607,7 +607,7 @@ window.TPOPSApp.template = String.raw`
                       </div>
                       <div class="deploy-wizard-footer">
                         <span></span>
-                        <el-button type="primary" @click="deployStep = 1">下一步</el-button>
+                        <el-button type="primary" @click="goDeployWizardStep(1)">下一步</el-button>
                       </div>
                     </div>
 
@@ -633,7 +633,7 @@ window.TPOPSApp.template = String.raw`
                         </template>
                       </el-form>
                       <div class="deploy-wizard-footer">
-                        <el-button @click="deployStep = 0">上一步</el-button>
+                        <el-button @click="goDeployWizardStep(0)">上一步</el-button>
                         <el-button type="primary" @click="goDeployStep2">下一步</el-button>
                       </div>
                     </div>
@@ -684,7 +684,7 @@ window.TPOPSApp.template = String.raw`
                         </el-form-item>
                       </el-form>
                       <div class="deploy-wizard-footer">
-                        <el-button @click="deployStep = 1">上一步</el-button>
+                        <el-button @click="goDeployWizardStep(1)">上一步</el-button>
                         <el-button type="primary" size="large" @click="startDeploy" :loading="loading">下发执行</el-button>
                       </div>
                     </div>

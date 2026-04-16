@@ -149,15 +149,29 @@ window.TPOPSDeploy = {
       return false;
     };
 
-    const goDeployStep2 = () => {
-      if (!deployForm.host) return ElementPlus.ElMessage.warning('请选择节点 1（执行机）');
-      if (deployForm.deploy_mode === 'triple') {
-        const ids = [deployForm.host, deployForm.host_node2, deployForm.host_node3].filter(Boolean);
-        if (new Set(ids).size !== ids.length) return ElementPlus.ElMessage.warning('所选主机不能重复');
+    const goDeployWizardStep = (idx) => {
+      const n = Number(idx);
+      if (n === 0) {
+        deployStep.value = 0;
+        return;
       }
-      if (!(deployForm.user_edit_content || '').trim()) deployForm.user_edit_content = shared.USER_EDIT_TEMPLATE;
-      deployStep.value = 2;
+      if (n === 1) {
+        deployStep.value = 1;
+        return;
+      }
+      if (n === 2) {
+        if (!deployForm.host) return ElementPlus.ElMessage.warning('请选择节点 1（执行机）');
+        if (deployForm.deploy_mode === 'triple') {
+          const ids = [deployForm.host, deployForm.host_node2, deployForm.host_node3].filter(Boolean);
+          if (new Set(ids).size !== ids.length) return ElementPlus.ElMessage.warning('所选主机不能重复');
+        }
+        if (!(deployForm.user_edit_content || '').trim()) deployForm.user_edit_content = shared.USER_EDIT_TEMPLATE;
+        deployStep.value = 2;
+        return;
+      }
     };
+
+    const goDeployStep2 = () => goDeployWizardStep(2);
 
     const fillUserEditTemplate = () => {
       deployForm.user_edit_content = shared.USER_EDIT_TEMPLATE;
@@ -609,6 +623,7 @@ window.TPOPSDeploy = {
       backToDeployList,
       isHostDisabledForNode1,
       isHostDisabledTriple,
+      goDeployWizardStep,
       goDeployStep2,
       fillUserEditTemplate,
       deployActionLabel,
