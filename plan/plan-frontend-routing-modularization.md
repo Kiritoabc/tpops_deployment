@@ -241,13 +241,23 @@
   - 承载原 `#app` 内的 Vue 根模板。
 - `static/js/app/router.js`
   - 提供 hash 路由的解析与构建逻辑。
+- `static/js/app/page-state.js`
+  - 承载页面级路由状态、面包屑、表格重布局与 URL 同步。
+- `static/js/app/auth.js`
+  - 承载登录、注册、token/refresh、本地存储与 axios 鉴权接入。
+- `static/js/app/hosts.js`
+  - 承载主机管理列表/表单相关逻辑。
+- `static/js/app/packages.js`
+  - 承载安装包版本、文件列表与上传相关逻辑。
+- `static/js/app/deploy.js`
+  - 承载部署列表、部署向导、部署监控、日志与 WebSocket 逻辑。
 - `static/js/app/main.js`
-  - 承载原内联业务脚本，并接入 hash 路由同步。
+  - 收敛为前端应用装配入口，负责拼装各业务模块。
 
 ### 与计划的差异
 
-- 本次已完成“壳层拆分 + 样式拆分 + 模板拆分 + 脚本拆分 + hash 路由接入”。
-- 组件级继续细分（例如将主机页、部署页、安装包页拆成更多独立 JS 模块）暂未继续下钻，保留到后续迭代处理。
+- 本次已完成“壳层拆分 + 样式拆分 + 模板拆分 + 脚本拆分 + hash 路由接入”，并继续完成二阶段的业务模块拆分。
+- 当前仍保持无 npm / bundler 的静态资源方案；模块拆分基于浏览器顺序加载的全局工厂模式，而非 ES module / 打包产物。
 - 依旧保持无 npm / bundler 的静态资源方案，符合本轮计划目标。
 
 ### 已完成的路由行为
