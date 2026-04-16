@@ -408,9 +408,11 @@
       line-height: 1.45;
       word-break: break-word;
     }
-    /* 列宽交给 Element Plus（含 fixed 列与滚动条 gutter），勿覆盖内部 table 宽度 */
+    /* 主机/部署页列数较多，按实际列宽保留横向滚动空间，避免基础列被压缩到看不见 */
     .ob-main .el-table.ob-table-wide { min-width: 1020px; }
+    .ob-main .el-table.host-table.ob-table-wide { min-width: 1260px; }
     .ob-main .el-table.ob-table-deploy { min-width: 1180px; }
+    .ob-main .el-table.deploy-table.ob-table-deploy { min-width: 1500px; }
     .ob-main .el-table.ob-table-compact { min-width: 640px; }
     .host-endpoint { font-weight: 500; color: #303133; }
     .host-sub { font-size: 12px; color: #909399; margin-top: 2px; }
@@ -764,7 +766,8 @@
                     :data="hosts"
                     stripe
                     border
-                    table-layout="auto"
+                    table-layout="fixed"
+                    :fit="false"
                     style="width:100%"
                     class="host-table ob-table-wide"
                     row-key="id"
@@ -772,8 +775,8 @@
                     :default-sort="{ prop: 'created_at', order: 'descending' }"
                   >
                     <el-table-column prop="id" label="ID" width="64" sortable />
-                    <el-table-column prop="name" label="显示名称" min-width="110" show-overflow-tooltip sortable />
-                    <el-table-column label="SSH 连接" width="200">
+                    <el-table-column prop="name" label="显示名称" width="160" show-overflow-tooltip sortable />
+                    <el-table-column label="SSH 连接" width="220">
                       <template #default="{ row }">
                         <span class="host-endpoint mono">{{ row.hostname }}:{{ row.port }}</span>
                         <div class="host-sub">用户 <strong>{{ row.username }}</strong></div>
@@ -784,25 +787,25 @@
                         <el-tag size="small" :type="row.auth_method === 'key' ? 'primary' : 'info'" effect="light">{{ authMethodLabel(row.auth_method) }}</el-tag>
                       </template>
                     </el-table-column>
-                    <el-table-column label="凭证" width="88" align="center">
+                    <el-table-column label="凭证" width="96" align="center">
                       <template #default="{ row }">
                         <el-tooltip :content="row.has_credential ? '已保存加密凭证，可测连通性' : '未保存密码/私钥，请先编辑填写'" placement="top">
                           <el-tag size="small" :type="row.has_credential ? 'success' : 'warning'" effect="plain">{{ row.has_credential ? '已保存' : '未配置' }}</el-tag>
                         </el-tooltip>
                       </template>
                     </el-table-column>
-                    <el-table-column prop="docker_service_root" label="部署根目录" min-width="150" show-overflow-tooltip />
+                    <el-table-column prop="docker_service_root" label="部署根目录" width="240" show-overflow-tooltip />
                     <el-table-column label="属主" width="100" show-overflow-tooltip>
                       <template #default="{ row }">
                         <span>{{ row.owner_username || '—' }}</span>
                       </template>
                     </el-table-column>
-                    <el-table-column prop="created_at" label="创建时间" width="158" sortable>
+                    <el-table-column prop="created_at" label="创建时间" width="168" sortable>
                       <template #default="{ row }">
                         <span class="mono" style="font-size:12px;color:#606266">{{ formatHostTime(row.created_at) }}</span>
                       </template>
                     </el-table-column>
-                    <el-table-column label="操作" width="220" fixed="right">
+                    <el-table-column label="操作" width="220">
                       <template #default="{ row }">
                         <el-button link type="primary" @click="editHost(row)">编辑</el-button>
                         <el-button link type="success" @click="testHost(row)" :loading="row._testing">连通性</el-button>
@@ -1021,7 +1024,8 @@
                 :data="tasks"
                 stripe
                 border
-                table-layout="auto"
+                table-layout="fixed"
+                :fit="false"
                 class="deploy-table ob-table-deploy"
                 style="width:100%"
                 row-key="id"
@@ -1030,13 +1034,13 @@
                 :row-class-name="deployTaskRowClass"
               >
                 <el-table-column prop="id" label="任务 ID" width="88" sortable />
-                <el-table-column prop="created_at" label="触发时间" width="168" sortable>
+                <el-table-column prop="created_at" label="触发时间" width="176" sortable>
                   <template #default="{ row }">
                     <span class="mono" style="font-size:12px;color:#606266">{{ formatHostTime(row.created_at) }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="host_name" label="执行机" min-width="100" show-overflow-tooltip />
-                <el-table-column label="节点 2/3" min-width="120" show-overflow-tooltip>
+                <el-table-column prop="host_name" label="执行机" width="140" show-overflow-tooltip />
+                <el-table-column label="节点 2/3" width="180" show-overflow-tooltip>
                   <template #default="{ row }">
                     <span v-if="row.deploy_mode !== 'triple'" class="hint">—</span>
                     <span v-else v-text="[row.host_node2_name, row.host_node3_name].filter(Boolean).join(' / ') || '同节点1'"></span>
@@ -1047,13 +1051,13 @@
                     <el-tag size="small" :type="row.deploy_mode === 'triple' ? 'warning' : 'info'" effect="plain">{{ row.deploy_mode === 'triple' ? '三节点' : '单节点' }}</el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column label="操作" min-width="140" show-overflow-tooltip>
+                <el-table-column label="任务类型" width="140" show-overflow-tooltip>
                   <template #default="{ row }">
                     <span v-text="deployActionLabel(row.action)"></span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="target" label="目标" width="96" show-overflow-tooltip />
-                <el-table-column label="安装包" min-width="120" show-overflow-tooltip>
+                <el-table-column prop="target" label="目标" width="110" show-overflow-tooltip />
+                <el-table-column label="安装包" width="180" show-overflow-tooltip>
                   <template #default="{ row }">
                     <span v-if="row.skip_package_sync" class="hint">已跳过</span>
                     <span v-else-if="row.package_release_name" v-text="row.package_release_name + '（' + ((row.package_artifact_ids || []).length) + ' 个）'"></span>
@@ -1081,7 +1085,7 @@
                     <span v-text="row.created_by_username || '—'"></span>
                   </template>
                 </el-table-column>
-                <el-table-column label="操作" width="120" fixed="right">
+                <el-table-column label="操作" width="120">
                   <template #default="{ row }">
                     <el-button link type="primary" @click="attachTask(row)">查看详情</el-button>
                   </template>
