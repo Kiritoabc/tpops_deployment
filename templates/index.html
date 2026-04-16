@@ -469,6 +469,26 @@
     .node-dot.none { color: #909399; }
     .pkg-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
     .pkg-meta { font-size: 12px; color: #909399; }
+    /* 安装包表格：表头与表体同一滚动容器，避免「表头一行、数据另一行」错位；小屏横向滚动整表 */
+    .pkg-table-scroll {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .pkg-release-table.el-table,
+    .pkg-artifact-table.el-table {
+      min-width: 720px;
+    }
+    .pkg-release-table .el-table__header th.el-table__cell,
+    .pkg-artifact-table .el-table__header th.el-table__cell {
+      background: #f5f7fa !important;
+      font-weight: 600;
+      color: #606266;
+    }
+    .pkg-release-table .el-table__body td.el-table__cell,
+    .pkg-artifact-table .el-table__body td.el-table__cell {
+      vertical-align: middle;
+    }
     .deploy-page-toolbar {
       display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
       gap: 8px; margin-bottom: 8px;
@@ -798,7 +818,7 @@
             </template>
           </template>
 
-          <!-- 部署任务：列表 / 新建向导 / 执行监控 分屏 -->
+          <!-- 安装包管理：版本列表 / 新建 / 包文件 -->
           <template v-else-if="activeMenu === 'packages'">
             <h2 class="ob-page-title">安装包管理</h2>
             <p class="ob-page-sub">维护 TPOPS 安装介质版本；下发时在<strong>节点 1</strong>写入 <code>&lt;部署根&gt;/pkgs/</code>（扁平文件名），不传入 <code>appctl.sh</code>。</p>
@@ -806,23 +826,45 @@
               <div class="pkg-toolbar">
                 <el-button type="primary" @click="openPackageReleaseForm">新建版本</el-button>
                 <el-button :loading="loading" @click="fetchPackageReleases">刷新</el-button>
+                <span class="pkg-meta">共 {{ packageReleases.length }} 个版本</span>
               </div>
               <el-card shadow="never" class="deploy-task-card">
-                <el-table :data="packageReleases" stripe style="width:100%" empty-text="暂无版本，请点击「新建版本」">
-                  <el-table-column prop="id" label="ID" width="72" />
-                  <el-table-column prop="name" label="版本名称" min-width="140" />
-                  <el-table-column prop="artifact_count" label="包数量" width="88" align="center" />
-                  <el-table-column prop="created_by_username" label="创建人" width="100" />
-                  <el-table-column prop="created_at" label="创建时间" width="168">
-                    <template #default="{ row }"><span class="mono" style="font-size:12px;color:#606266">{{ formatHostTime(row.created_at) }}</span></template>
-                  </el-table-column>
-                  <el-table-column label="操作" width="200" fixed="right">
-                    <template #default="{ row }">
-                      <el-button link type="primary" @click="openPackageDetail(row)">管理包</el-button>
-                      <el-button link type="danger" @click="deletePackageRelease(row)">删除</el-button>
-                    </template>
-                  </el-table-column>
-                </el-table>
+                <template #header><span style="font-weight:600">版本列表</span></template>
+                <div class="pkg-table-scroll">
+                  <el-empty v-if="!packageReleases.length && !loading" description="暂无版本，请点击「新建版本」" />
+                  <el-table
+                    v-else
+                    :data="packageReleases"
+                    stripe
+                    border
+                    class="pkg-release-table"
+                    style="width:100%"
+                    row-key="id"
+                    table-layout="fixed"
+                  >
+                    <el-table-column label="ID" width="80" align="center">
+                      <template #default="{ row }"><span class="mono" v-text="row.id"></span></template>
+                    </el-table-column>
+                    <el-table-column label="版本名称" min-width="160" show-overflow-tooltip>
+                      <template #default="{ row }"><span v-text="row.name || '—'"></span></template>
+                    </el-table-column>
+                    <el-table-column label="包数量" width="96" align="center">
+                      <template #default="{ row }"><span v-text="row.artifact_count != null ? row.artifact_count : 0"></span></template>
+                    </el-table-column>
+                    <el-table-column label="创建人" width="112" show-overflow-tooltip>
+                      <template #default="{ row }"><span v-text="row.created_by_username || '—'"></span></template>
+                    </el-table-column>
+                    <el-table-column label="创建时间" width="178">
+                      <template #default="{ row }"><span class="mono" style="font-size:12px;color:#606266">{{ formatHostTime(row.created_at) }}</span></template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="180" fixed="right" align="center">
+                      <template #default="{ row }">
+                        <el-button link type="primary" @click="openPackageDetail(row)">管理包</el-button>
+                        <el-button link type="danger" @click="deletePackageRelease(row)">删除</el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </div>
               </el-card>
             </template>
             <template v-else-if="packageSubView === 'form'">
@@ -862,25 +904,46 @@
                 </el-upload>
               </el-card>
               <el-card shadow="never" class="deploy-task-card">
-                <template #header><span>包列表</span></template>
-                <el-table :data="packageArtifacts" stripe style="width:100%" empty-text="暂无文件">
-                  <el-table-column prop="id" label="ID" width="72" />
-                  <el-table-column prop="remote_basename" label="远端文件名" min-width="160" show-overflow-tooltip />
-                  <el-table-column prop="original_name" label="原始名" min-width="120" show-overflow-tooltip />
-                  <el-table-column prop="size" label="大小(字节)" width="120" align="right" />
-                  <el-table-column prop="sha256" label="SHA256" min-width="120" show-overflow-tooltip>
-                    <template #default="{ row }"><span class="mono" style="font-size:11px">{{ (row.sha256 || '').slice(0, 16) }}…</span></template>
-                  </el-table-column>
-                  <el-table-column label="操作" width="88" fixed="right">
-                    <template #default="{ row }">
-                      <el-button link type="danger" @click="deletePackageArtifact(row)">删除</el-button>
-                    </template>
-                  </el-table-column>
-                </el-table>
+                <template #header><span style="font-weight:600">包列表</span></template>
+                <div class="pkg-table-scroll">
+                  <el-empty v-if="!packageArtifacts.length && !loading" description="暂无文件，请上传" />
+                  <el-table
+                    v-else
+                    :data="packageArtifacts"
+                    stripe
+                    border
+                    class="pkg-artifact-table"
+                    style="width:100%"
+                    row-key="id"
+                    table-layout="fixed"
+                  >
+                    <el-table-column label="ID" width="80" align="center">
+                      <template #default="{ row }"><span class="mono" v-text="row.id"></span></template>
+                    </el-table-column>
+                    <el-table-column label="远端文件名" min-width="160" show-overflow-tooltip>
+                      <template #default="{ row }"><span v-text="row.remote_basename || '—'"></span></template>
+                    </el-table-column>
+                    <el-table-column label="原始名" min-width="120" show-overflow-tooltip>
+                      <template #default="{ row }"><span v-text="row.original_name || '—'"></span></template>
+                    </el-table-column>
+                    <el-table-column label="大小(字节)" width="120" align="right">
+                      <template #default="{ row }"><span v-text="row.size != null ? row.size : 0"></span></template>
+                    </el-table-column>
+                    <el-table-column label="SHA256" min-width="120" show-overflow-tooltip>
+                      <template #default="{ row }"><span class="mono" style="font-size:11px">{{ (row.sha256 || '').slice(0, 16) }}…</span></template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="88" fixed="right" align="center">
+                      <template #default="{ row }">
+                        <el-button link type="danger" @click="deletePackageArtifact(row)">删除</el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </div>
               </el-card>
             </template>
           </template>
 
+          <!-- 部署任务：列表 / 新建向导 / 执行监控 -->
           <template v-else-if="activeMenu === 'deploy'">
             <!-- ① 部署记录列表（与新建入口同页） -->
             <template v-if="deploySubView === 'list'">
@@ -1379,10 +1442,17 @@ use_import_ca = no
         const packageUploadAction = computed(() => `${location.origin}/api/packages/artifacts/`);
         const packageUploadHeaders = computed(() => (token.value ? { Authorization: 'Bearer ' + token.value } : {}));
 
+        const normalizeListResponse = (data) => {
+          if (Array.isArray(data)) return data;
+          if (data && Array.isArray(data.results)) return data.results;
+          if (data && Array.isArray(data.data)) return data.data;
+          return [];
+        };
+
         const fetchPackageReleases = async () => {
           try {
             const { data } = await api.get('/packages/releases/');
-            packageReleases.value = Array.isArray(data) ? data : (data.results || []);
+            packageReleases.value = normalizeListResponse(data);
           } catch { packageReleases.value = []; }
         };
 
@@ -1425,7 +1495,7 @@ use_import_ca = no
           loading.value = true;
           try {
             const { data } = await api.get('/packages/artifacts/', { params: { release: releaseId } });
-            packageArtifacts.value = Array.isArray(data) ? data : (data.results || []);
+            packageArtifacts.value = normalizeListResponse(data);
           } catch { packageArtifacts.value = []; }
           finally { loading.value = false; }
         };
@@ -1470,7 +1540,7 @@ use_import_ca = no
           if (!releaseId) return;
           try {
             const { data } = await api.get('/packages/artifacts/', { params: { release: releaseId } });
-            deployWizardArtifacts.value = Array.isArray(data) ? data : (data.results || []);
+            deployWizardArtifacts.value = normalizeListResponse(data);
           } catch { deployWizardArtifacts.value = []; }
         };
 
