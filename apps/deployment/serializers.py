@@ -150,11 +150,18 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
 
         rel = attrs.get("package_release")
         skip = bool(attrs.get("skip_package_sync"))
-        ids = attrs.get("package_artifact_ids") or []
-        if isinstance(ids, list):
-            ids = [int(x) for x in ids if x is not None]
-        else:
-            ids = []
+        raw_ids = attrs.get("package_artifact_ids") or []
+        ids = []
+        if isinstance(raw_ids, list):
+            for x in raw_ids:
+                if x is None:
+                    continue
+                try:
+                    ids.append(int(x))
+                except (TypeError, ValueError):
+                    raise serializers.ValidationError(
+                        {"package_artifact_ids": "安装包 ID 须为整数: %r" % (x,)}
+                    )
         attrs["package_artifact_ids"] = ids
 
         if skip:

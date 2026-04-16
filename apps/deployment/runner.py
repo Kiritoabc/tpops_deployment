@@ -354,7 +354,9 @@ def _run_task(task_id: int):
 
 def _run_task_body(task_id: int):
     task = (
-        DeploymentTask.objects.select_related("host", "host_node2", "host_node3")
+        DeploymentTask.objects.select_related(
+            "host", "host_node2", "host_node3", "package_release"
+        )
         .filter(pk=task_id)
         .first()
     )

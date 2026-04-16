@@ -114,3 +114,13 @@
 ## 10. 实现记录
 
 - **2026-04**：`apps.packages`（`PackageRelease` / `PackageArtifact`）、`MEDIA_ROOT`、`/api/packages/`、`DeploymentTask` 扩展字段、`runner` 在 `user_edit` 后同步 `pkgs/`；前端「安装包管理」+ 部署向导勾选；**不设**文件大小上限、后缀白名单、Release 下线逻辑（与产品约定一致）。
+
+### 10.1 代码审查备忘（维护时留意）
+
+| 项 | 说明 |
+|----|------|
+| **安装包文件位置** | 介质在 **Django 服务器本地** `MEDIA_ROOT`；多机部署时需共享存储或固定单机跑任务，否则 `art.file.path` 在 runner 机器上可能不存在。 |
+| **大文件 / 反向代理** | 未做应用层大小限制；生产需在 **Nginx 等** 调 `client_max_body_size`，且 **`DEBUG=False`** 时 `/media/` 需由 Web 服务器托管或改对象存储。 |
+| **`sftp_put_file` 的 timeout** | 参数当前未传给 `put`，超大文件仅依赖 SSH 默认行为；后续可改为分块或加回调超时。 |
+| **删除 Release** | `Destroy` 会级联删 `Artifact`；默认 **FileField** 未必删磁盘文件，长期可能留孤儿文件——可加重写 `delete()` 或定期清理 `media/packages/`。 |
+| **`package_artifact_ids` 校验** | 创建任务时已对非整数 ID 显式报错；`runner` 已对 `select_related("package_release")` 避免 N+1。 |

@@ -72,3 +72,8 @@ class PackageArtifact(models.Model):
         if not self.remote_basename:
             self.remote_basename = _safe_remote_basename(self.original_name)
         super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.file:
+            self.file.delete(save=False)
+        super().delete(*args, **kwargs)
