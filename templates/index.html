@@ -368,20 +368,25 @@
       border: 1px solid #e4e7ed;
       box-shadow: 0 2px 8px rgba(15, 37, 64, .06), 0 1px 2px rgba(15, 37, 64, .04);
     }
-    /* 避免 overflow:hidden 导致 el-table 表头/表体分离滚动、表头折行与列错位 */
-    .host-card-accent { border-radius: var(--ob-card-radius); overflow: visible; border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); }
+    /* el-card 默认 overflow:hidden，会破坏表内 fixed 列的 sticky，导致前几列表头/数据错位或「被盖住」 */
+    .ob-main .el-card.host-card-accent,
+    .ob-main .el-card.deploy-task-card,
+    .ob-main .el-card.ob-card-elevated {
+      overflow: visible !important;
+    }
+    .host-card-accent { border-radius: var(--ob-card-radius); border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); }
     .host-card-accent > .el-card__header {
       background: linear-gradient(90deg, #f6f9fc 0%, #fff 100%);
       border-bottom: 1px solid #ebeef5; font-weight: 600;
     }
-    .host-table .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
-    /* —— 全站数据表：表头同一行、不上下错位；列宽稳定；卡片内可横向滚动 —— */
-    .ob-main .host-card-accent > .el-card__body,
-    .ob-main .deploy-task-card > .el-card__body,
-    .ob-main .ob-card-elevated > .el-card__body {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
+    /* 替代 float:right，避免卡片标题区浮动影响下方表格布局 */
+    .ob-card-table-head {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px; width: 100%; box-sizing: border-box;
     }
+    .ob-card-table-head-meta { font-weight: 400; font-size: 12px; color: #909399; }
+    .host-table .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+    /* 横向滚动只放在 .ob-table-scroll / .pkg-table-scroll，避免与 el-table 双表头布局叠两层 overflow 错位 */
     .ob-main .el-table__header-wrapper .el-table__header th.el-table__cell,
     .ob-main .el-table__footer-wrapper .el-table__footer td.el-table__cell {
       vertical-align: middle !important;
@@ -395,10 +400,6 @@
       text-overflow: ellipsis;
       word-break: keep-all;
       line-height: 22px;
-    }
-    .ob-main .el-table__header-wrapper .el-table__header th.el-table__cell .cell .el-table__column-filter-trigger,
-    .ob-main .el-table__header-wrapper .el-table__header th.el-table__cell .cell .caret-wrapper {
-      flex-shrink: 0;
     }
     .ob-main .el-table__body-wrapper .el-table__body td.el-table__cell {
       vertical-align: middle;
@@ -424,8 +425,7 @@
     .deploy-hero p { margin: 0; font-size: 12px; opacity: .9; line-height: 1.55; max-width: 640px; }
     .deploy-hero .el-button { border-color: rgba(255,255,255,.35); color: #fff; background: rgba(255,255,255,.1); }
     .deploy-hero .el-button--primary { background: #1890ff; border-color: #1890ff; color: #fff; }
-    /* 与 host-card 一致：避免 overflow:hidden + 内部表格滚动导致表头/表体错位 */
-    .deploy-task-card { border-radius: var(--ob-card-radius); overflow: visible; border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); margin-bottom: 10px; }
+    .deploy-task-card { border-radius: var(--ob-card-radius); border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); margin-bottom: 10px; }
     .deploy-task-card > .el-card__header { background: linear-gradient(90deg, #f0f7ff 0%, #fff 100%); font-weight: 600; border-bottom: 1px solid #ebeef5; }
     .deploy-table .row-current-task { background: #e6f7ff !important; }
     .deploy-table .row-current-task:hover > td { background: #d6f0ff !important; }
@@ -683,7 +683,7 @@
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">已纳管主机</span></template>
                   <div v-if="hosts.length" class="ob-table-scroll">
-                  <el-table :data="hosts" stripe size="small" max-height="40vh" class="host-table ob-table-compact">
+                  <el-table :data="hosts" stripe size="small" table-layout="auto" max-height="40vh" class="host-table ob-table-compact">
                     <el-table-column prop="name" label="名称" width="120" show-overflow-tooltip />
                     <el-table-column label="连接" min-width="150">
                       <template #default="{ row }">
@@ -706,7 +706,7 @@
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">最近任务</span></template>
                   <div v-if="lastTasks.length" class="ob-table-scroll">
-                  <el-table :data="lastTasks" stripe size="small" max-height="40vh" class="ob-table-compact">
+                  <el-table :data="lastTasks" stripe size="small" table-layout="auto" max-height="40vh" class="ob-table-compact">
                     <el-table-column prop="id" label="ID" width="56" />
                     <el-table-column prop="host_name" label="节点1" min-width="90" show-overflow-tooltip />
                     <el-table-column prop="deploy_mode" label="形态" width="72" />
@@ -750,13 +750,16 @@
             </div>
             <el-card shadow="never" class="host-card-accent">
               <template #header>
-                <span>主机列表</span>
-                <span style="float:right;font-weight:400;font-size:12px;color:#909399">共 {{ hosts.length }} 台</span>
+                <div class="ob-card-table-head">
+                  <span>主机列表</span>
+                  <span class="ob-card-table-head-meta">共 {{ hosts.length }} 台</span>
+                </div>
               </template>
                   <div class="ob-table-scroll">
                   <el-table
                     :data="hosts"
                     stripe
+                    table-layout="auto"
                     style="width:100%"
                     class="host-table ob-table-wide"
                     empty-text="暂无主机，请点击「纳管主机」添加"
@@ -764,7 +767,7 @@
                   >
                     <el-table-column prop="id" label="ID" width="64" sortable />
                     <el-table-column prop="name" label="显示名称" min-width="110" show-overflow-tooltip sortable />
-                    <el-table-column label="SSH 连接" min-width="168">
+                    <el-table-column label="SSH 连接" width="200">
                       <template #default="{ row }">
                         <span class="host-endpoint mono">{{ row.hostname }}:{{ row.port }}</span>
                         <div class="host-sub">用户 <strong>{{ row.username }}</strong></div>
@@ -872,6 +875,7 @@
                     :data="packageReleases"
                     stripe
                     border
+                    table-layout="auto"
                     class="pkg-release-table ob-table-compact"
                     style="width:100%"
                     row-key="id"
@@ -925,7 +929,12 @@
                 <el-button type="primary" :loading="loading" @click="fetchPackageArtifacts(packageDetailRelease.id)">刷新包列表</el-button>
               </div>
               <el-card shadow="never" class="deploy-task-card" style="margin-bottom:12px;">
-                <template #header><span>上传安装包</span><span class="hint" style="float:right;font-weight:400">不限制大小与后缀；同名将覆盖该版本下已有记录</span></template>
+                <template #header>
+                  <div class="ob-card-table-head">
+                    <span>上传安装包</span>
+                    <span class="hint ob-card-table-head-meta" style="max-width:min(100%,420px);text-align:right">不限制大小与后缀；同名将覆盖该版本下已有记录</span>
+                  </div>
+                </template>
                 <el-upload
                   :action="packageUploadAction"
                   :headers="packageUploadHeaders"
@@ -945,6 +954,7 @@
                     :data="packageArtifacts"
                     stripe
                     border
+                    table-layout="auto"
                     class="pkg-artifact-table ob-table-wide"
                     style="width:100%"
                     row-key="id"
@@ -995,13 +1005,16 @@
 
             <el-card shadow="never" class="deploy-task-card">
               <template #header>
-                <span>部署记录</span>
-                <span style="float:right;font-weight:400;font-size:12px;color:#909399">共 {{ tasks.length }} 条</span>
+                <div class="ob-card-table-head">
+                  <span>部署记录</span>
+                  <span class="ob-card-table-head-meta">共 {{ tasks.length }} 条</span>
+                </div>
               </template>
               <div class="ob-table-scroll">
               <el-table
                 :data="tasks"
                 stripe
+                table-layout="auto"
                 class="deploy-table ob-table-deploy"
                 style="width:100%"
                 empty-text="暂无记录，请点击右上角「新建部署」"
