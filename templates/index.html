@@ -759,9 +759,11 @@
                   <el-table
                     :data="hosts"
                     stripe
+                    border
                     table-layout="auto"
                     style="width:100%"
                     class="host-table ob-table-wide"
+                    row-key="id"
                     empty-text="暂无主机，请点击「纳管主机」添加"
                     :default-sort="{ prop: 'created_at', order: 'descending' }"
                   >
@@ -1014,9 +1016,11 @@
               <el-table
                 :data="tasks"
                 stripe
+                border
                 table-layout="auto"
                 class="deploy-table ob-table-deploy"
                 style="width:100%"
+                row-key="id"
                 empty-text="暂无记录，请点击右上角「新建部署」"
                 :default-sort="{ prop: 'created_at', order: 'descending' }"
                 :row-class-name="deployTaskRowClass"
