@@ -408,6 +408,14 @@
       line-height: 1.45;
       word-break: break-word;
     }
+    .ob-main .host-table .el-table__body-wrapper .el-table__body td.el-table__cell .cell,
+    .ob-main .deploy-table .el-table__body-wrapper .el-table__body td.el-table__cell .cell,
+    .ob-main .overview-task-table .el-table__body-wrapper .el-table__body td.el-table__cell .cell {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: keep-all;
+    }
     /* 主机/部署页列数较多，按实际列宽保留横向滚动空间，避免基础列被压缩到看不见 */
     .ob-main .el-table.ob-table-wide { min-width: 1020px; }
     .ob-main .el-table.host-table.ob-table-wide { min-width: 1260px; }
@@ -415,7 +423,17 @@
     .ob-main .el-table.deploy-table.ob-table-deploy { min-width: 1500px; }
     .ob-main .el-table.ob-table-compact { min-width: 640px; }
     .host-endpoint { font-weight: 500; color: #303133; }
-    .host-sub { font-size: 12px; color: #909399; margin-top: 2px; }
+    .host-conn-inline {
+      display: block;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .host-inline-meta {
+      color: #909399;
+      font-size: 12px;
+      margin-left: 8px;
+    }
     /* 部署任务列表 */
     .deploy-hero {
       display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;
@@ -689,8 +707,10 @@
                     <el-table-column key="dashboard-hosts-name" prop="name" label="名称" width="120" show-overflow-tooltip />
                     <el-table-column key="dashboard-hosts-conn" label="连接" min-width="150">
                       <template #default="{ row }">
-                        <span class="host-endpoint mono">{{ row.hostname }}:{{ row.port }}</span>
-                        <div class="host-sub">{{ row.username }} · {{ authMethodLabel(row.auth_method) }}</div>
+                        <span class="host-conn-inline">
+                          <span class="host-endpoint mono">{{ row.hostname }}:{{ row.port }}</span>
+                          <span class="host-inline-meta">{{ row.username }} · {{ authMethodLabel(row.auth_method) }}</span>
+                        </span>
                       </template>
                     </el-table-column>
                     <el-table-column key="dashboard-hosts-root" prop="docker_service_root" label="部署根目录" min-width="160" show-overflow-tooltip />
@@ -708,7 +728,7 @@
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">最近任务</span></template>
                   <div v-if="lastTasks.length" class="ob-table-scroll">
-                  <el-table ref="dashboardLastTasksTableRef" key="dashboard-last-tasks-table" :data="lastTasks" stripe border size="small" table-layout="auto" max-height="40vh" class="ob-table-compact" row-key="id">
+                  <el-table ref="dashboardLastTasksTableRef" key="dashboard-last-tasks-table" :data="lastTasks" stripe border size="small" table-layout="auto" max-height="40vh" class="overview-task-table ob-table-compact" row-key="id">
                     <el-table-column key="dashboard-last-tasks-id" prop="id" label="ID" width="56" />
                     <el-table-column key="dashboard-last-tasks-host" prop="host_name" label="节点1" min-width="90" show-overflow-tooltip />
                     <el-table-column key="dashboard-last-tasks-mode" label="形态" width="88" align="center">
@@ -780,8 +800,10 @@
                     <el-table-column key="host-manage-name" prop="name" label="显示名称" width="160" show-overflow-tooltip sortable />
                     <el-table-column key="host-manage-ssh" label="SSH 连接" width="220">
                       <template #default="{ row }">
-                        <span class="host-endpoint mono">{{ row.hostname }}:{{ row.port }}</span>
-                        <div class="host-sub">用户 <strong>{{ row.username }}</strong></div>
+                        <span class="host-conn-inline">
+                          <span class="host-endpoint mono">{{ row.hostname }}:{{ row.port }}</span>
+                          <span class="host-inline-meta">用户 {{ row.username }}</span>
+                        </span>
                       </template>
                     </el-table-column>
                     <el-table-column key="host-manage-auth" label="认证" width="96" align="center">
