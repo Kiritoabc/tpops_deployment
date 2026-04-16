@@ -15,7 +15,32 @@
       const loginForm = reactive({ username: '', password: '' });
       const regForm = reactive({ username: '', email: '', password: '', password_confirm: '', role: 'viewer' });
       const hostForm = reactive({ id: null, name: '', hostname: '', port: 22, username: 'root', auth_method: 'password', password: '', private_key: '', docker_service_root: '/data/docker-service' });
-      const shared = { api, router, loading, sidebarCollapsed, showRegister, loginForm, regForm, hostForm, obMainEl };
+      const USER_EDIT_TEMPLATE = '[user_edit]\n# 请按现场填写；以下为占位示例，创建任务前请改为真实 IP 等\nnode1_ip = 127.0.0.1\n';
+      const deployForm = reactive({
+        deploy_mode: 'single',
+        host: null,
+        host_node2: null,
+        host_node3: null,
+        action: 'install',
+        target: 'gaussdb',
+        skip_package_sync: false,
+        package_release: null,
+        package_artifact_ids: [],
+        user_edit_content: USER_EDIT_TEMPLATE,
+      });
+      const shared = {
+        api,
+        router,
+        loading,
+        sidebarCollapsed,
+        showRegister,
+        loginForm,
+        regForm,
+        hostForm,
+        obMainEl,
+        deployForm,
+        USER_EDIT_TEMPLATE,
+      };
 
       const pageState = window.TPOPSPageState.createPageState(refs, shared);
       const auth = window.TPOPSAuth.createAuthModule(refs, shared, pageState);
