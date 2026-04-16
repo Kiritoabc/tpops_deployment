@@ -373,8 +373,42 @@
       background: linear-gradient(90deg, #f6f9fc 0%, #fff 100%);
       border-bottom: 1px solid #ebeef5; font-weight: 600;
     }
-    .host-table .el-table__header th { background: #f5f7fa !important; color: #606266; font-weight: 600; }
     .host-table .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+    /* —— 全站数据表：表头同一行、不上下错位；列宽稳定；卡片内可横向滚动 —— */
+    .ob-main .host-card-accent > .el-card__body,
+    .ob-main .deploy-task-card > .el-card__body,
+    .ob-main .ob-card-elevated > .el-card__body {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .ob-main .el-table__header-wrapper .el-table__header th.el-table__cell,
+    .ob-main .el-table__footer-wrapper .el-table__footer td.el-table__cell {
+      vertical-align: middle !important;
+      background: #f5f7fa !important;
+    }
+    .ob-main .el-table__header-wrapper .el-table__header th.el-table__cell .cell,
+    .ob-main .el-table__footer-wrapper .el-table__footer td.el-table__cell .cell {
+      white-space: nowrap !important;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: keep-all;
+      line-height: 22px;
+    }
+    .ob-main .el-table__body-wrapper .el-table__body td.el-table__cell {
+      vertical-align: middle;
+    }
+    .ob-main .el-table__body-wrapper .el-table__body td.el-table__cell .cell {
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .ob-main .el-table__body-wrapper table,
+    .ob-main .el-table__header-wrapper table {
+      table-layout: fixed !important;
+      width: 100% !important;
+    }
+    .ob-main .el-table.ob-table-wide { min-width: 1020px; }
+    .ob-main .el-table.ob-table-deploy { min-width: 1180px; }
+    .ob-main .el-table.ob-table-compact { min-width: 640px; }
     .host-endpoint { font-weight: 500; color: #303133; }
     .host-sub { font-size: 12px; color: #909399; margin-top: 2px; }
     /* 部署任务列表 */
@@ -390,7 +424,6 @@
     .deploy-hero .el-button--primary { background: #1890ff; border-color: #1890ff; color: #fff; }
     .deploy-task-card { border-radius: var(--ob-card-radius); overflow: hidden; border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); margin-bottom: 10px; }
     .deploy-task-card > .el-card__header { background: linear-gradient(90deg, #f0f7ff 0%, #fff 100%); font-weight: 600; border-bottom: 1px solid #ebeef5; }
-    .deploy-table .el-table__header th { background: #f5f7fa !important; color: #606266; font-weight: 600; }
     .deploy-table .row-current-task { background: #e6f7ff !important; }
     .deploy-table .row-current-task:hover > td { background: #d6f0ff !important; }
     .deploy-status-strip { margin-bottom: 8px; }
@@ -478,12 +511,6 @@
     .pkg-release-table.el-table,
     .pkg-artifact-table.el-table {
       min-width: 720px;
-    }
-    .pkg-release-table .el-table__header th.el-table__cell,
-    .pkg-artifact-table .el-table__header th.el-table__cell {
-      background: #f5f7fa !important;
-      font-weight: 600;
-      color: #606266;
     }
     .pkg-release-table .el-table__body td.el-table__cell,
     .pkg-artifact-table .el-table__body td.el-table__cell {
@@ -651,7 +678,7 @@
               <el-col :xs="24" :lg="14">
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">已纳管主机</span></template>
-                  <el-table v-if="hosts.length" :data="hosts" stripe size="small" max-height="40vh" class="host-table">
+                  <el-table v-if="hosts.length" :data="hosts" stripe size="small" max-height="40vh" class="host-table ob-table-compact">
                     <el-table-column prop="name" label="名称" width="120" show-overflow-tooltip />
                     <el-table-column label="连接" min-width="150">
                       <template #default="{ row }">
@@ -672,7 +699,7 @@
               <el-col :xs="24" :lg="10">
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">最近任务</span></template>
-                  <el-table v-if="lastTasks.length" :data="lastTasks" stripe size="small" max-height="40vh">
+                  <el-table v-if="lastTasks.length" :data="lastTasks" stripe size="small" max-height="40vh" class="ob-table-compact">
                     <el-table-column prop="id" label="ID" width="56" />
                     <el-table-column prop="host_name" label="节点1" min-width="90" show-overflow-tooltip />
                     <el-table-column prop="deploy_mode" label="形态" width="72" />
@@ -722,7 +749,7 @@
                     :data="hosts"
                     stripe
                     style="width:100%"
-                    class="host-table"
+                    class="host-table ob-table-wide"
                     empty-text="暂无主机，请点击「纳管主机」添加"
                     :default-sort="{ prop: 'created_at', order: 'descending' }"
                   >
@@ -835,7 +862,7 @@
                     :data="packageReleases"
                     stripe
                     border
-                    class="pkg-release-table"
+                    class="pkg-release-table ob-table-compact"
                     style="width:100%"
                     row-key="id"
                     empty-text="暂无版本，请点击「新建版本」"
@@ -908,7 +935,7 @@
                     :data="packageArtifacts"
                     stripe
                     border
-                    class="pkg-artifact-table"
+                    class="pkg-artifact-table ob-table-wide"
                     style="width:100%"
                     row-key="id"
                     empty-text="暂无文件，请上传"
@@ -964,7 +991,7 @@
               <el-table
                 :data="tasks"
                 stripe
-                class="deploy-table"
+                class="deploy-table ob-table-deploy"
                 style="width:100%"
                 empty-text="暂无记录，请点击右上角「新建部署」"
                 :default-sort="{ prop: 'created_at', order: 'descending' }"
