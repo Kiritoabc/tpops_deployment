@@ -368,7 +368,8 @@
       border: 1px solid #e4e7ed;
       box-shadow: 0 2px 8px rgba(15, 37, 64, .06), 0 1px 2px rgba(15, 37, 64, .04);
     }
-    .host-card-accent { border-radius: var(--ob-card-radius); overflow: hidden; border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); }
+    /* 避免 overflow:hidden 导致 el-table 表头/表体分离滚动、表头折行与列错位 */
+    .host-card-accent { border-radius: var(--ob-card-radius); overflow: visible; border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); }
     .host-card-accent > .el-card__header {
       background: linear-gradient(90deg, #f6f9fc 0%, #fff 100%);
       border-bottom: 1px solid #ebeef5; font-weight: 600;
@@ -388,6 +389,9 @@
     }
     .ob-main .el-table__header-wrapper .el-table__header th.el-table__cell .cell,
     .ob-main .el-table__footer-wrapper .el-table__footer td.el-table__cell .cell {
+      display: inline-block;
+      max-width: 100%;
+      box-sizing: border-box;
       white-space: nowrap !important;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -503,7 +507,8 @@
     .pkg-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
     .pkg-meta { font-size: 12px; color: #909399; }
     /* 安装包表格：表头与表体同一滚动容器，避免「表头一行、数据另一行」错位；小屏横向滚动整表 */
-    .pkg-table-scroll {
+    .pkg-table-scroll,
+    .ob-table-scroll {
       width: 100%;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
@@ -678,7 +683,8 @@
               <el-col :xs="24" :lg="14">
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">已纳管主机</span></template>
-                  <el-table v-if="hosts.length" :data="hosts" stripe size="small" max-height="40vh" class="host-table ob-table-compact">
+                  <div v-if="hosts.length" class="ob-table-scroll">
+                  <el-table :data="hosts" stripe size="small" max-height="40vh" class="host-table ob-table-compact">
                     <el-table-column prop="name" label="名称" width="120" show-overflow-tooltip />
                     <el-table-column label="连接" min-width="150">
                       <template #default="{ row }">
@@ -693,13 +699,15 @@
                       </template>
                     </el-table-column>
                   </el-table>
+                  </div>
                   <el-empty v-else description="暂无主机，请前往「主机管理」点击纳管主机" />
                 </el-card>
               </el-col>
               <el-col :xs="24" :lg="10">
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">最近任务</span></template>
-                  <el-table v-if="lastTasks.length" :data="lastTasks" stripe size="small" max-height="40vh" class="ob-table-compact">
+                  <div v-if="lastTasks.length" class="ob-table-scroll">
+                  <el-table :data="lastTasks" stripe size="small" max-height="40vh" class="ob-table-compact">
                     <el-table-column prop="id" label="ID" width="56" />
                     <el-table-column prop="host_name" label="节点1" min-width="90" show-overflow-tooltip />
                     <el-table-column prop="deploy_mode" label="形态" width="72" />
@@ -712,6 +720,7 @@
                       </template>
                     </el-table-column>
                   </el-table>
+                  </div>
                   <el-empty v-else description="暂无任务记录" />
                 </el-card>
               </el-col>
@@ -745,6 +754,7 @@
                 <span>主机列表</span>
                 <span style="float:right;font-weight:400;font-size:12px;color:#909399">共 {{ hosts.length }} 台</span>
               </template>
+                  <div class="ob-table-scroll">
                   <el-table
                     :data="hosts"
                     stripe
@@ -792,6 +802,7 @@
                       </template>
                     </el-table-column>
                   </el-table>
+                  </div>
             </el-card>
             </template>
 
@@ -988,6 +999,7 @@
                 <span>部署记录</span>
                 <span style="float:right;font-weight:400;font-size:12px;color:#909399">共 {{ tasks.length }} 条</span>
               </template>
+              <div class="ob-table-scroll">
               <el-table
                 :data="tasks"
                 stripe
@@ -1055,6 +1067,7 @@
                   </template>
                 </el-table-column>
               </el-table>
+              </div>
             </el-card>
             </template>
 
