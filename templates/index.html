@@ -567,10 +567,10 @@
         <div class="body">
           <el-form :model="loginForm" label-position="top" @keyup.enter="doLogin">
             <el-form-item label="用户名">
-              <el-input v-model="loginForm.username" size="large" autocomplete="username" placeholder="请输入用户名" />
+              <el-input v-model="loginForm.username" size="large" autocomplete="username" placeholder="请输入用户名"></el-input>
             </el-form-item>
             <el-form-item label="密码">
-              <el-input v-model="loginForm.password" size="large" type="password" show-password autocomplete="current-password" placeholder="请输入密码" />
+              <el-input v-model="loginForm.password" size="large" type="password" show-password autocomplete="current-password" placeholder="请输入密码"></el-input>
             </el-form-item>
             <el-form-item style="margin-bottom: 12px;">
               <el-button type="primary" size="large" style="width:100%" @click="doLogin" :loading="loading">登 录</el-button>
@@ -689,10 +689,10 @@
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">快速开始</span></template>
                   <el-steps direction="vertical" :active="4" finish-status="success">
-                    <el-step title="登记主机" description="SSH、部署根目录 /data/docker-service" />
-                    <el-step title="选择部署形态" description="单节点或三节点形态" />
-                    <el-step title="选择节点" description="节点 1 必填；三节点时 2/3 可选" />
-                    <el-step title="配置与下发" description="编辑 user_edit 并选择 appctl 操作" />
+                    <el-step title="登记主机" description="SSH、部署根目录 /data/docker-service"></el-step>
+                    <el-step title="选择部署形态" description="单节点或三节点形态"></el-step>
+                    <el-step title="选择节点" description="节点 1 必填；三节点时 2/3 可选"></el-step>
+                    <el-step title="配置与下发" description="编辑 user_edit 并选择 appctl 操作"></el-step>
                   </el-steps>
                 </el-card>
               </el-col>
@@ -704,7 +704,7 @@
                   <template #header><span style="font-weight:600">已纳管主机</span></template>
                   <div v-if="hosts.length" class="ob-table-scroll">
                   <el-table ref="dashboardHostsTableRef" key="dashboard-hosts-table" :data="hosts" stripe border size="small" table-layout="auto" max-height="40vh" class="host-table ob-table-compact" row-key="id">
-                    <el-table-column key="dashboard-hosts-name" prop="name" label="名称" width="120" show-overflow-tooltip />
+                    <el-table-column key="dashboard-hosts-name" prop="name" label="名称" width="120" show-overflow-tooltip></el-table-column>
                     <el-table-column key="dashboard-hosts-conn" label="连接" min-width="150">
                       <template #default="{ row }">
                         <span class="host-conn-inline">
@@ -713,7 +713,7 @@
                         </span>
                       </template>
                     </el-table-column>
-                    <el-table-column key="dashboard-hosts-root" prop="docker_service_root" label="部署根目录" min-width="160" show-overflow-tooltip />
+                    <el-table-column key="dashboard-hosts-root" prop="docker_service_root" label="部署根目录" min-width="160" show-overflow-tooltip></el-table-column>
                     <el-table-column key="dashboard-hosts-credential" label="凭证" width="80" align="center">
                       <template #default="{ row }">
                         <el-tag :type="row.has_credential ? 'success' : 'warning'" size="small" effect="plain">{{ row.has_credential ? '已配' : '未配' }}</el-tag>
@@ -721,7 +721,7 @@
                     </el-table-column>
                   </el-table>
                   </div>
-                  <el-empty v-else description="暂无主机，请前往「主机管理」点击纳管主机" />
+                  <el-empty v-else description="暂无主机，请前往「主机管理」点击纳管主机"></el-empty>
                 </el-card>
               </el-col>
               <el-col :xs="24" :lg="10">
@@ -729,8 +729,8 @@
                   <template #header><span style="font-weight:600">最近任务</span></template>
                   <div v-if="lastTasks.length" class="ob-table-scroll">
                   <el-table ref="dashboardLastTasksTableRef" key="dashboard-last-tasks-table" :data="lastTasks" stripe border size="small" table-layout="auto" max-height="40vh" class="overview-task-table ob-table-compact" row-key="id">
-                    <el-table-column key="dashboard-last-tasks-id" prop="id" label="ID" width="56" />
-                    <el-table-column key="dashboard-last-tasks-host" prop="host_name" label="节点1" min-width="90" show-overflow-tooltip />
+                    <el-table-column key="dashboard-last-tasks-id" prop="id" label="ID" width="56"></el-table-column>
+                    <el-table-column key="dashboard-last-tasks-host" prop="host_name" label="节点1" min-width="90" show-overflow-tooltip></el-table-column>
                     <el-table-column key="dashboard-last-tasks-mode" label="形态" width="88" align="center">
                       <template #default="{ row }">
                         <el-tag size="small" :type="row.deploy_mode === 'triple' ? 'warning' : 'info'" effect="plain">{{ row.deploy_mode === 'triple' ? '三节点' : '单节点' }}</el-tag>
@@ -746,7 +746,7 @@
                     </el-table-column>
                   </el-table>
                   </div>
-                  <el-empty v-else description="暂无任务记录" />
+                  <el-empty v-else description="暂无任务记录"></el-empty>
                 </el-card>
               </el-col>
             </el-row>
@@ -796,8 +796,8 @@
                     empty-text="暂无主机，请点击「纳管主机」添加"
                     :default-sort="{ prop: 'created_at', order: 'descending' }"
                   >
-                    <el-table-column key="host-manage-id" prop="id" label="ID" width="64" sortable />
-                    <el-table-column key="host-manage-name" prop="name" label="显示名称" width="160" show-overflow-tooltip sortable />
+                    <el-table-column key="host-manage-id" prop="id" label="ID" width="64" sortable></el-table-column>
+                    <el-table-column key="host-manage-name" prop="name" label="显示名称" width="160" show-overflow-tooltip sortable></el-table-column>
                     <el-table-column key="host-manage-ssh" label="SSH 连接" width="220">
                       <template #default="{ row }">
                         <span class="host-conn-inline">
@@ -818,7 +818,7 @@
                         </el-tooltip>
                       </template>
                     </el-table-column>
-                    <el-table-column key="host-manage-root" prop="docker_service_root" label="部署根目录" width="240" show-overflow-tooltip />
+                    <el-table-column key="host-manage-root" prop="docker_service_root" label="部署根目录" width="240" show-overflow-tooltip></el-table-column>
                     <el-table-column key="host-manage-owner" label="属主" width="100" show-overflow-tooltip>
                       <template #default="{ row }">
                         <span>{{ row.owner_username || '—' }}</span>
@@ -854,16 +854,16 @@
               <template #header><span>{{ hostForm.id ? '修改配置' : '新增主机' }}</span></template>
               <el-form :model="hostForm" label-width="112px" size="default">
                 <el-form-item label="显示名称">
-                  <el-input v-model="hostForm.name" placeholder="如：生产节点-1" />
+                  <el-input v-model="hostForm.name" placeholder="如：生产节点-1"></el-input>
                 </el-form-item>
                 <el-form-item label="IP / 域名">
-                  <el-input v-model="hostForm.hostname" placeholder="SSH 地址" />
+                  <el-input v-model="hostForm.hostname" placeholder="SSH 地址"></el-input>
                 </el-form-item>
                 <el-form-item label="SSH 端口">
-                  <el-input-number v-model="hostForm.port" :min="1" :max="65535" style="width:100%" />
+                  <el-input-number v-model="hostForm.port" :min="1" :max="65535" style="width:100%"></el-input-number>
                 </el-form-item>
                 <el-form-item label="SSH 用户">
-                  <el-input v-model="hostForm.username" placeholder="如 root" />
+                  <el-input v-model="hostForm.username" placeholder="如 root"></el-input>
                 </el-form-item>
                 <el-form-item label="认证方式">
                   <el-radio-group v-model="hostForm.auth_method">
@@ -872,13 +872,13 @@
                   </el-radio-group>
                 </el-form-item>
                 <el-form-item v-if="hostForm.auth_method==='password'" label="密码">
-                  <el-input v-model="hostForm.password" type="password" show-password placeholder="保存时写入" />
+                  <el-input v-model="hostForm.password" type="password" show-password placeholder="保存时写入"></el-input>
                 </el-form-item>
                 <el-form-item v-else label="私钥 PEM">
-                  <el-input v-model="hostForm.private_key" type="textarea" :rows="5" placeholder="-----BEGIN ... KEY-----" />
+                  <el-input v-model="hostForm.private_key" type="textarea" :rows="5" placeholder="-----BEGIN ... KEY-----"></el-input>
                 </el-form-item>
                 <el-form-item label="部署根目录">
-                  <el-input v-model="hostForm.docker_service_root" placeholder="/data/docker-service" />
+                  <el-input v-model="hostForm.docker_service_root" placeholder="/data/docker-service"></el-input>
                   <div class="hint">与远程 <code>appctl.sh</code> 所在目录一致（如 <code>/data/docker-service</code>）。执行：<code>cd &lt;目录&gt; && sh appctl.sh ...</code>。进度文件：<code>&lt;目录&gt;/config/gaussdb/manifest.yaml</code>。</div>
                 </el-form-item>
                 <el-form-item>
@@ -947,8 +947,8 @@
               </div>
               <el-card shadow="never" class="deploy-task-card">
                 <el-form label-width="100px" style="max-width:560px;">
-                  <el-form-item label="版本名称"><el-input v-model="packageReleaseForm.name" placeholder="如 TPOPS-1.0" /></el-form-item>
-                  <el-form-item label="说明"><el-input v-model="packageReleaseForm.description" type="textarea" :rows="3" /></el-form-item>
+                  <el-form-item label="版本名称"><el-input v-model="packageReleaseForm.name" placeholder="如 TPOPS-1.0"></el-input></el-form-item>
+                  <el-form-item label="说明"><el-input v-model="packageReleaseForm.description" type="textarea" :rows="3"></el-input></el-form-item>
                   <el-form-item>
                     <el-button type="primary" :loading="loading" @click="savePackageRelease">保存</el-button>
                     <el-button @click="backPackageList">取消</el-button>
@@ -1061,13 +1061,13 @@
                 :default-sort="{ prop: 'created_at', order: 'descending' }"
                 :row-class-name="deployTaskRowClass"
               >
-                <el-table-column key="deploy-record-id" prop="id" label="任务 ID" width="88" sortable />
+                <el-table-column key="deploy-record-id" prop="id" label="任务 ID" width="88" sortable></el-table-column>
                 <el-table-column key="deploy-record-created-at" prop="created_at" label="触发时间" width="176" sortable>
                   <template #default="{ row }">
                     <span class="mono" style="font-size:12px;color:#606266">{{ formatHostTime(row.created_at) }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column key="deploy-record-host" prop="host_name" label="执行机" width="140" show-overflow-tooltip />
+                <el-table-column key="deploy-record-host" prop="host_name" label="执行机" width="140" show-overflow-tooltip></el-table-column>
                 <el-table-column key="deploy-record-node23" label="节点 2/3" width="180" show-overflow-tooltip>
                   <template #default="{ row }">
                     <span v-if="row.deploy_mode !== 'triple'" class="hint">—</span>
@@ -1084,7 +1084,7 @@
                     <span v-text="deployActionLabel(row.action)"></span>
                   </template>
                 </el-table-column>
-                <el-table-column key="deploy-record-target" prop="target" label="目标" width="110" show-overflow-tooltip />
+                <el-table-column key="deploy-record-target" prop="target" label="目标" width="110" show-overflow-tooltip></el-table-column>
                 <el-table-column key="deploy-record-package" label="安装包" width="180" show-overflow-tooltip>
                   <template #default="{ row }">
                     <span v-if="row.skip_package_sync" class="hint">已跳过</span>
@@ -1175,18 +1175,18 @@
                       <el-form label-width="112px" label-position="left" style="max-width:640px;">
                         <el-form-item label="节点 1（执行）">
                           <el-select v-model="deployForm.host" placeholder="选择已纳管主机" filterable style="width:100%">
-                            <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledForNode1(h.id)" :label="h.name + ' — ' + h.hostname + ':' + h.port + ' (' + h.username + ')'" :value="h.id" />
+                            <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledForNode1(h.id)" :label="h.name + ' — ' + h.hostname + ':' + h.port + ' (' + h.username + ')'" :value="h.id"></el-option>
                           </el-select>
                         </el-form-item>
                         <template v-if="deployForm.deploy_mode === 'triple'">
                           <el-form-item label="节点 2（可选）">
                             <el-select v-model="deployForm.host_node2" clearable placeholder="不选则与节点 1 同机" filterable style="width:100%">
-                              <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledTriple(h.id, 2)" :label="h.name + ' — ' + h.hostname + ':' + h.port" :value="h.id" />
+                              <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledTriple(h.id, 2)" :label="h.name + ' — ' + h.hostname + ':' + h.port" :value="h.id"></el-option>
                             </el-select>
                           </el-form-item>
                           <el-form-item label="节点 3（可选）">
                             <el-select v-model="deployForm.host_node3" clearable placeholder="不选则与节点 1 同机" filterable style="width:100%">
-                              <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledTriple(h.id, 3)" :label="h.name + ' — ' + h.hostname + ':' + h.port" :value="h.id" />
+                              <el-option v-for="h in hosts" :key="h.id" :disabled="isHostDisabledTriple(h.id, 3)" :label="h.name + ' — ' + h.hostname + ':' + h.port" :value="h.id"></el-option>
                             </el-select>
                           </el-form-item>
                         </template>
@@ -1213,14 +1213,14 @@
                           </el-radio-group>
                         </el-form-item>
                         <el-form-item label="目标参数">
-                          <el-input v-model="deployForm.target" placeholder="precheck 类必填组件名（如 gaussdb）；install / upgrade / uninstall_all 按现场可留空" />
+                          <el-input v-model="deployForm.target" placeholder="precheck 类必填组件名（如 gaussdb）；install / upgrade / uninstall_all 按现场可留空"></el-input>
                         </el-form-item>
                         <el-form-item label="安装包">
                           <div style="width:100%;">
                             <el-checkbox v-model="deployForm.skip_package_sync" @change="onSkipPackageChange">跳过同步（远端 <code>pkgs/</code> 已有介质）</el-checkbox>
                             <div v-if="!deployForm.skip_package_sync" style="margin-top:10px;">
                               <el-select v-model="deployForm.package_release" clearable filterable placeholder="选择安装包版本" style="width:100%;max-width:480px;margin-bottom:10px;" @change="onDeployPackageReleaseChange">
-                                <el-option v-for="r in packageReleases" :key="r.id" :label="r.name + '（' + (r.artifact_count || 0) + ' 个包）'" :value="r.id" />
+                                <el-option v-for="r in packageReleases" :key="r.id" :label="r.name + '（' + (r.artifact_count || 0) + ' 个包）'" :value="r.id"></el-option>
                               </el-select>
                               <div v-if="deployForm.package_release" style="max-height:220px;overflow:auto;border:1px solid #ebeef5;border-radius:8px;padding:10px 12px;background:#fafbfc;">
                                 <div v-if="!deployWizardArtifacts.length" class="hint">该版本下暂无包，请先到「安装包管理」上传。</div>
@@ -1236,7 +1236,7 @@
                           </div>
                         </el-form-item>
                         <el-form-item label="user_edit">
-                          <el-input v-model="deployForm.user_edit_content" type="textarea" :rows="12" placeholder="[user_edit] ..." class="mono-ta" />
+                          <el-input v-model="deployForm.user_edit_content" type="textarea" :rows="12" placeholder="[user_edit] ..." class="mono-ta"></el-input>
                           <div style="margin-top:8px;">
                             <el-button size="small" @click="fillUserEditTemplate">恢复默认模板</el-button>
                           </div>
@@ -1317,7 +1317,7 @@
                         <div>服务 <strong>{{ manifestSummary.services_done || 0 }}/{{ manifestSummary.services_total || 0 }}</strong></div>
                       </div>
                     </div>
-                    <el-progress class="manifest-dash-bar" :percentage="manifestProgressPercent" :stroke-width="10" />
+                    <el-progress class="manifest-dash-bar" :percentage="manifestProgressPercent" :stroke-width="10"></el-progress>
                     <div v-if="manifestCurrentStepLine" class="manifest-current-box">
                       <div class="lab">当前进行</div>
                       <div class="val" v-text="manifestCurrentStepLine"></div>
@@ -1327,7 +1327,7 @@
                         <div class="head" v-text="pn.label"></div>
                         <div class="role" v-text="tripleNodeRoleText(pn.role) + (pn.path ? ' · ' + shortPath(pn.path) : '')"></div>
                         <div style="font-size:12px;color:#606266;">层 {{ pn.levels_done }}/{{ pn.levels_total }} · 服务 {{ pn.services_done }}/{{ pn.services_total }}</div>
-                        <el-progress :percentage="pn.progress_percent" :stroke-width="8" />
+                        <el-progress :percentage="pn.progress_percent" :stroke-width="8"></el-progress>
                       </div>
                     </div>
                     <div class="hint" style="margin-top:10px;word-break:break-all;" v-text="'manifest: ' + ((manifestPaths || []).join(' · ') || '—')"></div>
@@ -1440,15 +1440,15 @@
 
     <el-dialog v-model="showRegister" title="注册账号" width="440px">
       <el-form :model="regForm" label-width="88px">
-        <el-form-item label="用户名"><el-input v-model="regForm.username" /></el-form-item>
-        <el-form-item label="邮箱"><el-input v-model="regForm.email" /></el-form-item>
-        <el-form-item label="密码"><el-input v-model="regForm.password" type="password" /></el-form-item>
-        <el-form-item label="确认密码"><el-input v-model="regForm.password_confirm" type="password" /></el-form-item>
+        <el-form-item label="用户名"><el-input v-model="regForm.username"></el-input></el-form-item>
+        <el-form-item label="邮箱"><el-input v-model="regForm.email"></el-input></el-form-item>
+        <el-form-item label="密码"><el-input v-model="regForm.password" type="password"></el-input></el-form-item>
+        <el-form-item label="确认密码"><el-input v-model="regForm.password_confirm" type="password"></el-input></el-form-item>
         <el-form-item label="角色">
           <el-select v-model="regForm.role" style="width:100%">
-            <el-option label="只读" value="viewer" />
-            <el-option label="操作员" value="operator" />
-            <el-option label="管理员" value="admin" />
+            <el-option label="只读" value="viewer"></el-option>
+            <el-option label="操作员" value="operator"></el-option>
+            <el-option label="管理员" value="admin"></el-option>
           </el-select>
         </el-form-item>
       </el-form>
