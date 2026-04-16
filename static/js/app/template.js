@@ -575,8 +575,8 @@ window.TPOPSApp.template = String.raw`
             <el-card shadow="never" class="deploy-task-card" style="margin-bottom:16px;">
               <template #header><span>集群部署引导</span><span style="float:right;font-size:12px;color:#909399;font-weight:400">左侧步骤 · 右侧填写，完成后点击「下发执行」</span></template>
               <div class="deploy-wizard-shell">
-                <el-row :gutter="0">
-                  <el-col :xs="24" :md="7" class="deploy-wizard-nav">
+                <div class="deploy-wizard-layout">
+                  <aside class="deploy-wizard-nav" aria-label="部署步骤">
                     <div class="deploy-wizard-brand">
                       <h3>创建部署任务</h3>
                       <p>按顺序完成三步后点击「下发执行」；将自动进入<strong>流水线与日志</strong>监控页。</p>
@@ -594,8 +594,8 @@ window.TPOPSApp.template = String.raw`
                         <div class="d" v-text="s.desc"></div>
                       </div>
                     </div>
-                  </el-col>
-                  <el-col :xs="24" :md="17" class="deploy-wizard-body">
+                  </aside>
+                  <div class="deploy-wizard-body">
                     <div v-show="deployStep === 0">
                       <div class="panel-title">步骤 1 · 部署形态</div>
                       <el-radio-group v-model="deployForm.deploy_mode" size="large">
@@ -688,8 +688,8 @@ window.TPOPSApp.template = String.raw`
                         <el-button type="primary" size="large" @click="startDeploy" :loading="loading">下发执行</el-button>
                       </div>
                     </div>
-                  </el-col>
-                </el-row>
+                  </div>
+                </div>
               </div>
             </el-card>
             </template>

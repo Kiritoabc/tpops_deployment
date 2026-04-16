@@ -450,8 +450,18 @@
       border-radius: 12px; overflow: visible; border: 1px solid #e4e7ed;
       box-shadow: 0 4px 20px rgba(0,21,41,.08); background: #fff;
     }
-    .deploy-wizard-shell .el-row { margin: 0 !important; }
+    /* 不用 el-row/el-col：部分环境下栅格列宽为 0 会导致右侧表单整块不可见 */
+    .deploy-wizard-layout {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: stretch;
+      min-width: 0;
+    }
     .deploy-wizard-nav {
+      flex: 0 1 260px;
+      width: min(100%, 280px);
+      max-width: 100%;
+      box-sizing: border-box;
       background: linear-gradient(180deg, #0d2844 0%, #0b1f3a 40%, #102a43 100%);
       color: #fff; padding: 16px 0 18px;
       min-height: 0;
@@ -474,7 +484,14 @@
     .deploy-step-item.done .deploy-step-num { background: #52c41a; border-color: #52c41a; color: #fff; }
     .deploy-step-text .t { font-size: 14px; font-weight: 600; color: #fff; }
     .deploy-step-text .d { font-size: 12px; color: rgba(255,255,255,.65); margin-top: 4px; line-height: 1.45; }
-    .deploy-wizard-body { padding: clamp(14px, 2.5vw, 24px); background: #fafbfc; min-height: 0; }
+    .deploy-wizard-body {
+      flex: 1 1 320px;
+      min-width: min(100%, 320px);
+      box-sizing: border-box;
+      padding: clamp(14px, 2.5vw, 24px);
+      background: #fafbfc;
+      min-height: 0;
+    }
     .deploy-wizard-body .panel-title { font-size: 15px; font-weight: 600; color: #303133; margin: 0 0 16px; }
     .deploy-wizard-footer {
       margin-top: 20px; padding-top: 16px; border-top: 1px solid #ebeef5;
