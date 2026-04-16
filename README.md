@@ -4,6 +4,8 @@
 
 **实现与架构详解（推荐阅读）：** [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md) — 数据流、runner 步骤、WebSocket、manifest、权限与目录导航。
 
+**按顺序读代码：** [`docs/CODE_READING_GUIDE.md`](docs/CODE_READING_GUIDE.md) — 建议阅读路径、主链路、路由与 WebSocket 速查。
+
 ## 环境说明
 
 - **生产目标**：Linux 上 **Python 3.7.9**（Django 4.x 需要 Python 3.8+，因此依赖锁定为 **Django 3.2 LTS**）。

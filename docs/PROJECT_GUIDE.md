@@ -223,6 +223,7 @@ plan/                      # 功能设计文档（plan-xxx.md）
 ## 12. 相关文档
 
 - 根目录 **`README.md`**：安装、迁移、启动、远程命令清单、`user_edit` 说明。
+- **`docs/CODE_READING_GUIDE.md`**：按固定顺序阅读源码的主链路与文件索引（与本文互补）。
 - **`plan/README.md`**：计划文档索引。
 - **`plan/plan-install-packages.md`**：安装包管理功能设计与实现记录。
 
