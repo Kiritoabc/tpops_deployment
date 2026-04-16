@@ -683,7 +683,7 @@
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">已纳管主机</span></template>
                   <div v-if="hosts.length" class="ob-table-scroll">
-                  <el-table :data="hosts" stripe size="small" table-layout="auto" max-height="40vh" class="host-table ob-table-compact">
+                  <el-table :data="hosts" stripe border size="small" table-layout="auto" max-height="40vh" class="host-table ob-table-compact" row-key="id">
                     <el-table-column prop="name" label="名称" width="120" show-overflow-tooltip />
                     <el-table-column label="连接" min-width="150">
                       <template #default="{ row }">
@@ -706,10 +706,14 @@
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">最近任务</span></template>
                   <div v-if="lastTasks.length" class="ob-table-scroll">
-                  <el-table :data="lastTasks" stripe size="small" table-layout="auto" max-height="40vh" class="ob-table-compact">
+                  <el-table :data="lastTasks" stripe border size="small" table-layout="auto" max-height="40vh" class="ob-table-compact" row-key="id">
                     <el-table-column prop="id" label="ID" width="56" />
                     <el-table-column prop="host_name" label="节点1" min-width="90" show-overflow-tooltip />
-                    <el-table-column prop="deploy_mode" label="形态" width="72" />
+                    <el-table-column label="形态" width="88" align="center">
+                      <template #default="{ row }">
+                        <el-tag size="small" :type="row.deploy_mode === 'triple' ? 'warning' : 'info'" effect="plain">{{ row.deploy_mode === 'triple' ? '三节点' : '单节点' }}</el-tag>
+                      </template>
+                    </el-table-column>
                     <el-table-column label="操作" min-width="100" show-overflow-tooltip>
                       <template #default="{ row }"><span v-text="deployActionLabel(row.action)"></span></template>
                     </el-table-column>
