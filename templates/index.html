@@ -685,7 +685,7 @@
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">已纳管主机</span></template>
                   <div v-if="hosts.length" class="ob-table-scroll">
-                  <el-table key="dashboard-hosts-table" :data="hosts" stripe border size="small" table-layout="auto" max-height="40vh" class="host-table ob-table-compact" row-key="id">
+                  <el-table ref="dashboardHostsTableRef" key="dashboard-hosts-table" :data="hosts" stripe border size="small" table-layout="auto" max-height="40vh" class="host-table ob-table-compact" row-key="id">
                     <el-table-column key="dashboard-hosts-name" prop="name" label="名称" width="120" show-overflow-tooltip />
                     <el-table-column key="dashboard-hosts-conn" label="连接" min-width="150">
                       <template #default="{ row }">
@@ -708,7 +708,7 @@
                 <el-card shadow="never" class="ob-card-elevated">
                   <template #header><span style="font-weight:600">最近任务</span></template>
                   <div v-if="lastTasks.length" class="ob-table-scroll">
-                  <el-table key="dashboard-last-tasks-table" :data="lastTasks" stripe border size="small" table-layout="auto" max-height="40vh" class="ob-table-compact" row-key="id">
+                  <el-table ref="dashboardLastTasksTableRef" key="dashboard-last-tasks-table" :data="lastTasks" stripe border size="small" table-layout="auto" max-height="40vh" class="ob-table-compact" row-key="id">
                     <el-table-column key="dashboard-last-tasks-id" prop="id" label="ID" width="56" />
                     <el-table-column key="dashboard-last-tasks-host" prop="host_name" label="节点1" min-width="90" show-overflow-tooltip />
                     <el-table-column key="dashboard-last-tasks-mode" label="形态" width="88" align="center">
@@ -763,6 +763,7 @@
               </template>
                   <div class="ob-table-scroll">
                   <el-table
+                    ref="hostManageTableRef"
                     key="host-manage-table"
                     :data="hosts"
                     stripe
@@ -1024,6 +1025,7 @@
               </template>
               <div class="ob-table-scroll">
               <el-table
+                ref="deployRecordTableRef"
                 key="deploy-record-table"
                 :data="tasks"
                 stripe
@@ -1628,6 +1630,10 @@ use_import_ca = no
         const logFileEl = ref(null);
         const obMainEl = ref(null);
         const logTailLabel = ref('（点击左侧步骤或日志标签）');
+        const dashboardHostsTableRef = ref(null);
+        const dashboardLastTasksTableRef = ref(null);
+        const hostManageTableRef = ref(null);
+        const deployRecordTableRef = ref(null);
         const treeRoots = ref([]);
         const manifestPayload = ref(null);
         const manifestSummary = ref(null);
@@ -1942,6 +1948,34 @@ use_import_ca = no
         const deploySubView = ref('list');
         /** hosts 子页: list | form */
         const hostSubView = ref('list');
+        let tableLayoutTimer = null;
+
+        const relayoutTable = (tableRef) => {
+          const table = tableRef && tableRef.value;
+          if (table && typeof table.doLayout === 'function') table.doLayout();
+        };
+
+        const relayoutVisibleTables = () => {
+          const run = () => {
+            if (activeMenu.value === 'overview') {
+              relayoutTable(dashboardHostsTableRef);
+              relayoutTable(dashboardLastTasksTableRef);
+              return;
+            }
+            if (activeMenu.value === 'hosts' && hostSubView.value === 'list') {
+              relayoutTable(hostManageTableRef);
+              return;
+            }
+            if (activeMenu.value === 'deploy' && deploySubView.value === 'list') {
+              relayoutTable(deployRecordTableRef);
+            }
+          };
+          nextTick(() => {
+            run();
+            if (tableLayoutTimer) clearTimeout(tableLayoutTimer);
+            tableLayoutTimer = setTimeout(run, 32);
+          });
+        };
 
         const onMenuSelect = (key) => {
           activeMenu.value = key;
@@ -2016,6 +2050,9 @@ use_import_ca = no
             deployForm.host_node3 = null;
           }
         });
+        watch([activeMenu, hostSubView, deploySubView], () => { relayoutVisibleTables(); });
+        watch(hosts, () => { relayoutVisibleTables(); });
+        watch(tasks, () => { relayoutVisibleTables(); });
 
         const setAuth = (access, refToken, u) => {
           token.value = access || '';
@@ -2654,8 +2691,14 @@ use_import_ca = no
           if (token.value) {
             try { await fetchHosts(); await fetchTasks(); await fetchPackageReleases(); } catch {}
           }
+          window.addEventListener('resize', relayoutVisibleTables);
         });
-        onUnmounted(() => { closeSocket(); closeLogSocket(); });
+        onUnmounted(() => {
+          if (tableLayoutTimer) clearTimeout(tableLayoutTimer);
+          window.removeEventListener('resize', relayoutVisibleTables);
+          closeSocket();
+          closeLogSocket();
+        });
 
         return {
           token, user, loading, sidebarCollapsed, activeMenu, breadcrumbTitle, runningCount, successCount, failedCount, lastTasks, onMenuSelect,
@@ -2667,6 +2710,7 @@ use_import_ca = no
           currentTaskSnapshot, deployStatusStripVisible, deployStatusStripTitle, deployStatusStripType, liveTaskFinishedHint,
           deployElapsedHuman, manifestProgressPercent, manifestEstimatedHuman, manifestCurrentStepLine,
           logText, logTailText, logTailLabel, logAppctlEl, logFileEl, obMainEl, treeRoots, manifestSummary, manifestPaths, manifestPayload, taskStatus, currentTaskId,
+          dashboardHostsTableRef, dashboardLastTasksTableRef, hostManageTableRef, deployRecordTableRef,
           showManifestTree, showTripleNodeStrip, tripleNodeProgressList, tripleNodeRoleText, shortPath, subStatusDotClass,
           pipelineRows, displayPipelineRows, activePipelineKey, rowEffectiveLevelStatus, tripleGroupedSubs, subLabelWithoutStatus, pipelineLvPillClass, subStPillClass,
           selectedPipelineKey, selectedLogHint, phaseHint, phaseBanner, flowS1, flowS2, flowS3, flowS4,
