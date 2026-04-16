@@ -18,6 +18,11 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += [
         path(
+            "static/<path:path>",
+            serve,
+            {"document_root": settings.BASE_DIR / "static"},
+        ),
+        path(
             "media/<path:path>",
             serve,
             {"document_root": settings.MEDIA_ROOT},
