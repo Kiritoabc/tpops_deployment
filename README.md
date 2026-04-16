@@ -2,6 +2,8 @@
 
 基于 **Django 3.2 + DRF + Channels** 与 **Vue 3 + Element Plus（CDN）** 的最小可用白屏化部署界面：管理 SSH 目标机、通过 WebSocket 推送 `appctl.sh` 日志，并按设计文档轮询解析远程 `manifest.yaml` 为树形结构。前端为深色侧栏控制台风格（可折叠侧栏、顶栏面包屑、卡片层次）。样式使用 **`clamp` / `vh` / `dvh`** 等做日志区、流水线区与表格高度的**响应式适配**，便于不同分辨率与笔记本小屏使用。
 
+**实现与架构详解（推荐阅读）：** [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md) — 数据流、runner 步骤、WebSocket、manifest、权限与目录导航。
+
 ## 环境说明
 
 - **生产目标**：Linux 上 **Python 3.7.9**（Django 4.x 需要 Python 3.8+，因此依赖锁定为 **Django 3.2 LTS**）。
