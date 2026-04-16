@@ -387,16 +387,18 @@
       vertical-align: middle !important;
       background: #f5f7fa !important;
     }
+    /* 不要用 display:inline-block / 强制 table 宽 100%：会与 EP 双表（表头/表体）列宽同步冲突，表体有纵向滚动条时表头列会「对不齐、像不在一行」 */
     .ob-main .el-table__header-wrapper .el-table__header th.el-table__cell .cell,
     .ob-main .el-table__footer-wrapper .el-table__footer td.el-table__cell .cell {
-      display: inline-block;
-      max-width: 100%;
-      box-sizing: border-box;
       white-space: nowrap !important;
       overflow: hidden;
       text-overflow: ellipsis;
       word-break: keep-all;
       line-height: 22px;
+    }
+    .ob-main .el-table__header-wrapper .el-table__header th.el-table__cell .cell .el-table__column-filter-trigger,
+    .ob-main .el-table__header-wrapper .el-table__header th.el-table__cell .cell .caret-wrapper {
+      flex-shrink: 0;
     }
     .ob-main .el-table__body-wrapper .el-table__body td.el-table__cell {
       vertical-align: middle;
@@ -405,11 +407,7 @@
       line-height: 1.45;
       word-break: break-word;
     }
-    .ob-main .el-table__body-wrapper table,
-    .ob-main .el-table__header-wrapper table {
-      table-layout: fixed !important;
-      width: 100% !important;
-    }
+    /* 列宽交给 Element Plus（含 fixed 列与滚动条 gutter），勿覆盖内部 table 宽度 */
     .ob-main .el-table.ob-table-wide { min-width: 1020px; }
     .ob-main .el-table.ob-table-deploy { min-width: 1180px; }
     .ob-main .el-table.ob-table-compact { min-width: 640px; }
@@ -426,7 +424,8 @@
     .deploy-hero p { margin: 0; font-size: 12px; opacity: .9; line-height: 1.55; max-width: 640px; }
     .deploy-hero .el-button { border-color: rgba(255,255,255,.35); color: #fff; background: rgba(255,255,255,.1); }
     .deploy-hero .el-button--primary { background: #1890ff; border-color: #1890ff; color: #fff; }
-    .deploy-task-card { border-radius: var(--ob-card-radius); overflow: hidden; border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); margin-bottom: 10px; }
+    /* 与 host-card 一致：避免 overflow:hidden + 内部表格滚动导致表头/表体错位 */
+    .deploy-task-card { border-radius: var(--ob-card-radius); overflow: visible; border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); margin-bottom: 10px; }
     .deploy-task-card > .el-card__header { background: linear-gradient(90deg, #f0f7ff 0%, #fff 100%); font-weight: 600; border-bottom: 1px solid #ebeef5; }
     .deploy-table .row-current-task { background: #e6f7ff !important; }
     .deploy-table .row-current-task:hover > td { background: #d6f0ff !important; }
