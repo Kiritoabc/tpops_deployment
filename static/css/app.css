@@ -2,8 +2,14 @@
       --ob-sidebar: #061a2e;
       --ob-sidebar-mid: #0b2744;
       --ob-sidebar-active: #1890ff;
+      --ob-installer-blue: #0062ff;
+      --ob-installer-blue-soft: #e8f1ff;
+      --ob-installer-border: #e5e7eb;
+      --ob-installer-card: #ffffff;
+      --ob-installer-muted: #64748b;
       --ob-header-h: 52px;
-      --ob-bg: #e8ecf1;
+      /* 与 OceanBase Installer 参考页接近的浅灰工作台底 */
+      --ob-bg: #f4f7f9;
       /* 内容区：横向占满主区域（不再收窄到 1480） */
       --ob-content-max: 100%;
       --ob-main-pad-x: clamp(10px, 1.6vw, 20px);
@@ -426,7 +432,7 @@
       font-size: 12px;
       margin-left: 8px;
     }
-    /* 部署任务列表 */
+    /* 部署任务列表（Installer 风：白卡片顶栏 + 数据表卡片） */
     .deploy-hero {
       display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;
       margin-bottom: 14px; padding: 16px 18px; border-radius: 10px;
@@ -437,6 +443,42 @@
     .deploy-hero p { margin: 0; font-size: 12px; opacity: .9; line-height: 1.55; max-width: 640px; }
     .deploy-hero .el-button { border-color: rgba(255,255,255,.35); color: #fff; background: rgba(255,255,255,.1); }
     .deploy-hero .el-button--primary { background: #1890ff; border-color: #1890ff; color: #fff; }
+    .installer-page-intro {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      padding: 20px 22px;
+      background: var(--ob-installer-card);
+      border: 1px solid var(--ob-installer-border);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      transition: box-shadow 0.25s ease;
+    }
+    .installer-page-intro:hover { box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06); }
+    .installer-page-intro .ob-page-title { margin: 0 0 6px; }
+    .installer-page-intro .ob-page-sub { margin: 0; max-width: 640px; }
+    .installer-page-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .installer-data-card.deploy-task-card {
+      border-radius: 8px;
+      border-color: var(--ob-installer-border);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      transition: box-shadow 0.25s ease;
+    }
+    .installer-data-card.deploy-task-card:hover { box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06); }
+    .installer-tip-banner {
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+      color: #92400e;
+      line-height: 1.55;
+    }
+    .installer-tip-banner strong { color: #78350f; }
     .deploy-task-card { border-radius: var(--ob-card-radius); border: 1px solid #e4e7ed; box-shadow: 0 2px 12px rgba(0,21,41,.06); margin-bottom: 10px; }
     .deploy-task-card > .el-card__header { background: linear-gradient(90deg, #f0f7ff 0%, #fff 100%); font-weight: 600; border-bottom: 1px solid #ebeef5; }
     .deploy-table .row-current-task { background: #e6f7ff !important; }
@@ -445,57 +487,166 @@
     .deploy-status-strip .el-alert__title { font-size: 13px; line-height: 1.55; font-weight: 500; }
     .deploy-outcome-ok { color: #67c23a; font-weight: 600; }
     .deploy-outcome-bad { color: #f56c6c; font-weight: 600; }
-    /* OceanBase 风格部署向导：左侧步骤 + 右侧内容 */
+    /* 部署向导：横向步骤条 + 白卡片（参考 OceanBase Installer 布局，无 Tailwind） */
+    .deploy-wizard-page { max-width: 72rem; margin: 0 auto; }
     .deploy-wizard-shell {
-      border-radius: 12px; overflow: visible; border: 1px solid #e4e7ed;
-      box-shadow: 0 4px 20px rgba(0,21,41,.08); background: #fff;
+      border-radius: 8px;
+      overflow: visible;
+      border: 1px solid var(--ob-installer-border);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      background: var(--ob-installer-card);
+      transition: box-shadow 0.25s ease;
     }
-    /* 不用 el-row/el-col：部分环境下栅格列宽为 0 会导致右侧表单整块不可见 */
-    .deploy-wizard-layout {
+    .deploy-wizard-shell:hover { box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06); }
+    .deploy-installer-steps {
       display: flex;
       flex-wrap: wrap;
-      align-items: stretch;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px 4px;
+      padding: 20px clamp(12px, 3vw, 28px) 8px;
+      border-bottom: 1px solid var(--ob-installer-border);
+      background: #fafbfc;
+    }
+    .deploy-installer-step-btn {
+      flex: 0 1 auto;
+      min-width: 88px;
+      max-width: 160px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px 14px;
+      margin: 0;
+      border: none;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      cursor: pointer;
+      font: inherit;
+      color: var(--ob-installer-muted);
+      border-radius: 6px 6px 0 0;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+    .deploy-installer-step-btn:hover { color: #334155; background: rgba(0, 98, 255, 0.06); }
+    .deploy-installer-step-btn.is-active {
+      color: var(--ob-installer-blue);
+      border-bottom-color: var(--ob-installer-blue);
+      font-weight: 600;
+    }
+    .deploy-installer-step-btn.is-done { color: #0f766e; }
+    .deploy-installer-step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      border: 2px solid #d1d5db;
+      background: #fff;
+      color: #64748b;
+    }
+    .deploy-installer-step-btn.is-active .deploy-installer-step-num {
+      border-color: var(--ob-installer-blue);
+      color: var(--ob-installer-blue);
+      box-shadow: 0 0 0 3px rgba(0, 98, 255, 0.12);
+    }
+    .deploy-installer-step-btn.is-done .deploy-installer-step-num {
+      border-color: #10b981;
+      background: #ecfdf5;
+      color: #059669;
+    }
+    .deploy-installer-step-label { font-size: 13px; text-align: center; line-height: 1.35; }
+    .deploy-installer-connector {
+      flex: 1 1 24px;
+      min-width: 16px;
+      max-width: 100%;
+      height: 2px;
+      background: #e5e7eb;
+      align-self: center;
+      margin-top: -18px;
+      border-radius: 1px;
+    }
+    @media (max-width: 720px) {
+      .deploy-installer-connector { display: none; }
+      .deploy-installer-steps { justify-content: center; }
+    }
+    .deploy-wizard-body {
+      padding: clamp(18px, 3vw, 32px);
+      background: var(--ob-installer-card);
       min-width: 0;
     }
-    .deploy-wizard-nav {
-      flex: 0 1 260px;
-      width: min(100%, 280px);
-      max-width: 100%;
-      box-sizing: border-box;
-      background: linear-gradient(180deg, #0d2844 0%, #0b1f3a 40%, #102a43 100%);
-      color: #fff; padding: 16px 0 18px;
-      min-height: 0;
-    }
-    .deploy-wizard-brand { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,.1); margin-bottom: 8px; }
-    .deploy-wizard-brand h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; color: #fff; }
-    .deploy-wizard-brand p { margin: 0; font-size: 12px; color: rgba(255,255,255,.72); line-height: 1.5; }
-    .deploy-step-item {
-      display: flex; align-items: flex-start; gap: 12px; padding: 14px 20px; cursor: pointer;
-      border-left: 3px solid transparent; transition: background .15s, border-color .15s;
-    }
-    .deploy-step-item:hover { background: rgba(255,255,255,.06); }
-    .deploy-step-item.active { background: rgba(24,144,255,.15); border-left-color: #1890ff; }
-    .deploy-step-item.done { opacity: .92; }
-    .deploy-step-num {
-      width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 600; background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.2);
-    }
-    .deploy-step-item.active .deploy-step-num { background: #1890ff; border-color: #1890ff; }
-    .deploy-step-item.done .deploy-step-num { background: #52c41a; border-color: #52c41a; color: #fff; }
-    .deploy-step-text .t { font-size: 14px; font-weight: 600; color: #fff; }
-    .deploy-step-text .d { font-size: 12px; color: rgba(255,255,255,.65); margin-top: 4px; line-height: 1.45; }
-    .deploy-wizard-body {
-      flex: 1 1 320px;
-      min-width: min(100%, 320px);
-      box-sizing: border-box;
-      padding: clamp(14px, 2.5vw, 24px);
-      background: #fafbfc;
-      min-height: 0;
-    }
+    .deploy-wizard-body .installer-step-heading { margin: 0 0 8px; font-size: 1.25rem; font-weight: 700; color: #0f172a; letter-spacing: -0.02em; }
+    .deploy-wizard-body .installer-step-lead { margin: 0 0 22px; font-size: 13px; color: var(--ob-installer-muted); line-height: 1.55; max-width: 52rem; }
     .deploy-wizard-body .panel-title { font-size: 15px; font-weight: 600; color: #303133; margin: 0 0 16px; }
-    .deploy-wizard-footer {
-      margin-top: 20px; padding-top: 16px; border-top: 1px solid #ebeef5;
-      display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+    .deploy-mode-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+    .deploy-mode-card {
+      position: relative;
+      padding: 18px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--ob-installer-border);
+      background: #fff;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .deploy-mode-card:hover { border-color: #93c5fd; box-shadow: 0 2px 8px rgba(0, 98, 255, 0.08); }
+    .deploy-mode-card.is-selected {
+      border: 2px solid var(--ob-installer-blue);
+      background: var(--ob-installer-blue-soft);
+      padding: 17px 15px;
+      box-shadow: 0 4px 14px rgba(0, 98, 255, 0.12);
+    }
+    .deploy-mode-card h3 { margin: 0 0 8px; font-size: 16px; font-weight: 700; color: #0f172a; }
+    .deploy-mode-card p { margin: 0; font-size: 12px; color: #64748b; line-height: 1.55; }
+    .deploy-mode-card .deploy-mode-badge {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 2px 8px;
+      font-size: 11px;
+      border-radius: 4px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+    .deploy-mode-card.is-selected .deploy-mode-check {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 22px;
+      height: 22px;
+      color: var(--ob-installer-blue);
+    }
+    .deploy-wizard-footer,
+    .deploy-installer-footer {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #f1f5f9;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .deploy-installer-footer .el-button--primary {
+      box-shadow: 0 4px 14px rgba(0, 98, 255, 0.25);
+    }
+    .deploy-page-toolbar.installer-toolbar {
+      margin-bottom: 14px;
+      padding: 12px 16px;
+      background: var(--ob-installer-card);
+      border: 1px solid var(--ob-installer-border);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .installer-wizard-card > .el-card__header {
+      background: linear-gradient(180deg, #fafbfd 0%, #fff 100%);
     }
     /* Manifest 总进度仪表盘 */
     .manifest-dash {

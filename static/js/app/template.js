@@ -467,20 +467,18 @@ window.TPOPSApp.template = String.raw`
           <template v-else-if="activeMenu === 'deploy'">
             <!-- ① 部署记录列表（与新建入口同页） -->
             <template v-if="deploySubView === 'list'">
-            <h2 class="ob-page-title">部署任务</h2>
-            <p class="ob-page-sub">查看历史记录与结果；新建部署进入引导，查看详情进入实时监控（返回列表不断连）。</p>
-            <div class="deploy-hero">
+            <div class="installer-page-intro">
               <div>
-                <h2 style="margin:0 0 6px;font-size:17px;font-weight:600;color:#fff;">任务列表</h2>
-                <p>本页为<strong>部署记录</strong>。点击<strong>新建部署</strong>进入引导页；下发或查看详情进入<strong>流水线与日志</strong>页。从监控页返回列表时<strong>不会断开实时连接</strong>，再次进入监控页可继续看到同一任务的输出。</p>
+                <h2 class="ob-page-title">部署任务</h2>
+                <p class="ob-page-sub">查看历史记录与结果；新建部署进入引导，查看详情进入实时监控（从监控返回列表不会断开连接）。</p>
               </div>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                <el-button type="primary" :loading="loading" @click="refreshTasksOnly">刷新列表</el-button>
-                <el-button type="success" @click="openDeployWizard">新建部署</el-button>
+              <div class="installer-page-actions">
+                <el-button :loading="loading" @click="refreshTasksOnly">刷新列表</el-button>
+                <el-button type="primary" @click="openDeployWizard">新建部署</el-button>
               </div>
             </div>
 
-            <el-card shadow="never" class="deploy-task-card">
+            <el-card shadow="never" class="deploy-task-card installer-data-card">
               <template #header>
                 <div class="ob-card-table-head">
                   <span>部署记录</span>
@@ -562,57 +560,84 @@ window.TPOPSApp.template = String.raw`
               </el-table>
               </div>
             </el-card>
+            <div class="installer-tip-banner">
+              <strong>提示：</strong>部署前请在「主机管理」登记 SSH 可达的执行机（部署根目录含 <code>appctl.sh</code>）；同一主机避免并行多个 appctl 任务。
+            </div>
             </template>
 
             <!-- ② 新建部署（独立全页引导） -->
             <template v-else-if="deploySubView === 'wizard'">
-            <div class="deploy-page-toolbar">
+            <div class="deploy-wizard-page">
+            <div class="deploy-page-toolbar installer-toolbar">
               <div class="left">
                 <el-button @click="backToDeployList">← 返回部署列表</el-button>
                 <h2 class="ob-page-title">新建部署</h2>
               </div>
             </div>
-            <el-card shadow="never" class="deploy-task-card" style="margin-bottom:16px;">
-              <template #header><span>集群部署引导</span><span style="float:right;font-size:12px;color:#909399;font-weight:400">左侧步骤 · 右侧填写，完成后点击「下发执行」</span></template>
+            <el-card shadow="never" class="deploy-task-card installer-wizard-card" style="margin-bottom:16px;">
+              <template #header>
+                <div class="ob-card-table-head">
+                  <span>集群部署引导</span>
+                  <span class="ob-card-table-head-meta">横条切换步骤 · 完成后点「下发执行」进入流水线与日志</span>
+                </div>
+              </template>
               <div class="deploy-wizard-shell">
-                <div class="deploy-wizard-layout">
-                  <aside class="deploy-wizard-nav" aria-label="部署步骤">
-                    <div class="deploy-wizard-brand">
-                      <h3>创建部署任务</h3>
-                      <p>按顺序完成三步后点击「下发执行」；将自动进入<strong>流水线与日志</strong>监控页。</p>
-                    </div>
-                    <div
-                      v-for="(s, idx) in deployWizardSteps"
-                      :key="s.key"
-                      class="deploy-step-item"
-                      :class="{ active: deployStep === idx, done: deployStep > idx }"
+                <div class="deploy-installer-steps" role="tablist" aria-label="部署步骤">
+                  <template v-for="(s, idx) in deployWizardSteps" :key="s.key">
+                    <button
+                      type="button"
+                      class="deploy-installer-step-btn"
+                      :class="{ 'is-active': deployStep === idx, 'is-done': deployStep > idx }"
                       @click="goDeployWizardStep(idx)"
                     >
-                      <div class="deploy-step-num">{{ deployStep > idx ? '✓' : (idx + 1) }}</div>
-                      <div class="deploy-step-text">
-                        <div class="t" v-text="s.title"></div>
-                        <div class="d" v-text="s.desc"></div>
-                      </div>
-                    </div>
-                  </aside>
-                  <div class="deploy-wizard-body">
+                      <span class="deploy-installer-step-num">{{ deployStep > idx ? '✓' : (idx + 1) }}</span>
+                      <span class="deploy-installer-step-label" v-text="s.title"></span>
+                    </button>
+                    <div v-if="idx < deployWizardSteps.length - 1" class="deploy-installer-connector" aria-hidden="true"></div>
+                  </template>
+                </div>
+                <div class="deploy-wizard-body">
                     <div v-show="deployStep === 0">
-                      <div class="panel-title">步骤 1 · 部署形态</div>
-                      <el-radio-group v-model="deployForm.deploy_mode" size="large">
-                        <el-radio-button label="single">单节点</el-radio-button>
-                        <el-radio-button label="triple">三节点</el-radio-button>
-                      </el-radio-group>
-                      <div class="hint" style="margin-top:14px;">
-                        <strong>执行机</strong>为节点 1：负责 SSH、写入 <code>user_edit_file.conf</code> 与执行 <code>sh appctl.sh</code>。三节点时节点 2/3 可选，仅作记录；<code>user_edit</code> 内 IP 由您填写，平台不覆盖。
+                      <h2 class="installer-step-heading">选择部署形态</h2>
+                      <p class="installer-step-lead">单节点仅一台执行机；三节点时 manifest 与登记节点按平台约定展示，<code>user_edit</code> 内 IP 需自行填写，平台不覆盖。</p>
+                      <div class="deploy-mode-cards">
+                        <div
+                          class="deploy-mode-card"
+                          :class="{ 'is-selected': deployForm.deploy_mode === 'single' }"
+                          role="button"
+                          tabindex="0"
+                          @click="deployForm.deploy_mode = 'single'"
+                          @keyup.enter="deployForm.deploy_mode = 'single'"
+                        >
+                          <svg v-if="deployForm.deploy_mode === 'single'" class="deploy-mode-check" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                          <h3>单节点</h3>
+                          <p>一台执行机完成 SSH、写入 <code>user_edit_file.conf</code> 与 <code>appctl.sh</code>，适合标准单机或联调环境。</p>
+                          <span class="deploy-mode-badge">常用</span>
+                        </div>
+                        <div
+                          class="deploy-mode-card"
+                          :class="{ 'is-selected': deployForm.deploy_mode === 'triple' }"
+                          role="button"
+                          tabindex="0"
+                          @click="deployForm.deploy_mode = 'triple'"
+                          @keyup.enter="deployForm.deploy_mode = 'triple'"
+                        >
+                          <svg v-if="deployForm.deploy_mode === 'triple'" class="deploy-mode-check" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                          <h3>三节点</h3>
+                          <p>节点 2/3 可选登记；安装阶段可合并展示多节点 manifest 流水线，与单节点流程一致由执行机发起。</p>
+                        </div>
                       </div>
-                      <div class="deploy-wizard-footer">
-                        <span></span>
-                        <el-button type="primary" @click="goDeployWizardStep(1)">下一步</el-button>
+                      <div class="hint" style="margin-top:4px;">
+                        <strong>执行机</strong>始终为节点 1；三节点时节点 2/3 仅作记录，IP 以 <code>user_edit</code> 为准。
+                      </div>
+                      <div class="deploy-installer-footer">
+                        <el-button type="primary" @click="goDeployWizardStep(1)">下一步：选择节点</el-button>
                       </div>
                     </div>
 
                     <div v-show="deployStep === 1">
-                      <div class="panel-title">步骤 2 · 选择节点</div>
+                      <h2 class="installer-step-heading">选择节点</h2>
+                      <p class="installer-step-lead">节点 1 为必填执行机；三节点形态下节点 2、3 可不选（默认与节点 1 同机）。</p>
                       <el-form label-width="112px" label-position="left" style="max-width:640px;">
                         <el-form-item label="节点 1（执行）">
                           <el-select v-model="deployForm.host" placeholder="选择已纳管主机" filterable style="width:100%">
@@ -632,14 +657,15 @@ window.TPOPSApp.template = String.raw`
                           </el-form-item>
                         </template>
                       </el-form>
-                      <div class="deploy-wizard-footer">
+                      <div class="deploy-installer-footer">
                         <el-button @click="goDeployWizardStep(0)">上一步</el-button>
-                        <el-button type="primary" @click="goDeployStep2">下一步</el-button>
+                        <el-button type="primary" @click="goDeployStep2">下一步：操作与配置</el-button>
                       </div>
                     </div>
 
                     <div v-show="deployStep === 2">
-                      <div class="panel-title">步骤 3 · 操作与配置</div>
+                      <h2 class="installer-step-heading">操作与配置</h2>
+                      <p class="installer-step-lead">选择 appctl 操作并编辑 <code>user_edit</code>；内容将原样写入远程配置文件。</p>
                       <el-alert type="info" :closable="false" show-icon style="margin-bottom:14px;">
                         <template #title>选择 appctl 操作后点击「下发执行」；<code>user_edit</code> 将<strong>原样</strong>写入远程配置文件。</template>
                       </el-alert>
@@ -683,21 +709,24 @@ window.TPOPSApp.template = String.raw`
                           </div>
                         </el-form-item>
                       </el-form>
-                      <div class="deploy-wizard-footer">
+                      <div class="deploy-installer-footer">
                         <el-button @click="goDeployWizardStep(1)">上一步</el-button>
                         <el-button type="primary" size="large" @click="startDeploy" :loading="loading">下发执行</el-button>
                       </div>
                     </div>
-                  </div>
                 </div>
               </div>
             </el-card>
+            <div class="installer-tip-banner">
+              <strong>提示：</strong><code>precheck</code> 类操作需填写目标组件；不跳过安装包同步时请选择版本与具体包文件。
+            </div>
+            </div>
             </template>
 
             <!-- ③ 下发后：安装流水线 + 日志（独立页） -->
             <template v-else-if="deploySubView === 'monitor'">
             <div class="deploy-monitor-stack">
-            <div class="deploy-page-toolbar">
+            <div class="deploy-page-toolbar installer-toolbar">
               <div class="left">
                 <el-button @click="backToDeployList">← 返回部署列表</el-button>
                 <el-button type="primary" plain @click="openDeployWizard">新建部署</el-button>
