@@ -6,15 +6,15 @@ import (
 	"strconv"
 	"strings"
 
-	"tpops_deployment/internal/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"tpops_deployment/internal/auth"
 )
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
 // WSDeploy 对齐 /ws/deploy/:id/?token=...
@@ -43,8 +43,8 @@ func (h *Handler) WSDeploy(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	h.hub.Register(taskID, conn)
-	defer h.hub.Unregister(taskID, conn)
+	h.hub.RegisterDeploy(taskID, conn)
+	defer h.hub.UnregisterDeploy(taskID, conn)
 
 	hello := map[string]interface{}{
 		"type":          "hello",

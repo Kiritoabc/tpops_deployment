@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gin-gonic/gin"
 	"tpops_deployment/internal/middleware"
 	"tpops_deployment/internal/service"
-	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) getTask(c *gin.Context) {

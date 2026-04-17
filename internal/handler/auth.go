@@ -3,9 +3,9 @@ package handler
 import (
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"tpops_deployment/internal/middleware"
 	"tpops_deployment/internal/service"
-	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) login(c *gin.Context) {

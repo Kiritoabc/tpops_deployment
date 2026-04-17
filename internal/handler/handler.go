@@ -46,6 +46,7 @@ func (h *Handler) Register(r *gin.Engine) {
 	{
 		authG.POST("/login/", h.login)
 		authG.POST("/register/", h.register)
+		authG.POST("/token/refresh/", h.tokenRefresh)
 		authG.GET("/profile/", middleware.JWTAuth(h.cfg.JWTSecret), h.profile)
 	}
 
@@ -54,9 +55,12 @@ func (h *Handler) Register(r *gin.Engine) {
 	{
 		protected.GET("/hosts/", h.listHosts)
 		protected.GET("/deployment/tasks/", h.listTasks)
+		protected.POST("/deployment/tasks/", h.createTask)
 		protected.GET("/deployment/tasks/:id/", h.getTask)
+		protected.POST("/deployment/tasks/:id/start/", h.startTask)
 		protected.GET("/deployment/tasks/:id/manifest_snapshot/", h.manifestSnapshot)
 	}
 
 	r.GET("/ws/deploy/:id/", h.WSDeploy)
+	r.GET("/ws/deploy/:id/log/", h.WSDeployLog)
 }

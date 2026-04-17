@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"tpops_deployment/internal/middleware"
 	"github.com/gin-gonic/gin"
+	"tpops_deployment/internal/middleware"
 )
 
 func (h *Handler) listHosts(c *gin.Context) {

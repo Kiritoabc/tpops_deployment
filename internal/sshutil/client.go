@@ -59,9 +59,12 @@ func CatRemoteFile(hostname string, port int, username, authMethod, secret, remo
 	}
 }
 
-func shellQuote(s string) string {
+// ShellQuote 单引号包裹，供 `sh -c` 拼接使用。
+func ShellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
 }
+
+func shellQuote(s string) string { return ShellQuote(s) }
 
 func clientConfig(username, authMethod, secret string) (*ssh.ClientConfig, error) {
 	var auth []ssh.AuthMethod

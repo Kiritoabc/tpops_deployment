@@ -67,11 +67,3 @@ func (s *Service) ManifestSnapshot(ctx context.Context, userID, taskID int64) (m
 	tree["deploy_mode"] = t.DeployMode
 	return tree, nil
 }
-
-// EmitDeploymentEvent 供 runner 向任务 WebSocket 客户端广播 JSON（含 type 字段）。
-func (s *Service) EmitDeploymentEvent(taskID int64, payload map[string]interface{}) {
-	if s.hub == nil {
-		return
-	}
-	s.hub.Broadcast(taskID, payload)
-}

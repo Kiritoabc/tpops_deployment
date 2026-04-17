@@ -39,9 +39,31 @@ go run ./cmd/server
 | GET | `/api/auth/profile/` | 需 JWT |
 | GET | `/api/hosts/` | 需 JWT |
 | GET | `/api/deployment/tasks/` | 需 JWT |
+| POST | `/api/deployment/tasks/` | 创建任务（body 见下） |
 | GET | `/api/deployment/tasks/:id/` | 任务详情 |
+| POST | `/api/deployment/tasks/:id/start/` | 对 `pending` 任务启动 Runner |
 | GET | `/api/deployment/tasks/:id/manifest_snapshot/` | SSH 拉 manifest 并解析 |
-| GET | `/ws/deploy/:id/?token=<access_jwt>` | WebSocket：`hello` |
+| POST | `/api/auth/token/refresh/` | body `{"refresh":"..."}` → `{"access"}` |
+| GET | `/ws/deploy/:id/?token=<access_jwt>` | 部署 feed：`hello`、`phase`、`log`、`manifest`、`manifest_wait`、`status`、`done` |
+| GET | `/ws/deploy/:id/log/?token=<access_jwt>` | 仅日志：`hello`（含 `remote_log`）后 `tail -F` 流式 `log` |
+
+**创建任务 JSON 示例**（`start: true` 时创建后立即跑 Runner）：
+
+```json
+{
+  "host": 1,
+  "action": "shell",
+  "target": "echo hello && sleep 2 && echo done",
+  "deploy_mode": "single",
+  "user_edit_content": "",
+  "remote_user_edit_path": "",
+  "remote_log_path": "logs/deploy_1.log",
+  "skip_package_sync": true,
+  "start": true
+}
+```
+
+`action` 为 `install` 或 `upgrade` 时，Runner 会每 5 秒拉一次 manifest 并推送 `manifest` 消息。`target` 为远端 `bash -lc` 中执行的命令块（已 `cd` 到部署根目录）。
 
 ## 设计与后续
 

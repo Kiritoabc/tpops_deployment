@@ -130,7 +130,12 @@ func enrichManifestSummary(summary map[string]interface{}, roots []interface{}, 
 		summary["estimated_total_seconds"] = round1(estimatedInstallSeconds(data))
 	}
 	summary["current_running_service"] = firstRunningService(roots)
-	summary["services_running"] = countRunningServices(roots)
+	summary["services_running"] = CountRunningServices(roots)
+}
+
+// IntFrom 将 summary 等字段中的数值转为 int。
+func IntFrom(v interface{}) int {
+	return intFrom(v)
 }
 
 func intFrom(v interface{}) int {
@@ -236,7 +241,8 @@ func firstRunningService(roots []interface{}) interface{} {
 	return nil
 }
 
-func countRunningServices(roots []interface{}) int {
+// CountRunningServices 统计子服务中 running/retrying 数量。
+func CountRunningServices(roots []interface{}) int {
 	n := 0
 	for _, r := range roots {
 		root, ok := r.(map[string]interface{})

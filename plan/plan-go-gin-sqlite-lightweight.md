@@ -1,7 +1,7 @@
 # Plan：Go（Gin）+ SQLite 轻量实现方案
 
 > **分支**：`go-dev` — 本分支为 **仅 Go** 的独立实现线，不与 `main` 合并。  
-> **状态**：仓库根目录已落地模块骨架与部分 API；Runner 全量流式、日志 WS、包上传等待办。
+> **状态**：已含 **SSH Runner**（`target` 远程执行 + 日志落盘 + WS 推送）、**manifest 轮询**（install/upgrade）、**日志专用 WS**、**任务创建/启动**、**refresh token**；安装包上传等仍待办。
 
 ## 1. 背景与目标
 
@@ -100,4 +100,5 @@ CI：`go test ./...` 在仓库根执行。
 
 - **2026-04**：本 Plan 与 `go-dev` 分支创建。
 - **2026-04**：根目录模块：`cmd/server`、Gin、goose、SQLite、JWT、hosts/tasks API、manifest 包、`manifest_snapshot`、WS `hello`、Fernet、embed 静态页。
-- **2026-04**：`go-dev` 去除历史 Web 栈目录，**Go 模块提升至仓库根**；`go-dev` 独立演进、**不合入 `main`**。**待办**：runner 实时流、log tail WS、包上传。
+- **2026-04**：`go-dev` 去除历史 Web 栈目录，**Go 模块提升至仓库根**；`go-dev` 独立演进、**不合入 `main`**。
+- **2026-04**：Runner：`POST /api/deployment/tasks/`、`POST .../start/`、`RunRemoteStream`、`phase`/`log`/`manifest`/`done`；`GET /ws/deploy/:id/log/`；`POST /api/auth/token/refresh/`；DB 列 `remote_log_path`。**待办**：包上传、主机 CRUD、与具体 `appctl` 产品命令对齐、登录限流。

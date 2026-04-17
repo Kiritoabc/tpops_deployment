@@ -8,12 +8,12 @@ import (
 
 // TaskWSOut 供 WebSocket hello 使用（时间字段为 RFC3339 或 nil 字符串）。
 type TaskWSOut struct {
-	Status         string
-	Action         string
-	ExitCode       *int
-	ErrorMessage   string
-	StartedAt      *string
-	FinishedAt     *string
+	Status       string
+	Action       string
+	ExitCode     *int
+	ErrorMessage string
+	StartedAt    *string
+	FinishedAt   *string
 }
 
 func (s *Service) TaskForWS(ctx context.Context, userID, taskID int64) (*TaskWSOut, error) {
