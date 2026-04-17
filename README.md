@@ -18,7 +18,8 @@ go run ./cmd/server
 - 监听：`TPOPS_GO_LISTEN`（默认 `:8081`）
 - 数据库：`data/tpops_go.db`（自动 `goose` 迁移）
 - JWT：`TPOPS_GO_JWT_SECRET`（生产务必修改）
-- **解密主机凭证（Fernet）**：`TPOPS_GO_FERNET_SECRET`；若为空则读取 `TPOPS_APP_SECRET_KEY`
+- **解密主机凭证（Fernet）**：优先 `TPOPS_GO_FERNET_SECRET`，其次 `TPOPS_APP_SECRET_KEY`；若均未设置，**首次启动**会在 `data/.fernet_secret` 自动生成随机密钥并复用（仅便于本地；**生产务必显式配置**）
+- **安装包文件目录**：`TPOPS_GO_PACKAGES_DIR`（默认 `data/packages/`）
 
 浏览器打开 **`/`** 即控制台（与 API 同域）。
 
@@ -44,6 +45,7 @@ go run ./cmd/server
 | DELETE | `/api/hosts/:id/` | 删除主机 |
 | POST | `/api/hosts/:id/test_connection/` | SSH 连通性检测 → `{ok,message}` |
 | GET/POST | `/api/deployment/tasks/` 等 | 任务列表、创建、详情、`manifest_snapshot` |
+| GET/POST/DELETE | `/api/packages/releases/`、`/api/packages/artifacts/` | 安装包版本；上传 `multipart` 字段 `file`、`release` |
 | GET | `/ws/deploy/:id/`、`/ws/deploy/:id/log/` | WebSocket |
 
 **创建任务**：默认**创建后立即启动 Runner**。若只要落库不执行，传 `"no_start": true`。
@@ -64,6 +66,6 @@ go run ./cmd/server
 
 ## 与完整后端的差异（前端兼容说明）
 
-- **`/api/packages/*`**：列表返回空数组；创建/上传/删除返回 **501**（占位）。
+- 安装包文件存于本地 `data/packages/release_<id>/`；与远端 `pkgs/` 同步等能力可按需扩展。
 
 详见 `plan/plan-go-gin-sqlite-lightweight.md`。

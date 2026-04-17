@@ -10,12 +10,13 @@ import (
 
 // Config 从环境变量加载（十二因子）。
 type Config struct {
-	Listen        string `env:"TPOPS_GO_LISTEN" envDefault:":8081"`
-	DatabaseURL   string `env:"TPOPS_GO_DATABASE_URL"`   // 默认在 Load 中设置
-	MigrationsDir string `env:"TPOPS_GO_MIGRATIONS_DIR"` // 默认在 Load 中设置
-	JWTSecret     string `env:"TPOPS_GO_JWT_SECRET"`     // HS256，须与生产密钥区分
-	FernetSecret  string `env:"TPOPS_GO_FERNET_SECRET"`  // 应用主密钥（SHA256→Fernet）；用于解密 hosts.credential
-	GinMode       string `env:"TPOPS_GO_GIN_MODE" envDefault:"debug"`
+	Listen             string `env:"TPOPS_GO_LISTEN" envDefault:":8081"`
+	DatabaseURL        string `env:"TPOPS_GO_DATABASE_URL"`   // 默认在 Load 中设置
+	MigrationsDir      string `env:"TPOPS_GO_MIGRATIONS_DIR"` // 默认在 Load 中设置
+	JWTSecret          string `env:"TPOPS_GO_JWT_SECRET"`     // HS256，须与生产密钥区分
+	FernetSecret       string `env:"TPOPS_GO_FERNET_SECRET"`  // 应用主密钥（SHA256→Fernet）；用于解密 hosts.credential
+	PackagesStorageDir string `env:"TPOPS_GO_PACKAGES_DIR"`   // 安装包文件目录，默认 data/packages
+	GinMode            string `env:"TPOPS_GO_GIN_MODE" envDefault:"debug"`
 }
 
 func Load() Config {
@@ -32,11 +33,17 @@ func Load() Config {
 	if c.DatabaseURL == "" {
 		c.DatabaseURL = "file:" + filepath.Join(goRoot, "data", "tpops_go.db") + "?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
 	}
+	if c.PackagesStorageDir == "" {
+		c.PackagesStorageDir = filepath.Join(goRoot, "data", "packages")
+	}
 	if c.JWTSecret == "" {
 		c.JWTSecret = "change-me-tpops-go-jwt-secret"
 	}
 	if c.FernetSecret == "" {
 		c.FernetSecret = os.Getenv("TPOPS_APP_SECRET_KEY")
+	}
+	if c.FernetSecret == "" {
+		c.FernetSecret = ensureFernetSecret(goRoot, "")
 	}
 	return c
 }

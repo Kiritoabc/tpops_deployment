@@ -1,7 +1,7 @@
 # Plan：Go（Gin）+ SQLite 轻量实现方案
 
 > **分支**：`go-dev` — 本分支为 **仅 Go** 的独立实现线，不与 `main` 合并。  
-> **状态**：已含 **Vue+Element 控制台**、**主机 CRUD + SSH 连通性测试**、**SSH Runner**、**manifest 轮询**、**双 WebSocket**、任务创建、**refresh token**；安装包 API 仍为占位。
+> **状态**：已含 **Vue+Element 控制台**、**主机 CRUD**、**安装包版本/上传/删除**、**SSH Runner**、**manifest 轮询**、**双 WebSocket**、任务、**refresh token**；Fernet 未配置时自动生成 `data/.fernet_secret`（开发便利）。
 
 ## 1. 背景与目标
 
@@ -103,4 +103,5 @@ CI：`go test ./...` 在仓库根执行。
 - **2026-04**：`go-dev` 去除历史 Web 栈目录，**Go 模块提升至仓库根**；`go-dev` 独立演进、**不合入 `main`**。
 - **2026-04**：Runner：`POST /api/deployment/tasks/`、`POST .../start/`、`RunRemoteStream`、`phase`/`log`/`manifest`/`done`；`GET /ws/deploy/:id/log/`；`POST /api/auth/token/refresh/`；DB 列 `remote_log_path`。
 - **2026-04**：从 `main` 迁入 **`web/templates/index.html`** 与 **`web/static/**`；任务列表/详情 JSON 与前端对齐；`deploy.js` 兼容 Go WS。
-- **2026-04**：**主机录入**：`POST/PATCH/DELETE /api/hosts/`、`POST .../test_connection/`；Fernet **Encrypt**；列表 `owner_username`。**待办**：包上传、`appctl` 封装、登录限流。
+- **2026-04**：**主机录入**：`POST/PATCH/DELETE /api/hosts/`、`POST .../test_connection/`；Fernet **Encrypt**；列表 `owner_username`。
+- **2026-04**：**安装包**：`packages_packagerelease` / `packages_packageartifact`、本地 `data/packages/` 存储、REST + multipart 上传；Fernet 密钥文件回退。**待办**：`appctl` 封装、登录限流、与远端 pkgs 同步。

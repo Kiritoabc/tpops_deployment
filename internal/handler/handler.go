@@ -25,6 +25,9 @@ func New(svc *service.Service, cfg config.Config, hub *wshub.Hub) *Handler {
 }
 
 func (h *Handler) Register(r *gin.Engine) {
+	// 安装包上传：放宽 multipart 内存阈值（大文件仍落盘）
+	r.MaxMultipartMemory = 512 << 20 // 512 MiB
+
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "tpops-go"})
 	})
@@ -68,11 +71,11 @@ func (h *Handler) Register(r *gin.Engine) {
 		pkg := protected.Group("/packages")
 		{
 			pkg.GET("/releases/", h.listPackageReleases)
-			pkg.POST("/releases/", h.packageNotImplemented)
-			pkg.DELETE("/releases/:id/", h.packageNotImplemented)
+			pkg.POST("/releases/", h.createPackageRelease)
+			pkg.DELETE("/releases/:id/", h.deletePackageRelease)
 			pkg.GET("/artifacts/", h.listPackageArtifacts)
-			pkg.POST("/artifacts/", h.packageNotImplemented)
-			pkg.DELETE("/artifacts/:id/", h.packageNotImplemented)
+			pkg.POST("/artifacts/", h.uploadPackageArtifact)
+			pkg.DELETE("/artifacts/:id/", h.deletePackageArtifact)
 		}
 	}
 

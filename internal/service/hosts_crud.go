@@ -50,7 +50,7 @@ func (s *Service) CreateHost(ctx context.Context, userID int64, in HostUpsertIn)
 		return nil, http.StatusBadRequest, errors.New("请填写密码或私钥")
 	}
 	if s.cfg.FernetSecret == "" {
-		return nil, http.StatusBadRequest, errors.New("未配置 TPOPS_GO_FERNET_SECRET，无法保存加密凭证")
+		return nil, http.StatusInternalServerError, errors.New("无法初始化 Fernet 密钥，请设置 TPOPS_GO_FERNET_SECRET 或检查 data 目录权限")
 	}
 	enc, err := crypto.EncryptFernetCredential(s.cfg.FernetSecret, plain)
 	if err != nil {
@@ -114,7 +114,7 @@ func (s *Service) UpdateHost(ctx context.Context, userID, hostID int64, in HostU
 			return nil, http.StatusBadRequest, err
 		}
 		if s.cfg.FernetSecret == "" {
-			return nil, http.StatusBadRequest, errors.New("未配置 TPOPS_GO_FERNET_SECRET，无法保存加密凭证")
+			return nil, http.StatusInternalServerError, errors.New("无法初始化 Fernet 密钥")
 		}
 		enc, err := crypto.EncryptFernetCredential(s.cfg.FernetSecret, plain)
 		if err != nil {
