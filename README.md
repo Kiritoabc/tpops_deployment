@@ -2,6 +2,8 @@
 
 **分支 `go-dev`**：本仓库此分支仅保留 **Gin + SQLite（modernc）** 实现；内嵌静态页（`/`、`/assets/`），与历史 Web 栈无代码依赖。
 
+**目录说明**：Go 模块在**仓库根目录**（`go.mod`、`cmd/`、`internal/` 与仓库根同级），**不使用**名为 `go/` 的子目录；克隆本分支后直接在根目录执行 `go run ./cmd/server` 即可。
+
 ## 运行
 
 本仓库 **`go 1.18`**。若本机默认 Go 较新，可先切换工具链，例如：`GOTOOLCHAIN=go1.18.10 go run ./cmd/server`。
