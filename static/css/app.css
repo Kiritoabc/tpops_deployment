@@ -30,29 +30,258 @@
       background: var(--ob-bg);
       color: #1e293b;
     }
+    /* —— 登录页：TPOPS Platform 科技风（无 Tailwind / 无外链字体） —— */
     .login-wrap {
+      position: relative;
       min-height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #0b1f3a 0%, #1a3a5c 45%, #243b55 100%);
-      padding: 24px;
-    }
-    .login-card {
-      width: 100%;
-      max-width: 420px;
-      border-radius: 8px;
+      padding: 24px 16px;
       overflow: hidden;
-      box-shadow: 0 12px 48px rgba(0,0,0,.25);
+      background-color: #f4f7f9;
     }
-    .login-card .banner {
-      background: linear-gradient(90deg, #132f4c, #1890ff);
-      color: #fff;
-      padding: 28px 32px;
+    .login-bg-pattern {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.045;
+      pointer-events: none;
+      background-image:
+        linear-gradient(#0062ff 1px, transparent 1px),
+        linear-gradient(90deg, #0062ff 1px, transparent 1px);
+      background-size: 50px 50px;
+      transform: perspective(1000px) rotateX(58deg) translateY(-18%) scale(2);
+      animation: login-grid-move 60s linear infinite;
     }
-    .login-card .banner h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: .5px; }
-    .login-card .banner p { margin: 8px 0 0; opacity: .9; font-size: 13px; }
-    .login-card .body { padding: 28px 32px 32px; background: #fff; }
+    @keyframes login-grid-move {
+      0% { background-position: 0 0; }
+      100% { background-position: 0 50px; }
+    }
+    .login-bg-dots {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.28;
+      pointer-events: none;
+      background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .login-bg-glow {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      z-index: 0;
+      opacity: 0.42;
+      pointer-events: none;
+      animation: login-glow-breathe 15s ease-in-out infinite alternate;
+    }
+    .login-bg-glow--tl {
+      width: min(600px, 90vw);
+      height: min(600px, 90vw);
+      background: #bfdbfe;
+      top: -12%;
+      left: -10%;
+    }
+    .login-bg-glow--br {
+      width: min(500px, 85vw);
+      height: min(500px, 85vw);
+      background: #e0e7ff;
+      bottom: -14%;
+      right: -10%;
+      animation-delay: -5s;
+    }
+    @keyframes login-glow-breathe {
+      0% { transform: translate(-6%, -4%) scale(1); }
+      100% { transform: translate(6%, 4%) scale(1.08); }
+    }
+    .login-panel {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 430px;
+      padding: 40px 40px 28px;
+      background: #ffffff;
+      border: 1px solid #eef0f2;
+      border-radius: 28px;
+      box-shadow:
+        0 15px 35px -5px rgba(0, 0, 0, 0.06),
+        0 10px 15px -6px rgba(0, 0, 0, 0.03);
+      animation: login-panel-in 0.5s ease-out;
+    }
+    @keyframes login-panel-in {
+      from { opacity: 0; transform: translateY(20px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .login-brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .login-brand-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: #2563eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      box-shadow: 0 12px 28px rgba(37, 99, 235, 0.28);
+      transform: rotate(3deg);
+      transition: transform 0.25s ease;
+    }
+    .login-brand:hover .login-brand-icon { transform: rotate(0deg); }
+    .login-brand-title {
+      margin: 0;
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #020617;
+    }
+    .login-brand-sub {
+      font-weight: 600;
+      font-size: 1.05rem;
+      color: #2563eb;
+      margin-left: 6px;
+    }
+    .login-brand-tagline {
+      margin: 8px 0 0;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .login-form-switcher {
+      position: relative;
+      display: flex;
+      background: #f1f5f9;
+      border-radius: 14px;
+      padding: 4px;
+      margin-bottom: 22px;
+    }
+    .login-switch-slider {
+      position: absolute;
+      left: 4px;
+      top: 4px;
+      bottom: 4px;
+      width: calc(50% - 4px);
+      background: #fff;
+      border-radius: 11px;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 0;
+    }
+    .login-switch-slider.is-register { transform: translateX(100%); }
+    .login-switch-item {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      margin: 0;
+      padding: 10px 8px;
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      border-radius: 11px;
+      transition: color 0.25s ease;
+    }
+    .login-switch-item.active { color: #0062ff; }
+    .login-forms-clip { overflow: hidden; }
+    .login-forms-track {
+      display: flex;
+      width: 200%;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .login-forms-track.is-register { transform: translateX(-50%); }
+    .login-form-col {
+      width: 50%;
+      flex-shrink: 0;
+      padding: 0 10px;
+      box-sizing: border-box;
+    }
+    .login-el-form .el-form-item { margin-bottom: 18px; }
+    .login-form-item-plain .el-form-item__label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      padding-bottom: 6px;
+    }
+    .login-el-input .el-input__wrapper,
+    .login-form-item-plain .el-select .el-input__wrapper {
+      border-radius: 12px !important;
+      padding: 4px 14px;
+      box-shadow: 0 0 0 1px #e2e8f0 inset !important;
+      transition: box-shadow 0.25s ease, background 0.25s ease;
+    }
+    .login-el-input .el-input__wrapper:hover,
+    .login-form-item-plain .el-select .el-input__wrapper:hover {
+      box-shadow: 0 0 0 1px #cbd5e1 inset !important;
+    }
+    .login-el-input .el-input__wrapper.is-focus,
+    .login-form-item-plain .el-select .el-input__wrapper.is-focus {
+      box-shadow: 0 0 0 1px #0062ff inset, 0 0 0 4px rgba(0, 98, 255, 0.1) !important;
+      background-color: #fafcff;
+    }
+    .login-row-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2px;
+      margin: 4px 0 8px;
+      font-size: 12px;
+      color: #64748b;
+    }
+    .login-remember {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: default;
+      opacity: 0.85;
+    }
+    .login-remember input { accent-color: #0062ff; width: 16px; height: 16px; }
+    .login-forgot-pseudo {
+      color: #0062ff;
+      font-weight: 600;
+      cursor: default;
+      opacity: 0.75;
+    }
+    .login-submit-btn {
+      width: 100%;
+      margin-top: 8px;
+      height: 48px !important;
+      border-radius: 12px !important;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      background: #0062ff !important;
+      border-color: #0062ff !important;
+      box-shadow: 0 4px 14px rgba(0, 98, 255, 0.28);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease !important;
+    }
+    .login-submit-btn:hover {
+      background: #0052d9 !important;
+      border-color: #0052d9 !important;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(0, 98, 255, 0.35);
+    }
+    .login-footer-meta {
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px solid #f1f5f9;
+      text-align: center;
+      font-size: 10px;
+      color: #94a3b8;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      letter-spacing: 0.02em;
+      line-height: 1.5;
+    }
     .layout-root { height: 100%; }
     /* 右侧主列占满剩余高度，便于监控页双列撑满视口 */
     .layout-root > .el-container {

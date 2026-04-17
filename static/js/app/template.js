@@ -1,28 +1,70 @@
 window.TPOPSApp = window.TPOPSApp || {};
 window.TPOPSApp.template = String.raw`
-    <!-- 登录（OceanBase 类控制台登录区） -->
+    <!-- 登录（TPOPS Platform 科技风参考） -->
     <div v-if="!token" class="login-wrap">
-      <div class="login-card">
-        <div class="banner">
-          <h1>TPOPS 部署平台</h1>
-          <p>集群部署 · 预检查 · 安装 · 卸载 · 进度与日志</p>
+      <div class="login-bg-pattern" aria-hidden="true"></div>
+      <div class="login-bg-dots" aria-hidden="true"></div>
+      <div class="login-bg-glow login-bg-glow--tl" aria-hidden="true"></div>
+      <div class="login-bg-glow login-bg-glow--br" aria-hidden="true"></div>
+      <div class="login-panel">
+        <div class="login-brand">
+          <div class="login-brand-icon" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <h1 class="login-brand-title">TPOPS <span class="login-brand-sub">Platform</span></h1>
+          <p class="login-brand-tagline">Technical Platform Operations</p>
         </div>
-        <div class="body">
-          <el-form :model="loginForm" label-position="top" @keyup.enter="doLogin">
-            <el-form-item label="用户名">
-              <el-input v-model="loginForm.username" size="large" autocomplete="username" placeholder="请输入用户名"></el-input>
-            </el-form-item>
-            <el-form-item label="密码">
-              <el-input v-model="loginForm.password" size="large" type="password" show-password autocomplete="current-password" placeholder="请输入密码"></el-input>
-            </el-form-item>
-            <el-form-item style="margin-bottom: 12px;">
-              <el-button type="primary" size="large" style="width:100%" @click="doLogin" :loading="loading">登 录</el-button>
-            </el-form-item>
-            <div style="text-align:center;">
-              <el-button link type="primary" @click="showRegister = true">注册账号</el-button>
+        <div class="login-form-switcher">
+          <div class="login-switch-slider" :class="{ 'is-register': loginPanelTab === 'register' }"></div>
+          <button type="button" class="login-switch-item" :class="{ active: loginPanelTab === 'login' }" @click="loginPanelTab = 'login'">身份验证</button>
+          <button type="button" class="login-switch-item" :class="{ active: loginPanelTab === 'register' }" @click="loginPanelTab = 'register'">申请访问</button>
+        </div>
+        <div class="login-forms-clip">
+          <div class="login-forms-track" :class="{ 'is-register': loginPanelTab === 'register' }">
+            <div class="login-form-col">
+              <el-form :model="loginForm" label-position="top" class="login-el-form" @keyup.enter="doLogin">
+                <el-form-item label="用户名" class="login-form-item-plain">
+                  <el-input v-model="loginForm.username" size="large" autocomplete="username" placeholder="管理员账号 / ID" class="login-el-input"></el-input>
+                </el-form-item>
+                <el-form-item label="密码" class="login-form-item-plain">
+                  <el-input v-model="loginForm.password" size="large" type="password" show-password autocomplete="current-password" placeholder="访问令牌 / 密码" class="login-el-input"></el-input>
+                </el-form-item>
+                <div class="login-row-meta">
+                  <label class="login-remember"><input type="checkbox" /> 记住该设备</label>
+                  <span class="login-forgot-pseudo">忘记凭证?</span>
+                </div>
+                <el-button type="primary" class="login-submit-btn" size="large" :loading="loading" @click="doLogin">验证并进入系统</el-button>
+              </el-form>
             </div>
-          </el-form>
+            <div class="login-form-col">
+              <el-form :model="regForm" label-position="top" class="login-el-form">
+                <el-form-item label="用户名" class="login-form-item-plain">
+                  <el-input v-model="regForm.username" size="large" autocomplete="username" placeholder="登录用户名" class="login-el-input"></el-input>
+                </el-form-item>
+                <el-form-item label="邮箱" class="login-form-item-plain">
+                  <el-input v-model="regForm.email" size="large" autocomplete="email" placeholder="工作邮箱" class="login-el-input"></el-input>
+                </el-form-item>
+                <el-form-item label="密码" class="login-form-item-plain">
+                  <el-input v-model="regForm.password" size="large" type="password" show-password autocomplete="new-password" placeholder="密码" class="login-el-input"></el-input>
+                </el-form-item>
+                <el-form-item label="确认密码" class="login-form-item-plain">
+                  <el-input v-model="regForm.password_confirm" size="large" type="password" show-password autocomplete="new-password" placeholder="再次输入密码" class="login-el-input"></el-input>
+                </el-form-item>
+                <el-form-item label="角色" class="login-form-item-plain">
+                  <el-select v-model="regForm.role" size="large" placeholder="选择角色" style="width:100%">
+                    <el-option label="只读" value="viewer"></el-option>
+                    <el-option label="操作员" value="operator"></el-option>
+                    <el-option label="管理员" value="admin"></el-option>
+                  </el-select>
+                </el-form-item>
+                <el-button type="primary" class="login-submit-btn" size="large" :loading="loading" @click="doRegister">提交访问申请</el-button>
+              </el-form>
+            </div>
+          </div>
         </div>
+        <div class="login-footer-meta">TPOPS 白屏化部署 · JWT 鉴权 · 请妥善保管账号</div>
       </div>
     </div>
 
@@ -921,23 +963,4 @@ window.TPOPSApp.template = String.raw`
       </el-container>
     </el-container>
 
-    <el-dialog v-model="showRegister" title="注册账号" width="440px">
-      <el-form :model="regForm" label-width="88px">
-        <el-form-item label="用户名"><el-input v-model="regForm.username"></el-input></el-form-item>
-        <el-form-item label="邮箱"><el-input v-model="regForm.email"></el-input></el-form-item>
-        <el-form-item label="密码"><el-input v-model="regForm.password" type="password"></el-input></el-form-item>
-        <el-form-item label="确认密码"><el-input v-model="regForm.password_confirm" type="password"></el-input></el-form-item>
-        <el-form-item label="角色">
-          <el-select v-model="regForm.role" style="width:100%">
-            <el-option label="只读" value="viewer"></el-option>
-            <el-option label="操作员" value="operator"></el-option>
-            <el-option label="管理员" value="admin"></el-option>
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showRegister=false">取消</el-button>
-        <el-button type="primary" @click="doRegister" :loading="loading">注册</el-button>
-      </template>
-    </el-dialog>
 `;

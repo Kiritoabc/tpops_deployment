@@ -75,7 +75,7 @@ window.TPOPSAuth = {
       try {
         await shared.api.post('/auth/register/', shared.regForm);
         ElementPlus.ElMessage.success('注册成功，请登录');
-        shared.showRegister.value = false;
+        if (shared.loginPanelTab) shared.loginPanelTab.value = 'login';
       } catch (_) {
         ElementPlus.ElMessage.error('注册失败');
       } finally {

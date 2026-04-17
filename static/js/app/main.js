@@ -10,7 +10,7 @@
       const refs = { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted };
       const loading = ref(false);
       const sidebarCollapsed = ref(false);
-      const showRegister = ref(false);
+      const loginPanelTab = ref('login');
       const obMainEl = ref(null);
       const loginForm = reactive({ username: '', password: '' });
       const regForm = reactive({ username: '', email: '', password: '', password_confirm: '', role: 'viewer' });
@@ -33,7 +33,7 @@
         router,
         loading,
         sidebarCollapsed,
-        showRegister,
+        loginPanelTab,
         loginForm,
         regForm,
         hostForm,
@@ -133,7 +133,7 @@
         {
           loading,
           sidebarCollapsed,
-          showRegister,
+          loginPanelTab,
           loginForm,
           regForm,
           hostForm,
