@@ -22,3 +22,4 @@
 | 文件 | 说明 |
 |------|------|
 | [plan-install-packages.md](./plan-install-packages.md) | TPOPS 安装包版本管理、下发至 `pkgs/`、与部署任务衔接 |
+| [plan-go-gin-sqlite-lightweight.md](./plan-go-gin-sqlite-lightweight.md) | **go-dev**：Gin + SQLite 轻量替代实现的设计与分期（与 Django 栈并行） |
