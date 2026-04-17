@@ -252,6 +252,153 @@ window.TPOPSDeploy = {
       return formatDurationSec((end - start) / 1000);
     });
 
+    const normSt = (s) => String(s || 'none').toLowerCase();
+
+    const showManifestTree = computed(() => {
+      const a = lastAction.value || '';
+      return a === 'install' || a === 'upgrade';
+    });
+
+    const manifestProgressPercent = computed(() => {
+      const s = manifestSummary.value;
+      if (!s || s.services_total == null) return 0;
+      const p = s.progress_percent != null ? s.progress_percent : s.services_progress_percent;
+      const n = Number(p);
+      if (Number.isNaN(n)) return 0;
+      return Math.min(100, Math.max(0, Math.round(n)));
+    });
+
+    const manifestEstimatedHuman = computed(() => {
+      const s = manifestSummary.value;
+      if (!s || s.estimated_total_seconds == null) return '';
+      const sec = Number(s.estimated_total_seconds);
+      if (Number.isNaN(sec) || sec <= 0) return '';
+      return '约 ' + formatDurationSec(sec);
+    });
+
+    const manifestCurrentStepLine = computed(() => {
+      const s = manifestSummary.value;
+      const cur = s && s.current_running_service;
+      if (!cur || typeof cur !== 'object') return '';
+      const lv = cur.level_label || cur.level || '';
+      const lab = cur.label || cur.id || '';
+      const st = normSt(cur.status);
+      const parts = [lv, lab].filter(Boolean);
+      return (parts.join(' · ') || '当前服务') + (st ? '（' + st + '）' : '');
+    });
+
+    const displayPipelineRows = computed(() => {
+      const payload = manifestPayload.value;
+      const pipe = payload && Array.isArray(payload.pipeline) ? payload.pipeline.slice() : [];
+      const a = lastAction.value || '';
+      if (a === 'install' || a === 'upgrade') {
+        pipe.unshift({
+          key: '__precheck__',
+          title: '步骤零：前置检查',
+          parallel_note: 'manifest 就绪前',
+          children: [],
+          level_status: 'running',
+        });
+      }
+      return pipe;
+    });
+
+    const activePipelineKey = computed(() => selectedPipelineKey.value || '');
+
+    const tripleDeployForManifest = computed(() => {
+      const snap = currentTaskSnapshot.value;
+      if (snap && snap.deploy_mode === 'triple') return true;
+      const s = manifestSummary.value;
+      return !!(s && s.multi_node);
+    });
+
+    const tripleNodeProgressList = computed(() => {
+      const s = manifestSummary.value;
+      const list = (s && Array.isArray(s.per_node_stats)) ? s.per_node_stats : [];
+      return list;
+    });
+
+    const showTripleNodeStrip = computed(() => (
+      tripleDeployForManifest.value && tripleNodeProgressList.value.length > 1
+    ));
+
+    const rowEffectiveLevelStatus = (row) => {
+      if (!row) return 'none';
+      if (row.key === '__precheck__') {
+        const roots = treeRoots.value || [];
+        const patch = roots.find((r) => r && r.id === 'patch');
+        if (!patch) return 'running';
+        const ps = normSt(patch.status);
+        if (ps === 'none') return 'running';
+        if (ps === 'error') return 'error';
+        return 'done';
+      }
+      return row.level_status || 'none';
+    };
+
+    const pipelineLvPillClass = (st) => {
+      const s = normSt(st);
+      if (s === 'done') return 'pipeline-lv-pill lv-done';
+      if (s === 'running' || s === 'retrying') return 'pipeline-lv-pill lv-running';
+      if (s === 'error') return 'pipeline-lv-pill lv-error';
+      if (s === 'none' || s === '') return 'pipeline-lv-pill lv-none';
+      return 'pipeline-lv-pill lv-null';
+    };
+
+    const subStPillClass = (st) => {
+      const s = normSt(st);
+      if (s === 'done') return 'sub-st-pill st-done';
+      if (s === 'running' || s === 'retrying') return 'sub-st-pill st-running';
+      if (s === 'error') return 'sub-st-pill st-error';
+      if (s === 'none' || s === '') return 'sub-st-pill st-none';
+      return 'sub-st-pill st-null';
+    };
+
+    const subStatusDotClass = (st) => {
+      const s = normSt(st);
+      if (s === 'done') return 'node-dot done';
+      if (s === 'running' || s === 'retrying') return 'node-dot running';
+      if (s === 'error') return 'node-dot error';
+      return 'node-dot none';
+    };
+
+    const shortPath = (p) => {
+      if (!p) return '';
+      const parts = String(p).replace(/\\/g, '/').split('/');
+      return parts[parts.length - 1] || p;
+    };
+
+    const tripleNodeRoleText = (role) => {
+      const r = String(role || '');
+      if (r === 'node1') return '节点 1';
+      if (r === 'node2') return '节点 2';
+      if (r === 'node3') return '节点 3';
+      return r || '节点';
+    };
+
+    const subLabelWithoutStatus = (sub) => {
+      if (!sub || !sub.label) return '';
+      return String(sub.label);
+    };
+
+    const tripleGroupedSubs = (row) => {
+      if (!tripleDeployForManifest.value || !row || !Array.isArray(row.children)) return [];
+      const out = [];
+      const byLabel = {};
+      row.children.forEach((sub) => {
+        const nds = sub.node_details;
+        if (nds && nds.length) {
+          nds.forEach((nd) => {
+            const lab = nd.node_label || ('节点' + ((nd.node_index || 0) + 1));
+            if (!byLabel[lab]) byLabel[lab] = { node_label: lab, subs: [] };
+            byLabel[lab].subs.push(Object.assign({}, sub, { _nodeStatus: nd.status }));
+          });
+        }
+      });
+      Object.keys(byLabel).forEach((k) => { out.push(byLabel[k]); });
+      return out;
+    };
+
     const refreshCurrentTaskSnapshot = async () => {
       const id = currentTaskId.value;
       if (!id) return;
@@ -636,6 +783,23 @@ window.TPOPSDeploy = {
       deployStatusStripTitle,
       liveTaskFinishedHint,
       deployElapsedHuman,
+      showManifestTree,
+      manifestProgressPercent,
+      manifestEstimatedHuman,
+      manifestCurrentStepLine,
+      displayPipelineRows,
+      activePipelineKey,
+      tripleDeployForManifest,
+      tripleNodeProgressList,
+      showTripleNodeStrip,
+      rowEffectiveLevelStatus,
+      pipelineLvPillClass,
+      subStPillClass,
+      subStatusDotClass,
+      shortPath,
+      tripleNodeRoleText,
+      subLabelWithoutStatus,
+      tripleGroupedSubs,
       refreshCurrentTaskSnapshot,
       scrollLogEl,
       resetFlow,
