@@ -552,6 +552,29 @@ window.TPOPSDeploy = {
       openLogTail(logKindForTask());
     };
 
+    const applyManifestPayload = (data) => {
+      if (!data) return;
+      manifestPayload.value = data;
+      if (data.roots) treeRoots.value = data.roots;
+      manifestSummary.value = data.summary || null;
+      if (data.manifest_paths) manifestPaths.value = data.manifest_paths;
+      flowS3.value = 'active';
+      flowS4.value = 'active';
+    };
+
+    const fetchManifestSnapshotIfEnded = async (taskId) => {
+      const action = lastAction.value || '';
+      if (action !== 'install' && action !== 'upgrade') return;
+      const st = (currentTaskSnapshot.value && currentTaskSnapshot.value.status) || taskStatus.value || '';
+      if (st !== 'success' && st !== 'failed' && st !== 'cancelled') return;
+      try {
+        const response = await shared.api.get('/deployment/tasks/' + taskId + '/manifest_snapshot/');
+        applyManifestPayload(response.data);
+      } catch (_) {
+        /* 远端无 manifest 或 SSH 失败时不打断监控页 */
+      }
+    };
+
     const openSocket = (taskId, opts = {}) => {
       const preserveLogAndManifest = opts.preserveLogAndManifest === true;
       if (currentTaskId.value === taskId && socket && socket.readyState === WebSocket.OPEN) return;
@@ -614,14 +637,7 @@ window.TPOPSDeploy = {
           }
         }
         if (msg.type === 'log' && msg.data) logText.value += msg.data;
-        if (msg.type === 'manifest' && msg.data) {
-          manifestPayload.value = msg.data;
-          if (msg.data.roots) treeRoots.value = msg.data.roots;
-          manifestSummary.value = msg.data.summary || null;
-          if (msg.data.manifest_paths) manifestPaths.value = msg.data.manifest_paths;
-          flowS3.value = 'active';
-          flowS4.value = 'active';
-        }
+        if (msg.type === 'manifest' && msg.data) applyManifestPayload(msg.data);
         if (msg.type === 'manifest_wait') {
           let tip = (msg.message || '') + (msg.paths ? ' — ' + msg.paths.join(', ') : '');
           if (msg.details && msg.details.length) tip += ' | ' + msg.details.join(' | ');
@@ -749,6 +765,7 @@ window.TPOPSDeploy = {
         ElementPlus.ElMessage.info('已打开任务 #' + row.id + '，下方将推送 appctl 实时输出');
       } else {
         ElementPlus.ElMessage.info('已打开任务 #' + row.id + '（已结束：' + deployStatusLabel(status) + '）。标准输出无回放时请点 precheck.log / install.log');
+        fetchManifestSnapshotIfEnded(row.id);
       }
     };
 

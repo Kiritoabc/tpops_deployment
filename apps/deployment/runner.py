@@ -86,17 +86,22 @@ def _should_poll_manifest(action: str) -> bool:
     return action in (DeploymentTask.INSTALL, DeploymentTask.UPGRADE)
 
 
-def _poll_manifest_once(task_id: int, host_id: int, secret: str, manifest_paths: list) -> list:
-    """Return list of remote paths that were polled (for logging)."""
-    from apps.hosts.models import Host
+def fetch_manifest_tree_for_task(host, task, secret, manifest_paths=None):
+    """
+    SSH 到执行机读取 manifest YAML 并解析为与 WebSocket ``manifest`` 消息同结构的 tree。
+    不经过 Channels 推送；供任务结束后单次拉取或内部轮询复用。
 
-    # 轮询在独立 daemon 线程中跑，须刷新/建立 ORM 连接（否则易 SQLite locked 或无效连接）
-    close_old_connections()
-    host = Host.objects.get(pk=host_id)
-    task = DeploymentTask.objects.filter(pk=task_id).only(
-        "user_edit_content", "deploy_mode"
-    ).first()
-    kv, _ = parse_user_edit_block((task.user_edit_content if task else "") or "")
+    Returns:
+        (tree_or_none, paths, poll_details)
+        tree_or_none: dict 含 roots / summary / pipeline 等；读不到有效 YAML 时为 None
+        paths: 实际尝试读取的相对路径列表
+        poll_details: 每轮诊断字符串列表
+    """
+    if not host or not task:
+        return None, [], ["缺少 host 或 task"]
+    kv, parse_err = parse_user_edit_block((task.user_edit_content or "") or "")
+    if parse_err:
+        return None, [], ["user_edit: %s" % parse_err]
     dm = (task.deploy_mode if task else "") or DeploymentTask.MODE_SINGLE
     paths = (
         list(manifest_paths)
@@ -133,17 +138,36 @@ def _poll_manifest_once(task_id: int, host_id: int, secret: str, manifest_paths:
             )
             continue
         dicts.append(data)
-    if dicts:
-        if len(dicts) == 1:
-            tree = manifest_to_tree(yaml.safe_dump(dicts[0], allow_unicode=True))
-            if tree.get("summary") is not None:
-                tree["summary"]["multi_node"] = False
-        else:
-            n1 = (kv.get("node1_ip") or "").strip()
-            tree = merge_tpops_manifest_dicts(dicts, paths, node1_ip=n1 or None)
-        tree["manifest_paths"] = paths
-        if task:
-            tree["deploy_mode"] = task.deploy_mode
+    if not dicts:
+        return None, paths, poll_details
+    if len(dicts) == 1:
+        tree = manifest_to_tree(yaml.safe_dump(dicts[0], allow_unicode=True))
+        if tree.get("summary") is not None:
+            tree["summary"]["multi_node"] = False
+    else:
+        n1 = (kv.get("node1_ip") or "").strip()
+        tree = merge_tpops_manifest_dicts(dicts, paths, node1_ip=n1 or None)
+    tree["manifest_paths"] = paths
+    tree["deploy_mode"] = dm
+    return tree, paths, poll_details
+
+
+def _poll_manifest_once(task_id: int, host_id: int, secret: str, manifest_paths: list) -> list:
+    """Return list of remote paths that were polled (for logging)."""
+    from apps.hosts.models import Host
+
+    # 轮询在独立 daemon 线程中跑，须刷新/建立 ORM 连接（否则易 SQLite locked 或无效连接）
+    close_old_connections()
+    host = Host.objects.get(pk=host_id)
+    task = DeploymentTask.objects.filter(pk=task_id).only(
+        "user_edit_content", "deploy_mode"
+    ).first()
+    if not task:
+        return []
+    tree, paths, poll_details = fetch_manifest_tree_for_task(
+        host, task, secret, manifest_paths if manifest_paths else None
+    )
+    if tree:
         _emit(task_id, {"type": "manifest", "data": tree})
     else:
         _emit(
