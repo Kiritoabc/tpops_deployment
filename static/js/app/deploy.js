@@ -405,6 +405,12 @@ window.TPOPSDeploy = {
       return String(sub.label);
     };
 
+    const subFinishExecuteTime = (sub) => {
+      const m = sub && sub.meta;
+      if (!m || m.finish_execute_time == null || m.finish_execute_time === '') return '';
+      return String(m.finish_execute_time);
+    };
+
     const tripleGroupedSubs = (row) => {
       if (!tripleDeployForManifest.value || !row || !Array.isArray(row.children)) return [];
       const out = [];
@@ -845,6 +851,7 @@ window.TPOPSDeploy = {
       shortPath,
       tripleNodeRoleText,
       subLabelWithoutStatus,
+      subFinishExecuteTime,
       tripleGroupedSubs,
       refreshCurrentTaskSnapshot,
       scrollLogEl,
