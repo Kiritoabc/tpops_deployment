@@ -16,6 +16,7 @@ import (
 	"github.com/Kiritoabc/tpops_deployment/go/internal/middleware"
 	"github.com/Kiritoabc/tpops_deployment/go/internal/repository"
 	"github.com/Kiritoabc/tpops_deployment/go/internal/service"
+	"github.com/Kiritoabc/tpops_deployment/go/internal/wshub"
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,8 +33,9 @@ func main() {
 	}
 
 	repos := repository.New(sqlDB)
-	svc := service.New(repos, cfg)
-	h := handler.New(svc, cfg)
+	hub := wshub.NewHub()
+	svc := service.New(repos, cfg, hub)
+	h := handler.New(svc, cfg, hub)
 
 	if cfg.GinMode != "" {
 		gin.SetMode(cfg.GinMode)

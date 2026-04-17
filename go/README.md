@@ -15,6 +15,7 @@ go run ./cmd/server
 - 监听：`TPOPS_GO_LISTEN`（默认 `:8081`，避免与 Django `8000` 冲突）
 - 数据库：`go/data/tpops_go.db`（自动 `goose` 迁移）
 - JWT：`TPOPS_GO_JWT_SECRET`（务必在生产修改）
+- **解密主机凭证**（与 Django `hosts.crypto` 一致）：设置 `TPOPS_GO_FERNET_SECRET` 为与 **`DJANGO_SECRET_KEY` 相同** 的字符串，或依赖环境变量 `DJANGO_SECRET_KEY`（未设 `TPOPS_GO_FERNET_SECRET` 时自动读取）
 
 ## 开发账号（仅迁移种子）
 
@@ -33,6 +34,9 @@ go run ./cmd/server
 | GET | `/api/auth/profile/` | `Authorization: Bearer <access>` |
 | GET | `/api/hosts/` | 需 JWT |
 | GET | `/api/deployment/tasks/` | 需 JWT |
+| GET | `/api/deployment/tasks/:id/` | 任务详情 |
+| GET | `/api/deployment/tasks/:id/manifest_snapshot/` | 单次 SSH 拉 manifest 并解析（install/upgrade） |
+| GET | `/ws/deploy/:id/?token=<access_jwt>` | WebSocket：连接后推送 `hello`（与 Django 字段对齐） |
 
 ## 前端联调
 

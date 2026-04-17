@@ -4,11 +4,14 @@ go 1.21
 
 require (
 	github.com/caarlos0/env/v10 v10.0.0
+	github.com/fernet/fernet-go v0.0.0-20240119011108-303da6aec611
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/gorilla/websocket v1.5.1
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/pressly/goose/v3 v3.18.0
 	golang.org/x/crypto v0.21.0
+	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.29.5
 )
 
@@ -44,7 +47,6 @@ require (
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/gc/v3 v3.0.0-20240107210532-573471604cb6 // indirect
 	modernc.org/libc v1.41.0 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
