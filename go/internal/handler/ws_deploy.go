@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Kiritoabc/tpops_deployment/go/internal/auth"
+	"tpops_deployment/internal/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )

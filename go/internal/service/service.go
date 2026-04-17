@@ -1,9 +1,9 @@
 package service
 
 import (
-	"github.com/Kiritoabc/tpops_deployment/go/internal/config"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/repository"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/wshub"
+	"tpops_deployment/internal/config"
+	"tpops_deployment/internal/repository"
+	"tpops_deployment/internal/wshub"
 )
 
 type Service struct {

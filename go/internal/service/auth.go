@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Kiritoabc/tpops_deployment/go/internal/auth"
+	"tpops_deployment/internal/auth"
 )
 
 type LoginIn struct {

@@ -1,4 +1,4 @@
-// TPOPS Go 服务入口（go-dev）：Gin + SQLite，与 Python 版 API 前缀对齐。
+// TPOPS 服务入口：Gin + SQLite + 内嵌静态页。
 package main
 
 import (
@@ -10,13 +10,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Kiritoabc/tpops_deployment/go/internal/config"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/db"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/handler"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/middleware"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/repository"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/service"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/wshub"
+	"tpops_deployment/internal/config"
+	"tpops_deployment/internal/db"
+	"tpops_deployment/internal/handler"
+	"tpops_deployment/internal/middleware"
+	"tpops_deployment/internal/repository"
+	"tpops_deployment/internal/service"
+	"tpops_deployment/internal/wshub"
 	"github.com/gin-gonic/gin"
 )
 

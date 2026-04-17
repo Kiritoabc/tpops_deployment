@@ -14,7 +14,7 @@ type Config struct {
 	DatabaseURL   string `env:"TPOPS_GO_DATABASE_URL"` // 默认在 Load 中设置
 	MigrationsDir string `env:"TPOPS_GO_MIGRATIONS_DIR"` // 默认在 Load 中设置
 	JWTSecret     string `env:"TPOPS_GO_JWT_SECRET"`     // HS256，须与生产密钥区分
-	FernetSecret  string `env:"TPOPS_GO_FERNET_SECRET"` // 与 Django SECRET_KEY 相同字节时可解密 hosts.credential
+	FernetSecret  string `env:"TPOPS_GO_FERNET_SECRET"` // 应用主密钥（SHA256→Fernet）；用于解密 hosts.credential
 	GinMode       string `env:"TPOPS_GO_GIN_MODE" envDefault:"debug"`
 }
 
@@ -36,7 +36,7 @@ func Load() Config {
 		c.JWTSecret = "change-me-tpops-go-jwt-secret"
 	}
 	if c.FernetSecret == "" {
-		c.FernetSecret = os.Getenv("DJANGO_SECRET_KEY")
+		c.FernetSecret = os.Getenv("TPOPS_APP_SECRET_KEY")
 	}
 	return c
 }

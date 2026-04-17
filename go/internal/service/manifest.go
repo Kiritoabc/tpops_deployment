@@ -5,13 +5,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Kiritoabc/tpops_deployment/go/internal/crypto"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/deploypaths"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/manifest"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/sshutil"
+	"tpops_deployment/internal/crypto"
+	"tpops_deployment/internal/deploypaths"
+	"tpops_deployment/internal/manifest"
+	"tpops_deployment/internal/sshutil"
 )
 
-// ManifestSnapshot 单次 SSH 读取 manifest 并解析（与 Python manifest_snapshot 行为对齐）。
+// ManifestSnapshot 单次 SSH 读取 manifest 并解析。
 func (s *Service) ManifestSnapshot(ctx context.Context, userID, taskID int64) (map[string]interface{}, error) {
 	t, err := s.repos.GetTaskByID(ctx, taskID)
 	if err != nil {
@@ -68,7 +68,7 @@ func (s *Service) ManifestSnapshot(ctx context.Context, userID, taskID int64) (m
 	return tree, nil
 }
 
-// EmitDeploymentEvent 供后续 runner 推送 WS（与 Python _emit type 字段一致）。
+// EmitDeploymentEvent 供 runner 向任务 WebSocket 客户端广播 JSON（含 type 字段）。
 func (s *Service) EmitDeploymentEvent(taskID int64, payload map[string]interface{}) {
 	if s.hub == nil {
 		return

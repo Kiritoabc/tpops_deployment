@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Kiritoabc/tpops_deployment/go/internal/middleware"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/service"
+	"tpops_deployment/internal/middleware"
+	"tpops_deployment/internal/service"
 	"github.com/gin-gonic/gin"
 )
 

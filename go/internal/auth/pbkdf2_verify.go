@@ -11,7 +11,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-// CheckPassword 校验 Django 默认 pbkdf2_sha256 密码（与 django.contrib.auth.hashers.PBKDF2PasswordHasher 兼容）。
+// CheckPassword 校验 pbkdf2_sha256$ 格式密码（与常见 PBKDF2PasswordHasher 兼容）。
 // encoded 形如: pbkdf2_sha256$<iter>$<salt>$<base64hash>
 func CheckPassword(password, encoded string) (bool, error) {
 	if encoded == "" {

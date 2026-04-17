@@ -258,7 +258,7 @@ func countRunningServices(roots []interface{}) int {
 	return n
 }
 
-// BuildTpopsTree 单份 manifest 字典 → 与 Python _build_tpops_tree 对齐的 JSON 友好结构
+// BuildTpopsTree 单份 manifest 字典 → 流水线树与 summary
 func BuildTpopsTree(data map[string]interface{}) map[string]interface{} {
 	roots := []interface{}{}
 	summary := map[string]interface{}{
@@ -333,7 +333,7 @@ func toRootMaps(roots []interface{}) []map[string]interface{} {
 	return out
 }
 
-// BuildPipelineFromRoots 与 Python build_pipeline_from_roots 一致
+// BuildPipelineFromRoots 由 roots 生成流水线行
 func BuildPipelineFromRoots(roots []interface{}) []interface{} {
 	cn := "一二三四五六七八九十"
 	pipe := []interface{}{}
@@ -378,7 +378,7 @@ func strOr(a, b interface{}) string {
 	return fmt.Sprint(b)
 }
 
-// EnrichPipelineMultiNodes 与 Python enrich_pipeline_multi_nodes 对齐
+// EnrichPipelineMultiNodes 为多节点 manifest 合并后的子步骤附加 node_details
 func EnrichPipelineMultiNodes(pipeline []interface{}, roots []map[string]interface{}, nodesMeta []map[string]interface{}) []interface{} {
 	if len(pipeline) == 0 || len(nodesMeta) < 2 {
 		return pipeline
@@ -496,7 +496,7 @@ func perNodeProgressFromDict(d map[string]interface{}) map[string]interface{} {
 	}
 }
 
-// MergeTpopsManifestDicts 与 Python merge_tpops_manifest_dicts 对齐（多节点）
+// MergeTpopsManifestDicts 多节点 manifest 字典合并为一棵树
 func MergeTpopsManifestDicts(dicts []map[string]interface{}, manifestPaths []string, node1IP string) map[string]interface{} {
 	if len(dicts) == 0 {
 		return map[string]interface{}{

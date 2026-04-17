@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
--- Go 独立运行时的最小表结构；与 Django 并存时使用独立 DB 文件（默认 data/tpops_go.db）。
--- 若将来指向 Django 的 sqlite，可跳过本迁移或仅作参考。
+-- 轻量 SQLite 表结构；默认使用独立 DB 文件（data/tpops_go.db）。
+-- 若改为复用已有数据库文件，请自行评估迁移与冲突风险。
 
 CREATE TABLE IF NOT EXISTS auth_user (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

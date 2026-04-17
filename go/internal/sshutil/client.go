@@ -10,7 +10,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// CatRemoteFile 在远端执行 `sh -c 'if [ -f path ]; then cat path; fi'`，与 Python remote_cat_file 思路一致。
+// CatRemoteFile 在远端执行 `sh -c 'if [ -f path ]; then cat path; fi'` 读取文件内容。
 func CatRemoteFile(hostname string, port int, username, authMethod, secret, remotePath string, timeout time.Duration) (string, int, error) {
 	cfg, err := clientConfig(username, authMethod, secret)
 	if err != nil {

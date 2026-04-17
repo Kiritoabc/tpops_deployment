@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// ParseBlock 解析 [user_edit] 段 key=value（与 Python parse_user_edit_block 行为接近，供 manifest 路径用）。
+// ParseBlock 解析 [user_edit] 段 key=value（供 manifest 路径与校验使用）。
 func ParseBlock(content string) map[string]string {
 	kv := make(map[string]string)
 	lines := strings.Split(strings.ReplaceAll(content, "\r\n", "\n"), "\n")

@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/Kiritoabc/tpops_deployment/go/internal/repository"
+	"tpops_deployment/internal/repository"
 )
 
 // TaskWSOut 供 WebSocket hello 使用（时间字段为 RFC3339 或 nil 字符串）。

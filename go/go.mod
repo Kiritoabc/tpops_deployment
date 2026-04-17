@@ -1,4 +1,4 @@
-module github.com/Kiritoabc/tpops_deployment/go
+module tpops_deployment
 
 go 1.21
 

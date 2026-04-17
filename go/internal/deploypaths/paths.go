@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Kiritoabc/tpops_deployment/go/internal/useredit"
+	"tpops_deployment/internal/useredit"
 )
 
 const ModeTriple = "triple"
@@ -17,7 +17,7 @@ func DeployRoot(dockerRoot string) string {
 	return r
 }
 
-// RemoteManifestPaths 与 Python _remote_manifest_paths_for_task 一致（相对路径，SSH 时拼 ROOT）。
+// RemoteManifestPaths 返回执行机上 config/gaussdb 下 manifest 相对路径列表（SSH 时与部署根拼接）。
 func RemoteManifestPaths(deployRoot, deployMode string, kv map[string]string) []string {
 	root := DeployRoot(deployRoot)
 	base := fmt.Sprintf("%s/config/gaussdb", root)

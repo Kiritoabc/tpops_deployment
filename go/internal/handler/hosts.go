@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	"github.com/Kiritoabc/tpops_deployment/go/internal/middleware"
+	"tpops_deployment/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 

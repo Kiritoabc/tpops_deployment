@@ -1,12 +1,15 @@
 package handler
 
 import (
+	"io/fs"
 	"net/http"
 
-	"github.com/Kiritoabc/tpops_deployment/go/internal/config"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/middleware"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/service"
-	"github.com/Kiritoabc/tpops_deployment/go/internal/wshub"
+	"tpops_deployment/internal/config"
+	"tpops_deployment/internal/middleware"
+	"tpops_deployment/internal/service"
+	"tpops_deployment/internal/wshub"
+	"tpops_deployment/web"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,6 +27,18 @@ func (h *Handler) Register(r *gin.Engine) {
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "tpops-go"})
 	})
+
+	r.GET("/", func(c *gin.Context) {
+		b, err := web.Dir.ReadFile("static/index.html")
+		if err != nil {
+			c.String(http.StatusNotFound, "not found")
+			return
+		}
+		c.Data(http.StatusOK, "text/html; charset=utf-8", b)
+	})
+	if sub, err := fs.Sub(web.Dir, "static"); err == nil {
+		r.StaticFS("/assets", http.FS(sub))
+	}
 
 	api := r.Group("/api")
 

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Kiritoabc/tpops_deployment/go/internal/auth"
+	"tpops_deployment/internal/auth"
 	"github.com/gin-gonic/gin"
 )
 
