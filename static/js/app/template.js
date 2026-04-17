@@ -28,8 +28,11 @@ window.TPOPSApp.template = String.raw`
 
     <!-- 主布局：侧栏 + 顶栏 + 内容区（参考 OAT/OCP：可折叠导航 + 居中内容区） -->
     <el-container v-else class="layout-root">
-      <el-aside :width="sidebarCollapsed ? '64px' : '220px'" :class="['ob-aside', { 'ob-aside--collapsed': sidebarCollapsed }]">
-        <div class="ob-logo"><span>◆</span><span class="ob-logo-text"> TPOPS 部署</span></div>
+      <el-aside :width="sidebarCollapsed ? '64px' : '240px'" :class="['ob-aside', { 'ob-aside--collapsed': sidebarCollapsed }]">
+        <div class="ob-logo">
+          <span class="ob-logo-mark">T</span>
+          <span class="ob-logo-text">TPOPS</span>
+        </div>
         <el-menu
           class="ob-menu"
           :class="{ 'ob-menu--collapse': sidebarCollapsed }"
@@ -37,23 +40,33 @@ window.TPOPSApp.template = String.raw`
           :collapse="sidebarCollapsed"
           :collapse-transition="false"
           background-color="transparent"
-          text-color="rgba(255,255,255,.75)"
-          active-text-color="#fff"
+          text-color="#64748b"
+          active-text-color="#0062ff"
           @select="onMenuSelect"
         >
+          <div v-if="!sidebarCollapsed" class="ob-nav-group-label">资源监控</div>
           <el-menu-item index="overview">
-            <span>概览</span>
+            <span>控制台概览</span>
           </el-menu-item>
-          <el-menu-item index="hosts">
-            <span>主机管理</span>
-          </el-menu-item>
+          <div v-if="!sidebarCollapsed" class="ob-nav-group-label">部署与任务</div>
           <el-menu-item index="deploy">
             <span>部署任务</span>
           </el-menu-item>
           <el-menu-item index="packages">
             <span>安装包管理</span>
           </el-menu-item>
+          <div v-if="!sidebarCollapsed" class="ob-nav-group-label">配置</div>
+          <el-menu-item index="hosts">
+            <span>主机管理</span>
+          </el-menu-item>
         </el-menu>
+        <div v-if="token && !sidebarCollapsed" class="ob-sidebar-user">
+          <div class="ob-sidebar-user-avatar" v-text="(user.username || '?').charAt(0).toUpperCase()"></div>
+          <div class="ob-sidebar-user-meta">
+            <div class="ob-sidebar-user-name" v-text="user.username || '用户'"></div>
+            <div class="ob-sidebar-user-sub">运维控制台</div>
+          </div>
+        </div>
         <div class="ob-aside-toggle">
           <el-button size="small" @click="sidebarCollapsed = !sidebarCollapsed">{{ sidebarCollapsed ? '展开' : '收起' }}</el-button>
         </div>
@@ -72,7 +85,7 @@ window.TPOPSApp.template = String.raw`
           <div class="ob-main-inner">
           <!-- 概览 -->
           <template v-if="activeMenu === 'overview'">
-            <h2 class="ob-page-title">概览</h2>
+            <h2 class="ob-page-title">概览工作台</h2>
             <p class="ob-page-sub">资源与任务总览；部署形态与 appctl 流程说明见下方卡片。</p>
             <el-row :gutter="16" style="margin-bottom:20px;">
               <el-col :xs="24" :sm="8" :md="4">

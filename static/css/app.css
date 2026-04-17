@@ -9,7 +9,8 @@
       --ob-installer-muted: #64748b;
       --ob-header-h: 52px;
       /* 与 OceanBase Installer 参考页接近的浅灰工作台底 */
-      --ob-bg: #f4f7f9;
+      /* 工作台底：与 TPOPS 运维参考页 #f0f2f5 一致 */
+      --ob-bg: #f0f2f5;
       /* 内容区：横向占满主区域（不再收窄到 1480） */
       --ob-content-max: 100%;
       --ob-main-pad-x: clamp(10px, 1.6vw, 20px);
@@ -27,7 +28,7 @@
     body {
       font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
       background: var(--ob-bg);
-      color: #303133;
+      color: #1e293b;
     }
     .login-wrap {
       min-height: 100%;
@@ -61,60 +62,151 @@
       display: flex;
       flex-direction: column;
     }
+    /* 浅色侧栏（参考 TPOPS 运维管理平台 mock） */
     .ob-aside {
-      background: linear-gradient(180deg, var(--ob-sidebar-mid) 0%, var(--ob-sidebar) 100%);
-      color: #fff;
+      background: #ffffff;
+      color: #1e293b;
       display: flex;
       flex-direction: column;
-      border-right: 1px solid rgba(255,255,255,.08);
+      border-right: 1px solid #e2e8f0;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
       transition: width 0.22s ease;
+      z-index: 20;
     }
     .ob-aside--collapsed .ob-logo-text { display: none; }
     .ob-aside--collapsed .ob-logo { justify-content: center; padding: 0 8px; }
     .ob-logo {
-      height: var(--ob-header-h);
+      height: 64px;
+      min-height: 64px;
       display: flex;
       align-items: center;
-      padding: 0 16px;
-      font-weight: 600;
-      font-size: 15px;
-      color: #fff;
-      border-bottom: 1px solid rgba(255,255,255,.1);
+      gap: 10px;
+      padding: 0 20px;
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+      color: #0f172a;
+      border-bottom: 1px solid #f1f5f9;
       white-space: nowrap;
       flex-shrink: 0;
     }
-    .ob-logo span { color: #69c0ff; margin-right: 8px; font-size: 18px; }
+    .ob-logo-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: #2563eb;
+      color: #fff;
+      font-size: 14px;
+      font-style: italic;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .ob-nav-group-label {
+      padding: 16px 24px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    .ob-sidebar-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 8px 12px 0;
+      padding: 14px 12px;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      border-radius: 10px;
+    }
+    .ob-sidebar-user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #0062ff, #3b82f6);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .ob-sidebar-user-meta { min-width: 0; }
+    .ob-sidebar-user-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ob-sidebar-user-sub { font-size: 10px; color: #94a3b8; margin-top: 2px; }
     .ob-aside-toggle {
-      margin-top: auto; padding: 10px 12px;
-      border-top: 1px solid rgba(255,255,255,.1);
+      margin-top: auto;
+      padding: 12px 14px;
+      border-top: 1px solid #f1f5f9;
+      background: #fafbfc;
     }
-    .ob-aside-toggle .el-button { width: 100%; color: rgba(255,255,255,.85); border-color: rgba(255,255,255,.2); background: rgba(255,255,255,.06); }
-    .ob-aside-toggle .el-button:hover { border-color: #69c0ff; color: #fff; background: rgba(24,144,255,.2); }
-    .ob-menu { border-right: none !important; flex: 1; background: transparent !important; padding: 8px 0; }
-    .ob-menu.el-menu--dark { --el-menu-bg-color: transparent; --el-menu-hover-bg-color: rgba(255,255,255,.1); }
-    .ob-menu .el-menu-item { border-radius: 8px; margin: 4px 8px; height: 44px; line-height: 44px; }
+    .ob-aside-toggle .el-button {
+      width: 100%;
+      color: #64748b;
+      border-color: #e2e8f0;
+      background: #fff;
+    }
+    .ob-aside-toggle .el-button:hover {
+      border-color: #0062ff;
+      color: #0062ff;
+      background: #f0f7ff;
+    }
+    .ob-menu { border-right: none !important; flex: 1; background: transparent !important; padding: 4px 0 12px; }
+    .ob-menu.el-menu--dark {
+      --el-menu-bg-color: transparent;
+      --el-menu-hover-bg-color: #f1f5f9;
+      --el-menu-active-color: #0062ff;
+    }
+    .ob-menu .el-menu-item {
+      border-radius: 8px;
+      margin: 4px 12px;
+      height: 40px;
+      line-height: 40px;
+      padding: 0 12px !important;
+      font-size: 14px;
+      font-weight: 500;
+      color: #64748b;
+      border-left: none !important;
+    }
+    .ob-menu .el-menu-item:hover {
+      background-color: #f1f5f9 !important;
+      color: #0062ff !important;
+    }
     .ob-menu .el-menu-item.is-active {
-      background: linear-gradient(90deg, rgba(24,144,255,.35), rgba(24,144,255,.12)) !important;
-      border-left: 3px solid #69c0ff;
+      background-color: #e6f0ff !important;
+      color: #0062ff !important;
+      font-weight: 600;
     }
+    .ob-menu--collapse .el-menu-item { padding: 0 !important; justify-content: center; }
     .ob-menu--collapse .el-menu-item.is-active { border-left: none; }
     .ob-header {
       height: var(--ob-header-h) !important;
-      background: linear-gradient(180deg, #ffffff 0%, #fafbfd 100%);
-      border-bottom: 1px solid #e4e7ed;
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 20px 0 24px;
-      box-shadow: 0 1px 2px rgba(0,21,41,.06);
+      padding: 0 24px 0 28px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     }
-    .ob-breadcrumb { font-size: 13px; color: #606266; letter-spacing: .02em; }
-    .ob-breadcrumb strong { color: #1d2129; font-weight: 600; }
+    .ob-breadcrumb { font-size: 13px; color: #64748b; letter-spacing: .02em; }
+    .ob-breadcrumb strong { color: #0f172a; font-weight: 600; }
     .ob-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     /* 主内容区滚动：用浏览器/主区域右侧滚动条，避免内层再套一层滚动框 */
     .ob-main {
-      padding: var(--ob-main-pad-y) var(--ob-main-pad-x);
-      background: var(--ob-bg);
+      padding: 24px clamp(16px, 3vw, 40px);
+      background: linear-gradient(180deg, #ffffff 0%, var(--ob-bg) 320px);
       flex: 1;
       min-height: 0;
       overflow-x: hidden;
@@ -124,10 +216,23 @@
       max-width: var(--ob-content-max);
       width: 100%;
       margin: 0 auto;
+      animation: ob-view-enter 0.38s ease-out;
     }
-    .ob-page-title { font-size: 17px; font-weight: 600; color: #1d2129; margin: 0 0 2px; letter-spacing: .02em; }
-    .ob-page-sub { font-size: 13px; color: #86909c; margin: 0 0 10px; line-height: 1.45; }
-    .stat-card { border-radius: var(--ob-card-radius); border: 1px solid #ebeef5; }
+    @keyframes ob-view-enter {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .ob-page-title { font-size: 1.35rem; font-weight: 700; color: #0f172a; margin: 0 0 4px; letter-spacing: -0.02em; }
+    .ob-page-sub { font-size: 12px; color: #94a3b8; margin: 0 0 16px; line-height: 1.5; }
+    .stat-card {
+      border-radius: 12px;
+      border: 1px solid #eef0f2;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+      transition: box-shadow 0.3s ease, transform 0.2s ease;
+    }
+    .stat-card:hover {
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+    }
     .stat-card .num { font-size: clamp(20px, 4vw, 30px); font-weight: 600; color: #1890ff; line-height: 1.2; }
     .stat-card .lab { font-size: 13px; color: #909399; margin-top: 4px; }
     .log-box {
@@ -362,9 +467,13 @@
     .host-stat-pill .n { font-size: 22px; font-weight: 600; color: #1890ff; line-height: 1.2; }
     .host-stat-pill .l { font-size: 12px; color: #909399; margin-top: 4px; }
     .ob-card-elevated {
-      border-radius: var(--ob-card-radius);
-      border: 1px solid #e4e7ed;
-      box-shadow: 0 2px 8px rgba(15, 37, 64, .06), 0 1px 2px rgba(15, 37, 64, .04);
+      border-radius: 12px;
+      border: 1px solid #eef0f2;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+      transition: box-shadow 0.3s ease;
+    }
+    .ob-card-elevated:hover {
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
     }
     /* el-card 默认 overflow:hidden，会破坏表内 fixed 列的 sticky，导致前几列表头/数据错位或「被盖住」 */
     .ob-main .el-card.host-card-accent,

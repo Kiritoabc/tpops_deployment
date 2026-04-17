@@ -25,7 +25,7 @@ window.TPOPSPageState = {
         if (packageSubView.value === 'detail') return '安装包管理 / 包文件';
         return '安装包管理 / 版本列表';
       }
-      return '概览';
+      return '控制台概览';
     });
 
     function bindRouteHelpers(helpers, getters) {
