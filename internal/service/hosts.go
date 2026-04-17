@@ -15,6 +15,7 @@ type HostListItem struct {
 	AuthMethod        string `json:"auth_method"`
 	HasCredential     bool   `json:"has_credential"`
 	DockerServiceRoot string `json:"docker_service_root"`
+	OwnerUsername     string `json:"owner_username,omitempty"`
 }
 
 func (s *Service) ListHosts(ctx context.Context, userID int64) ([]HostListItem, error) {
@@ -24,7 +25,7 @@ func (s *Service) ListHosts(ctx context.Context, userID int64) ([]HostListItem, 
 	}
 	out := make([]HostListItem, 0, len(rows))
 	for _, h := range rows {
-		out = append(out, HostListItem{
+		item := HostListItem{
 			ID:                h.ID,
 			Name:              h.Name,
 			Hostname:          h.Hostname,
@@ -33,7 +34,11 @@ func (s *Service) ListHosts(ctx context.Context, userID int64) ([]HostListItem, 
 			AuthMethod:        h.AuthMethod,
 			HasCredential:     h.Credential != "",
 			DockerServiceRoot: h.DockerServiceRoot,
-		})
+		}
+		if h.OwnerUsername.Valid {
+			item.OwnerUsername = h.OwnerUsername.String
+		}
+		out = append(out, item)
 	}
 	return out, nil
 }

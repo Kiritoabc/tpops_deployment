@@ -38,7 +38,11 @@ go run ./cmd/server
 | GET | `/healthz` | 健康检查 |
 | POST | `/api/auth/login/`、`/register/`、`/token/refresh/` | 鉴权 |
 | GET | `/api/auth/profile/` | 需 JWT |
-| GET | `/api/hosts/` | 主机列表 |
+| GET | `/api/hosts/` | 主机列表（含 `owner_username`） |
+| POST | `/api/hosts/` | 新增主机（密码或私钥经 Fernet 加密入库） |
+| PATCH | `/api/hosts/:id/` | 更新主机；不传 `password`/`private_key` 则保留原凭证 |
+| DELETE | `/api/hosts/:id/` | 删除主机 |
+| POST | `/api/hosts/:id/test_connection/` | SSH 连通性检测 → `{ok,message}` |
 | GET/POST | `/api/deployment/tasks/` 等 | 任务列表、创建、详情、`manifest_snapshot` |
 | GET | `/ws/deploy/:id/`、`/ws/deploy/:id/log/` | WebSocket |
 
@@ -60,7 +64,6 @@ go run ./cmd/server
 
 ## 与完整后端的差异（前端兼容说明）
 
-- **`/api/packages/*`**：列表返回空数组；创建/上传/删除返回 **501**（占位，避免前端报错中断）。
-- **`POST/PATCH/DELETE /api/hosts/*`**、**连通性测试**：返回 **501**（主机请通过迁移/SQL 预置后再在界面选用）。
+- **`/api/packages/*`**：列表返回空数组；创建/上传/删除返回 **501**（占位）。
 
 详见 `plan/plan-go-gin-sqlite-lightweight.md`。
