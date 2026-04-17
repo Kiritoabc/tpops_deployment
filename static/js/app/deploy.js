@@ -343,6 +343,11 @@ window.TPOPSDeploy = {
     const rowEffectiveLevelStatus = (row) => {
       if (!row) return 'none';
       if (row.key === '__precheck__') {
+        // 已结束任务再次进入时 WS 不会重放 manifest，treeRoots 可能为空；用任务终态结束步骤零
+        const terminal = normSt(effectiveLiveStatus.value || taskStatus.value || '');
+        if (terminal === 'success' || terminal === 'cancelled') return 'done';
+        if (terminal === 'failed') return 'error';
+
         const roots = treeRoots.value || [];
         const patch = roots.find((r) => r && r.id === 'patch');
         if (!patch) return 'running';
