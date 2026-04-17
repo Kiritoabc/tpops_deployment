@@ -1,8 +1,8 @@
 # TPOPS 部署服务（Go）
 
-**分支 `go-dev`**：本仓库此分支仅保留 **Gin + SQLite（modernc）** 实现；内嵌静态页（`/`、`/assets/`），与历史 Web 栈无代码依赖。
+**分支 `go-dev`**：本仓库此分支为 **Gin + SQLite（modernc）** 单服务；**Vue 3 + Element Plus（CDN）控制台**由 Gin 提供 HTML 与静态资源（`web/templates`、`web/static`）。
 
-**目录说明**：Go 模块在**仓库根目录**（`go.mod`、`cmd/`、`internal/` 与仓库根同级），**不使用**名为 `go/` 的子目录；克隆本分支后直接在根目录执行 `go run ./cmd/server` 即可。
+**目录说明**：Go 模块在**仓库根目录**（`go.mod`、`cmd/`、`internal/`），不使用 `go/` 子目录。
 
 ## 运行
 
@@ -18,7 +18,9 @@ go run ./cmd/server
 - 监听：`TPOPS_GO_LISTEN`（默认 `:8081`）
 - 数据库：`data/tpops_go.db`（自动 `goose` 迁移）
 - JWT：`TPOPS_GO_JWT_SECRET`（生产务必修改）
-- **解密主机凭证（Fernet）**：`TPOPS_GO_FERNET_SECRET`；若为空则读取 `TPOPS_APP_SECRET_KEY`（须与加密主机凭证时使用的应用主密钥一致）
+- **解密主机凭证（Fernet）**：`TPOPS_GO_FERNET_SECRET`；若为空则读取 `TPOPS_APP_SECRET_KEY`
+
+浏览器打开 **`/`** 即控制台（与 API 同域）。
 
 ## 开发账号（仅迁移种子）
 
@@ -27,44 +29,38 @@ go run ./cmd/server
 
 来自 `migrations/00002_seed_dev_admin.sql`；生产请删除该迁移或改密。
 
-## 已实现 API
+## 已实现 API（节选）
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/` | 嵌入的简单控制台页面 |
-| GET | `/assets/*` | 嵌入的静态资源 |
+| GET | `/` | `html/template` 渲染 SPA 壳 |
+| GET | `/static/*` | 嵌入的 JS/CSS |
 | GET | `/healthz` | 健康检查 |
-| POST | `/api/auth/login/` | 登录 |
-| POST | `/api/auth/register/` | 注册 |
+| POST | `/api/auth/login/`、`/register/`、`/token/refresh/` | 鉴权 |
 | GET | `/api/auth/profile/` | 需 JWT |
-| GET | `/api/hosts/` | 需 JWT |
-| GET | `/api/deployment/tasks/` | 需 JWT |
-| POST | `/api/deployment/tasks/` | 创建任务（body 见下） |
-| GET | `/api/deployment/tasks/:id/` | 任务详情 |
-| POST | `/api/deployment/tasks/:id/start/` | 对 `pending` 任务启动 Runner |
-| GET | `/api/deployment/tasks/:id/manifest_snapshot/` | SSH 拉 manifest 并解析 |
-| POST | `/api/auth/token/refresh/` | body `{"refresh":"..."}` → `{"access"}` |
-| GET | `/ws/deploy/:id/?token=<access_jwt>` | 部署 feed：`hello`、`phase`、`log`、`manifest`、`manifest_wait`、`status`、`done` |
-| GET | `/ws/deploy/:id/log/?token=<access_jwt>` | 仅日志：`hello`（含 `remote_log`）后 `tail -F` 流式 `log` |
+| GET | `/api/hosts/` | 主机列表 |
+| GET/POST | `/api/deployment/tasks/` 等 | 任务列表、创建、详情、`manifest_snapshot` |
+| GET | `/ws/deploy/:id/`、`/ws/deploy/:id/log/` | WebSocket |
 
-**创建任务 JSON 示例**（`start: true` 时创建后立即跑 Runner）：
+**创建任务**：默认**创建后立即启动 Runner**。若只要落库不执行，传 `"no_start": true`。
 
 ```json
 {
   "host": 1,
-  "action": "shell",
-  "target": "echo hello && sleep 2 && echo done",
+  "action": "install",
+  "target": "echo step1 && your-remote-command-here",
   "deploy_mode": "single",
-  "user_edit_content": "",
-  "remote_user_edit_path": "",
-  "remote_log_path": "logs/deploy_1.log",
+  "user_edit_content": "...",
   "skip_package_sync": true,
-  "start": true
+  "no_start": false
 }
 ```
 
-`action` 为 `install` 或 `upgrade` 时，Runner 会每 5 秒拉一次 manifest 并推送 `manifest` 消息。`target` 为远端 `bash -lc` 中执行的命令块（已 `cd` 到部署根目录）。
+`target` 在远端以 `bash -lc` 在部署根目录下执行（输出写入 `remote_log_path`，默认 `logs/deploy_<id>.log`）。
 
-## 设计与后续
+## 与完整后端的差异（前端兼容说明）
 
-见 `plan/plan-go-gin-sqlite-lightweight.md`（Runner 全量流式、日志 WS、包上传等）。
+- **`/api/packages/*`**：列表返回空数组；创建/上传/删除返回 **501**（占位，避免前端报错中断）。
+- **`POST/PATCH/DELETE /api/hosts/*`**、**连通性测试**：返回 **501**（主机请通过迁移/SQL 预置后再在界面选用）。
+
+详见 `plan/plan-go-gin-sqlite-lightweight.md`。

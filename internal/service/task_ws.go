@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-
-	"tpops_deployment/internal/repository"
 )
 
 // TaskWSOut 供 WebSocket hello 使用（时间字段为 RFC3339 或 nil 字符串）。
@@ -33,17 +31,4 @@ func (s *Service) TaskForWS(ctx context.Context, userID, taskID int64) (*TaskWSO
 		StartedAt:    t.StartedAt,
 		FinishedAt:   t.FinishedAt,
 	}, nil
-}
-
-// GetTaskByIDForHandler 返回完整行（供 REST detail）。
-func (s *Service) GetTaskByIDForHandler(ctx context.Context, userID, taskID int64) (*repository.DeploymentTask, error) {
-	t, err := s.repos.GetTaskByID(ctx, taskID)
-	if err != nil {
-		return nil, err
-	}
-	ok, err := s.repos.CanUserAccessTask(ctx, userID, t.CreatedByID)
-	if err != nil || !ok {
-		return nil, nil
-	}
-	return t, nil
 }

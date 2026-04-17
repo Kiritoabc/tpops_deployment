@@ -6,16 +6,16 @@ import (
 )
 
 // InsertTask 创建 pending 任务，返回新 id。
-func (r *Repos) InsertTask(ctx context.Context, hostID int64, action, target, deployMode, userEdit, remotePath, remoteLogPath string, skipSync int, createdBy *int64) (int64, error) {
+func (r *Repos) InsertTask(ctx context.Context, hostID int64, hostNode2, hostNode3 *int64, action, target, deployMode, userEdit, remotePath, remoteLogPath string, skipSync int, createdBy *int64) (int64, error) {
 	if deployMode == "" {
 		deployMode = "single"
 	}
 	res, err := r.db.ExecContext(ctx, `
 		INSERT INTO deployment_deploymenttask (
-			host_id, action, target, deploy_mode, user_edit_content, remote_user_edit_path, remote_log_path,
+			host_id, host_node2_id, host_node3_id, action, target, deploy_mode, user_edit_content, remote_user_edit_path, remote_log_path,
 			package_artifact_ids, skip_package_sync, status, created_by_id
-		) VALUES (?, ?, ?, ?, ?, ?, ?, '[]', ?, 'pending', ?)`,
-		hostID, action, target, deployMode, userEdit, remotePath, remoteLogPath, skipSync, createdBy)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, 'pending', ?)`,
+		hostID, hostNode2, hostNode3, action, target, deployMode, userEdit, remotePath, remoteLogPath, skipSync, createdBy)
 	if err != nil {
 		return 0, err
 	}
@@ -62,6 +62,15 @@ func (r *Repos) UpdateTaskStatusMessage(ctx context.Context, id int64, status, e
 }
 
 // TaskIsTerminal 若任务已是终态则返回 true。
+// UpdateTaskPackageFields 写入安装包关联字段（package_release_id 可为 NULL）。
+func (r *Repos) UpdateTaskPackageFields(ctx context.Context, id int64, packageReleaseID *int64, artifactIDsJSON string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE deployment_deploymenttask
+		SET package_release_id = ?, package_artifact_ids = ?, updated_at = datetime('now')
+		WHERE id = ?`, packageReleaseID, artifactIDsJSON, id)
+	return err
+}
+
 func (r *Repos) TaskIsTerminal(ctx context.Context, id int64) (bool, error) {
 	var st string
 	err := r.db.GetContext(ctx, &st, `SELECT status FROM deployment_deploymenttask WHERE id = ?`, id)

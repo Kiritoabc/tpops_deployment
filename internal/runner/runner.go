@@ -48,7 +48,7 @@ func RunSSHDeployment(
 			}
 		}
 
-		emit(map[string]interface{}{"type": "phase", "phase": "preflight"})
+		emit(map[string]interface{}{"type": "phase", "phase": "preflight", "message": "准备执行"})
 
 		claimed, err := repos.UpdateTaskRunning(context.Background(), taskID)
 		if err != nil || !claimed {
@@ -94,14 +94,15 @@ func RunSSHDeployment(
 		)
 		remoteScript := "bash -lc " + sshutil.ShellQuote(inner)
 
-		emit(map[string]interface{}{"type": "phase", "phase": "ssh"})
-		emit(map[string]interface{}{"type": "status", "status": "running", "message": ""})
+		emit(map[string]interface{}{"type": "phase", "phase": "run_appctl", "message": "SSH 执行中"})
+		emit(map[string]interface{}{"type": "status", "data": "running", "message": ""})
 
 		action := strings.TrimSpace(t.Action)
 		needManifest := action == "install" || action == "upgrade"
 
 		var wg sync.WaitGroup
 		if needManifest && manifestFn != nil {
+			emit(map[string]interface{}{"type": "phase", "phase": "manifest_polling", "message": "轮询 manifest"})
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -114,18 +115,21 @@ func RunSSHDeployment(
 					case <-tick.C:
 						tree, err := manifestFn(context.Background(), starterUserID, taskID)
 						if err != nil {
-							emit(map[string]interface{}{"type": "manifest_wait", "reason": trimErr(err)})
+							reason := trimErr(err)
+							emit(map[string]interface{}{"type": "manifest_wait", "reason": reason, "message": reason})
 							continue
 						}
-						emit(map[string]interface{}{"type": "manifest", "manifest": tree})
+						emit(map[string]interface{}{"type": "manifest", "data": tree, "manifest": tree})
 					}
 				}
 			}()
 		}
 
+		logEmit := func(line string) {
+			emit(map[string]interface{}{"type": "log", "line": line, "data": line + "\n"})
+		}
 		exitCode, runErr := sshutil.RunRemoteStream(ctx, host.Hostname, host.Port, host.Username, host.AuthMethod, secret, remoteScript,
-			func(line string) { emit(map[string]interface{}{"type": "log", "line": line}) },
-			func(line string) { emit(map[string]interface{}{"type": "log", "line": line}) },
+			logEmit, logEmit,
 		)
 
 		cancel()
@@ -133,7 +137,7 @@ func RunSSHDeployment(
 
 		if needManifest && manifestFn != nil {
 			if tree, err := manifestFn(context.Background(), starterUserID, taskID); err == nil && tree != nil {
-				emit(map[string]interface{}{"type": "manifest", "manifest": tree})
+				emit(map[string]interface{}{"type": "manifest", "data": tree, "manifest": tree})
 			}
 		}
 
@@ -159,9 +163,11 @@ func RunSSHDeployment(
 }
 
 func donePayload(status string, exitCode int, msg string) map[string]interface{} {
+	finished := time.Now().UTC().Format(time.RFC3339Nano)
 	return map[string]interface{}{
 		"type": "done", "status": status,
 		"exit_code": exitCode, "error_message": msg,
+		"finished_at": finished,
 	}
 }
 

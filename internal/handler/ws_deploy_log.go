@@ -35,13 +35,13 @@ func (h *Handler) WSDeployLog(c *gin.Context) {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-	t, err := h.svc.GetTaskByIDForHandler(c.Request.Context(), claims.UserID, taskID)
+	t, err := h.svc.TaskDetailForAPI(c.Request.Context(), claims.UserID, taskID)
 	if err != nil || t == nil {
 		c.AbortWithStatus(http.StatusForbidden)
 		return
 	}
 
-	host, err := h.svc.HostForTask(c.Request.Context(), t.HostID, claims.UserID)
+	host, err := h.svc.HostForTask(c.Request.Context(), t.Host, claims.UserID)
 	if errors.Is(err, service.ErrForbidden) {
 		c.AbortWithStatus(http.StatusForbidden)
 		return

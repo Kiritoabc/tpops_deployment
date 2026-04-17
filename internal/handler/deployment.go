@@ -18,7 +18,7 @@ func (h *Handler) getTask(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "无效任务 ID"})
 		return
 	}
-	t, err := h.svc.GetTaskByIDForHandler(c.Request.Context(), userID, id)
+	t, err := h.svc.TaskDetailForAPI(c.Request.Context(), userID, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
 		return

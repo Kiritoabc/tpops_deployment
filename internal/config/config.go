@@ -11,10 +11,10 @@ import (
 // Config 从环境变量加载（十二因子）。
 type Config struct {
 	Listen        string `env:"TPOPS_GO_LISTEN" envDefault:":8081"`
-	DatabaseURL   string `env:"TPOPS_GO_DATABASE_URL"` // 默认在 Load 中设置
+	DatabaseURL   string `env:"TPOPS_GO_DATABASE_URL"`   // 默认在 Load 中设置
 	MigrationsDir string `env:"TPOPS_GO_MIGRATIONS_DIR"` // 默认在 Load 中设置
 	JWTSecret     string `env:"TPOPS_GO_JWT_SECRET"`     // HS256，须与生产密钥区分
-	FernetSecret  string `env:"TPOPS_GO_FERNET_SECRET"` // 应用主密钥（SHA256→Fernet）；用于解密 hosts.credential
+	FernetSecret  string `env:"TPOPS_GO_FERNET_SECRET"`  // 应用主密钥（SHA256→Fernet）；用于解密 hosts.credential
 	GinMode       string `env:"TPOPS_GO_GIN_MODE" envDefault:"debug"`
 }
 

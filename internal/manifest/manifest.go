@@ -299,7 +299,7 @@ func BuildTpopsTree(data map[string]interface{}) map[string]interface{} {
 		}
 		roots = append(roots, map[string]interface{}{
 			"id": level, "label": level, "status": agg,
-			"meta": map[string]interface{}{"level_status_key": sk},
+			"meta":     map[string]interface{}{"level_status_key": sk},
 			"children": children,
 		})
 	}
@@ -369,9 +369,9 @@ func BuildPipelineFromRoots(roots []interface{}) []interface{} {
 		}
 		pipe = append(pipe, map[string]interface{}{
 			"index": idx, "key": root["id"], "title": title,
-			"level_status": strOr(root["status"], "none"),
+			"level_status":  strOr(root["status"], "none"),
 			"parallel_note": "本层内子步骤并发执行",
-			"children": subs,
+			"children":      subs,
 		})
 	}
 	return pipe
@@ -562,7 +562,7 @@ func MergeTpopsManifestDicts(dicts []map[string]interface{}, manifestPaths []str
 	roots := []interface{}{}
 	summary := map[string]interface{}{
 		"levels_total": len(LevelOrder),
-		"levels_done": 0, "levels_running": 0, "levels_error": 0, "levels_none": 0,
+		"levels_done":  0, "levels_running": 0, "levels_error": 0, "levels_none": 0,
 		"by_level": map[string]interface{}{}, "services_total": 0, "services_done": 0,
 	}
 	for k, v := range mergedLevels {
@@ -661,7 +661,7 @@ func MergeTpopsManifestDicts(dicts []map[string]interface{}, manifestPaths []str
 		}
 		roots = append(roots, map[string]interface{}{
 			"id": level, "label": level, "status": agg,
-			"meta": map[string]interface{}{"level_status_key": sk, "merged_nodes": len(dicts)},
+			"meta":     map[string]interface{}{"level_status_key": sk, "merged_nodes": len(dicts)},
 			"children": children,
 		})
 	}

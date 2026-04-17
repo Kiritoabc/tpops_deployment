@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"tpops_deployment/internal/auth"
 	"github.com/gin-gonic/gin"
+	"tpops_deployment/internal/auth"
 )
 
 const CtxUserID = "user_id"

@@ -17,12 +17,12 @@ func (h *Handler) createTask(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "无效请求体"})
 		return
 	}
-	out, code, err := h.svc.CreateTask(c.Request.Context(), userID, in)
+	detail, code, err := h.svc.CreateTask(c.Request.Context(), userID, in)
 	if err != nil {
 		c.JSON(code, gin.H{"detail": err.Error()})
 		return
 	}
-	c.JSON(code, out)
+	c.JSON(code, detail)
 }
 
 func (h *Handler) startTask(c *gin.Context) {
@@ -33,7 +33,7 @@ func (h *Handler) startTask(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "无效任务 ID"})
 		return
 	}
-	t, err := h.svc.GetTaskByIDForHandler(c.Request.Context(), userID, id)
+	t, err := h.svc.TaskDetailForAPI(c.Request.Context(), userID, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
 		return
