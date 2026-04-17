@@ -4,6 +4,8 @@
 
 ## 运行
 
+本模块 **`go 1.18`**。若本机默认 Go 较新，可用官方工具链切换后再构建，例如：`GOTOOLCHAIN=go1.18.10 go run ./cmd/server`。
+
 ```bash
 cd go
 go mod download
