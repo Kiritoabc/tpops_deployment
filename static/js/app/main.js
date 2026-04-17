@@ -15,7 +15,33 @@
       const loginForm = reactive({ username: '', password: '' });
       const regForm = reactive({ username: '', email: '', password: '', password_confirm: '', role: 'viewer' });
       const hostForm = reactive({ id: null, name: '', hostname: '', port: 22, username: 'root', auth_method: 'password', password: '', private_key: '', docker_service_root: '/data/docker-service' });
-      const USER_EDIT_TEMPLATE = '[user_edit]\n# 请按现场填写；以下为占位示例，创建任务前请改为真实 IP 等\nnode1_ip = 127.0.0.1\n';
+      const USER_EDIT_TEMPLATE = `[user_edit]
+ssh_port = 22
+gauss_path = /data/gaussdb
+node1_ip = 192.168.0.1
+node2_ip = 192.168.0.2
+node3_ip = 192.168.0.3
+influxdb_install_ip1 = 192.168.0.1
+influxdb_install_ip2 = 192.168.0.2
+sftp_install_ip1 = 192.168.0.1
+sftp_install_ip2 = 192.168.0.2
+main_path = /data/cloud
+node1_ip2 = 192.168.0.1
+node2_ip2 = 192.168.0.2
+node3_ip2 = 192.168.0.3
+log_path = /data/cloud/logs
+sftp_path = /data/sftphome
+influx_path = /data/influxdb
+docker_path = /data/docker
+use_cgroup = no
+ntp_server =
+cpu_limit =
+mem_limit =
+es_enable = no
+es_path = /data/elasticsearch
+ipv6_enable = no
+use_import_ca = no
+`;
       const deployForm = reactive({
         deploy_mode: 'single',
         host: null,
