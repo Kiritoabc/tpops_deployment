@@ -162,7 +162,7 @@ window.TPOPSApp.template = String.raw`
               </el-col>
               <el-col :xs="24" :sm="8" :md="4">
                 <el-card shadow="hover" class="stat-card ob-card-elevated">
-                  <div class="num" style="color:#909399;" v-text="(tasks.length ? Math.round(successCount * 100 / tasks.length) : 0) + '%'"></div>
+                  <div class="num" style="color:#909399;" v-text="taskSuccessRatePercent + '%'"></div>
                   <div class="lab">成功率</div>
                 </el-card>
               </el-col>

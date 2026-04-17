@@ -99,6 +99,17 @@ window.TPOPSDeploy = {
       tasks.value = Array.isArray(response.data) ? response.data : (response.data.results || []);
     };
 
+    const runningCount = computed(() => (
+      tasks.value.filter((t) => t && (t.status === 'running' || t.status === 'pending')).length
+    ));
+    const successCount = computed(() => tasks.value.filter((t) => t && t.status === 'success').length);
+    const failedCount = computed(() => tasks.value.filter((t) => t && t.status === 'failed').length);
+    const taskSuccessRatePercent = computed(() => {
+      const n = tasks.value.length;
+      if (!n) return 0;
+      return Math.round((successCount.value * 100) / n);
+    });
+
     const refreshTasksOnly = async () => {
       shared.loading.value = true;
       try {
@@ -738,6 +749,10 @@ window.TPOPSDeploy = {
     return {
       deployForm,
       tasks,
+      runningCount,
+      successCount,
+      failedCount,
+      taskSuccessRatePercent,
       deploySubView,
       deployStep,
       deployWizardSteps,
