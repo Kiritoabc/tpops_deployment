@@ -661,8 +661,8 @@ window.TPOPSApp.template = String.raw`
                           :class="{ 'is-selected': deployForm.deploy_mode === 'single' }"
                           role="button"
                           tabindex="0"
-                          @click="deployForm.deploy_mode = 'single'"
-                          @keyup.enter="deployForm.deploy_mode = 'single'"
+                          @click="setDeployModeAndAdvance('single')"
+                          @keyup.enter="setDeployModeAndAdvance('single')"
                         >
                           <svg v-if="deployForm.deploy_mode === 'single'" class="deploy-mode-check" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
                           <h3>单节点</h3>
@@ -674,8 +674,8 @@ window.TPOPSApp.template = String.raw`
                           :class="{ 'is-selected': deployForm.deploy_mode === 'triple' }"
                           role="button"
                           tabindex="0"
-                          @click="deployForm.deploy_mode = 'triple'"
-                          @keyup.enter="deployForm.deploy_mode = 'triple'"
+                          @click="setDeployModeAndAdvance('triple')"
+                          @keyup.enter="setDeployModeAndAdvance('triple')"
                         >
                           <svg v-if="deployForm.deploy_mode === 'triple'" class="deploy-mode-check" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
                           <h3>三节点</h3>

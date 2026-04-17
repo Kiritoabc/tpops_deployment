@@ -149,6 +149,13 @@ window.TPOPSDeploy = {
       return false;
     };
 
+    const setDeployModeAndAdvance = (mode) => {
+      deployForm.deploy_mode = mode;
+      nextTick(() => {
+        deployStep.value = 1;
+      });
+    };
+
     const goDeployWizardStep = (idx) => {
       const n = Number(idx);
       if (n === 0) {
@@ -771,6 +778,7 @@ window.TPOPSDeploy = {
       isHostDisabledForNode1,
       isHostDisabledTriple,
       goDeployWizardStep,
+      setDeployModeAndAdvance,
       goDeployStep2,
       fillUserEditTemplate,
       deployActionLabel,
