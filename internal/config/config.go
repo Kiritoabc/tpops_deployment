@@ -24,7 +24,7 @@ func Load() Config {
 		panic(err)
 	}
 	_, file, _, _ := runtime.Caller(0)
-	// internal/config -> repo root go/
+	// internal/config -> 模块根目录（go.mod 所在目录）
 	goRoot := filepath.Join(filepath.Dir(file), "..", "..")
 	if c.MigrationsDir == "" {
 		c.MigrationsDir = filepath.Join(goRoot, "migrations")

@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// LevelOrder 与 apps/manifest/parser.py 一致
+// LevelOrder 与产品 manifest 流水线层级顺序一致
 var LevelOrder = []string{
 	"patch", "base_enviornment", "PlatformData", "Zookeeper", "Kafka",
 	"docker_service", "gaussdb_service", "post_service",

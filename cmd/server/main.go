@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"tpops_deployment/internal/config"
 	"tpops_deployment/internal/db"
 	"tpops_deployment/internal/handler"
@@ -17,7 +18,6 @@ import (
 	"tpops_deployment/internal/repository"
 	"tpops_deployment/internal/service"
 	"tpops_deployment/internal/wshub"
-	"github.com/gin-gonic/gin"
 )
 
 func main() {
