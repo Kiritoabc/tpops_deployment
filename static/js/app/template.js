@@ -879,7 +879,7 @@ window.TPOPSApp.template = String.raw`
                           <span class="parallel-badge" v-text="'（' + row.parallel_note + '）'"></span>
                         </div>
                         <div class="pipeline-sub">
-                          <div v-if="row.key === '__precheck__'" class="hint" style="margin:4px 0 0 4px;">在 <strong>patch</strong> 层进入 running 之前，本步骤保持 <strong>running</strong>；不区分节点。</div>
+                          <div v-if="row.key === '__precheck__'" class="hint" style="margin:4px 0 0 4px;">在 <strong>patch</strong> 层状态为 <strong>running</strong> 或 <strong>done</strong> 之前，本步骤保持 <strong>running</strong>；不区分节点。</div>
                           <template v-if="tripleGroupedSubs(row).length">
                             <div
                               v-for="grp in tripleGroupedSubs(row)"

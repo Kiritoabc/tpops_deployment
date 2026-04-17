@@ -347,9 +347,10 @@ window.TPOPSDeploy = {
         const patch = roots.find((r) => r && r.id === 'patch');
         if (!patch) return 'running';
         const ps = normSt(patch.status);
-        if (ps === 'none') return 'running';
         if (ps === 'error') return 'error';
-        return 'done';
+        // 步骤零：仅当 patch 层已进入 running 或 done 时结束；否则保持 running
+        if (ps === 'running' || ps === 'done') return 'done';
+        return 'running';
       }
       return row.level_status || 'none';
     };
