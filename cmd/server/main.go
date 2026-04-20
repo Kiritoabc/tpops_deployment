@@ -44,7 +44,8 @@ func main() {
 		gin.SetMode(cfg.GinMode)
 	}
 	r := gin.New()
-	r.Use(gin.Recovery())
+	// 与 gin.Default() 一致：每个 HTTP 请求一行访问日志（stdout）；无请求时控制台保持安静属正常。
+	r.Use(gin.Logger(), gin.Recovery())
 	r.Use(middleware.RequestID())
 	r.Use(middleware.CORS())
 
