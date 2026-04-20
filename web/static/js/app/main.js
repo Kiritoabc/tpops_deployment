@@ -50,6 +50,7 @@ use_import_ca = no
         action: 'install',
         target: 'gaussdb',
         skip_package_sync: false,
+        use_raw_shell: false,
         package_release: null,
         package_artifact_ids: [],
         user_edit_content: USER_EDIT_TEMPLATE,

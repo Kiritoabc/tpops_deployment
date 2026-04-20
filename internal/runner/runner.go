@@ -91,7 +91,7 @@ func RunSSHDeployment(
 		}
 		absLog := deploypaths.AbsolutePath(host.DockerServiceRoot, logRel)
 
-		if err := SyncPackagesToRemote(ctx, repos, cfg.PackagesDir, host, secret, t, emit); err != nil {
+		if err := SyncPackagesToRemote(ctx, repos, cfg.FernetSecret, cfg.PackagesDir, host, secret, t, emit); err != nil {
 			_ = repos.UpdateTaskFinished(context.Background(), taskID, "failed", intPtr(1), err.Error())
 			emit(donePayload("failed", 1, err.Error()))
 			return
@@ -103,7 +103,8 @@ func RunSSHDeployment(
 			return
 		}
 
-		cmdLine := BuildRemoteCommand(host.DockerServiceRoot, t.Action, t.Target, useAppctlForAction(t.Action))
+		useAppctl := useAppctlForAction(t.Action) && t.UseRawShell == 0
+		cmdLine := BuildRemoteCommand(host.DockerServiceRoot, t.Action, t.Target, useAppctl)
 
 		inner := fmt.Sprintf(
 			`set -o pipefail; LOG=%s; mkdir -p "$(dirname "$LOG")"; cd %s; { %s; } 2>&1 | tee -a "$LOG"; exit ${PIPESTATUS[0]}`,

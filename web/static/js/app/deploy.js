@@ -725,6 +725,7 @@ window.TPOPSDeploy = {
           action: deployForm.action,
           target: deployForm.target,
           skip_package_sync: !!deployForm.skip_package_sync,
+          use_raw_shell: !!deployForm.use_raw_shell,
           package_release: deployForm.skip_package_sync ? null : deployForm.package_release,
           package_artifact_ids: deployForm.skip_package_sync ? [] : (deployForm.package_artifact_ids || []).slice(),
         };

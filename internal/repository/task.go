@@ -18,6 +18,7 @@ type DeploymentTask struct {
 	PackageReleaseID   *int64  `db:"package_release_id"`
 	PackageArtifactIDs string  `db:"package_artifact_ids"`
 	SkipPackageSync    int     `db:"skip_package_sync"` // SQLite 0/1
+	UseRawShell        int     `db:"use_raw_shell"`     // 1=target 整段 shell，不封装 appctl
 	Status             string  `db:"status"`
 	ExitCode           *int    `db:"exit_code"`
 	ErrorMessage       string  `db:"error_message"`
@@ -32,7 +33,7 @@ func (r *Repos) ListTasks(ctx context.Context) ([]DeploymentTask, error) {
 	var rows []DeploymentTask
 	err := r.db.SelectContext(ctx, &rows, `
 		SELECT id, host_id, action, target, deploy_mode, host_node2_id, host_node3_id,
-		       user_edit_content, remote_user_edit_path, remote_log_path, package_release_id, package_artifact_ids, skip_package_sync,
+		       user_edit_content, remote_user_edit_path, remote_log_path, package_release_id, package_artifact_ids, skip_package_sync, use_raw_shell,
 		       status, exit_code, error_message, created_by_id, created_at, updated_at, started_at, finished_at
 		FROM deployment_deploymenttask
 		ORDER BY created_at DESC`)

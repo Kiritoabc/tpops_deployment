@@ -19,6 +19,7 @@ type TaskDetailJSON struct {
 	Action             string  `json:"action"`
 	Target             string  `json:"target"`
 	SkipPackageSync    bool    `json:"skip_package_sync"`
+	UseRawShell        bool    `json:"use_raw_shell"`
 	Status             string  `json:"status"`
 	ExitCode           *int    `json:"exit_code"`
 	ErrorMessage       string  `json:"error_message"`
@@ -62,6 +63,7 @@ func (s *Service) buildTaskDetailJSON(ctx context.Context, t *repository.Deploym
 		Action:             t.Action,
 		Target:             t.Target,
 		SkipPackageSync:    t.SkipPackageSync != 0,
+		UseRawShell:        t.UseRawShell != 0,
 		Status:             t.Status,
 		ExitCode:           t.ExitCode,
 		ErrorMessage:       t.ErrorMessage,

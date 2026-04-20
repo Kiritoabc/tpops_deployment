@@ -737,6 +737,9 @@ window.TPOPSApp.template = String.raw`
                         <el-form-item label="目标参数">
                           <el-input v-model="deployForm.target" placeholder="precheck 类必填组件名（如 gaussdb）；install / upgrade / uninstall_all 按现场可留空"></el-input>
                         </el-form-item>
+                        <el-form-item label="执行方式">
+                          <el-checkbox v-model="deployForm.use_raw_shell">整段 shell（不封装 appctl；<code>target</code> 为远端 bash 脚本）</el-checkbox>
+                        </el-form-item>
                         <el-form-item label="安装包">
                           <div style="width:100%;">
                             <el-checkbox v-model="deployForm.skip_package_sync" @change="onSkipPackageChange">跳过同步（远端 <code>pkgs/</code> 已有介质）</el-checkbox>

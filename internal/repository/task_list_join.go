@@ -18,7 +18,7 @@ func (r *Repos) ListTasksJoined(ctx context.Context) ([]TaskListRow, error) {
 	err := r.db.SelectContext(ctx, &rows, `
 		SELECT
 			t.id, t.host_id, t.action, t.target, t.deploy_mode, t.host_node2_id, t.host_node3_id,
-			t.user_edit_content, t.remote_user_edit_path, t.remote_log_path, t.package_release_id, t.package_artifact_ids, t.skip_package_sync,
+			t.user_edit_content, t.remote_user_edit_path, t.remote_log_path, t.package_release_id, t.package_artifact_ids, t.skip_package_sync, t.use_raw_shell,
 			t.status, t.exit_code, t.error_message, t.created_by_id, t.created_at, t.updated_at, t.started_at, t.finished_at,
 			u.username AS created_by_username,
 			h1.name AS host_name,

@@ -22,6 +22,7 @@ type CreateTaskIn struct {
 	RemoteUserEdit     string  `json:"remote_user_edit_path"`
 	RemoteLogPath      string  `json:"remote_log_path"`
 	SkipPackageSync    bool    `json:"skip_package_sync"`
+	UseRawShell        bool    `json:"use_raw_shell"` // true：target 为整段 shell，不封装 appctl（即使 action 为 install 等）
 	PackageRelease     *int64  `json:"package_release"`
 	PackageArtifactIDs []int64 `json:"package_artifact_ids"`
 	// NoStart 为 true 时仅创建任务，不启动 Runner（默认会启动，与旧前端「创建即执行」一致）。
@@ -66,6 +67,10 @@ func (s *Service) CreateTask(ctx context.Context, userID int64, in CreateTaskIn)
 	if in.SkipPackageSync {
 		skip = 1
 	}
+	raw := 0
+	if in.UseRawShell {
+		raw = 1
+	}
 	artifactJSON := "[]"
 	if len(in.PackageArtifactIDs) > 0 {
 		b, err := json.Marshal(in.PackageArtifactIDs)
@@ -75,7 +80,7 @@ func (s *Service) CreateTask(ctx context.Context, userID int64, in CreateTaskIn)
 		artifactJSON = string(b)
 	}
 	id, err := s.repos.InsertTask(ctx, in.Host, in.HostNode2, in.HostNode3, action, strings.TrimSpace(in.Target), deployMode,
-		in.UserEditContent, strings.TrimSpace(in.RemoteUserEdit), strings.TrimSpace(in.RemoteLogPath), in.PackageRelease, skip, &uid)
+		in.UserEditContent, strings.TrimSpace(in.RemoteUserEdit), strings.TrimSpace(in.RemoteLogPath), in.PackageRelease, skip, raw, &uid)
 	if err != nil {
 		return nil, http.StatusInternalServerError, err
 	}
