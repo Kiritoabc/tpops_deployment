@@ -1,0 +1,6 @@
+*.db
+*.db-shm
+*.db-wal
+.fernet_secret
+.fernet_secret.tmp
+packages/

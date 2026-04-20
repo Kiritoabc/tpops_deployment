@@ -1,0 +1,77 @@
+// TPOPS 服务入口：Gin + SQLite + 内嵌静态页。
+package main
+
+import (
+	"context"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"tpops_deployment/internal/config"
+	"tpops_deployment/internal/db"
+	"tpops_deployment/internal/handler"
+	"tpops_deployment/internal/middleware"
+	"tpops_deployment/internal/repository"
+	"tpops_deployment/internal/service"
+	"tpops_deployment/internal/wshub"
+)
+
+func main() {
+	cfg := config.Load()
+	sqlDB, err := db.Open(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("db: %v", err)
+	}
+	defer sqlDB.Close()
+
+	if err := db.RunMigrations(sqlDB, cfg.MigrationsDir); err != nil {
+		log.Fatalf("migrations: %v", err)
+	}
+	if err := db.EnsurePackageTables(sqlDB); err != nil {
+		log.Fatalf("bootstrap schema: %v", err)
+	}
+
+	repos := repository.New(sqlDB)
+	hub := wshub.NewHub()
+	svc := service.New(repos, cfg, hub)
+	h := handler.New(svc, cfg, hub)
+
+	if cfg.GinMode != "" {
+		gin.SetMode(cfg.GinMode)
+	}
+	r := gin.New()
+	// 与 gin.Default() 一致：每个 HTTP 请求一行访问日志（stdout）；无请求时控制台保持安静属正常。
+	r.Use(gin.Logger(), gin.Recovery())
+	r.Use(middleware.RequestID())
+	r.Use(middleware.CORS())
+
+	h.Register(r)
+
+	srv := &http.Server{
+		Addr:              cfg.Listen,
+		Handler:           r,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       0,
+		WriteTimeout:      0,
+	}
+
+	go func() {
+		log.Printf("tpops-go listening on %s (sqlite)", cfg.Listen)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("shutdown: %v", err)
+	}
+}
