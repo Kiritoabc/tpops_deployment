@@ -467,16 +467,16 @@ window.TPOPSApp.template = String.raw`
                   </div>
                 </template>
                 <el-upload
-                  :action="packageUploadAction"
-                  :headers="packageUploadHeaders"
-                  name="file"
-                  :data="{ release: packageDetailRelease.id }"
-                  :on-success="onPackageUploadSuccess"
-                  :on-error="onPackageUploadError"
+                  :http-request="submitPackageArtifactUpload"
+                  :disabled="packageArtifactUploading"
                   :show-file-list="false"
                 >
-                  <el-button type="primary">选择文件上传</el-button>
+                  <el-button type="primary" :loading="packageArtifactUploading">选择文件上传</el-button>
                 </el-upload>
+                <div v-if="packageArtifactUploading || packageUploadProgress > 0" style="margin-top:12px;max-width:480px;">
+                  <el-progress :percentage="packageUploadProgress" :status="packageUploadProgress >= 100 ? 'success' : undefined" />
+                  <div class="hint" style="margin-top:6px;">上传中请勿关闭页面；大文件请耐心等待。</div>
+                </div>
               </el-card>
               <el-card shadow="never" class="deploy-task-card">
                 <template #header><span style="font-weight:600">包列表</span></template>

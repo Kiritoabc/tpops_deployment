@@ -7,8 +7,9 @@ window.TPOPSPackages = {
     const packageArtifacts = ref([]);
     const deployWizardArtifacts = ref([]);
 
-    const packageUploadAction = computed(() => `${location.origin}/api/packages/artifacts/`);
-    const packageUploadHeaders = computed(() => (auth.token.value ? { Authorization: 'Bearer ' + auth.token.value } : {}));
+    /** 0–100，由 axios onUploadProgress 更新 */
+    const packageUploadProgress = ref(0);
+    const packageArtifactUploading = ref(false);
 
     function normalizeListResponse(data) {
       if (Array.isArray(data)) return data;
@@ -125,8 +126,39 @@ window.TPOPSPackages = {
       fetchPackageReleases().catch(() => {});
     }
 
-    function onPackageUploadError() {
-      ElementPlus.ElMessage.error('上传失败');
+    /**
+     * Element Plus 自定义上传：带 JWT 与进度条（勿手写 Content-Type，否则无 boundary）。
+     */
+    async function submitPackageArtifactUpload(options) {
+      const releaseId = packageDetailRelease.value && packageDetailRelease.value.id;
+      if (!releaseId) {
+        if (options.onError) options.onError(new Error('未选择版本'));
+        return;
+      }
+      const rawFile = options.file;
+      packageArtifactUploading.value = true;
+      packageUploadProgress.value = 0;
+      const form = new FormData();
+      form.append('release', String(releaseId));
+      form.append('file', rawFile.raw || rawFile);
+      try {
+        await shared.api.post('/packages/artifacts/', form, {
+          onUploadProgress: (evt) => {
+            if (evt.total) packageUploadProgress.value = Math.round((evt.loaded * 100) / evt.total);
+            else packageUploadProgress.value = 0;
+          },
+        });
+        packageUploadProgress.value = 100;
+        if (options.onSuccess) options.onSuccess({});
+        onPackageUploadSuccess();
+      } catch (e) {
+        const d = e.response && e.response.data;
+        const msg = d && typeof d === 'object' ? JSON.stringify(d) : (d || e.message || '上传失败');
+        ElementPlus.ElMessage.error(msg);
+        if (options.onError) options.onError(e);
+      } finally {
+        packageArtifactUploading.value = false;
+      }
     }
 
     async function loadDeployWizardArtifacts(releaseId) {
@@ -159,8 +191,6 @@ window.TPOPSPackages = {
       packageDetailRelease,
       packageArtifacts,
       deployWizardArtifacts,
-      packageUploadAction,
-      packageUploadHeaders,
       normalizeListResponse,
       getPackageById,
       fetchPackageReleases,
@@ -172,7 +202,9 @@ window.TPOPSPackages = {
       deletePackageRelease,
       deletePackageArtifact,
       onPackageUploadSuccess,
-      onPackageUploadError,
+      packageUploadProgress,
+      packageArtifactUploading,
+      submitPackageArtifactUpload,
       loadDeployWizardArtifacts,
       onDeployPackageReleaseChange,
       onSkipPackageChange,

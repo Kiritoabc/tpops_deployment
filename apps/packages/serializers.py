@@ -37,22 +37,19 @@ class PackageArtifactSerializer(serializers.ModelSerializer):
         return getattr(u, "username", None) or ""
 
 
-class PackageArtifactCreateSerializer(serializers.ModelSerializer):
-    """multipart 上传：file + 可选 remote_basename（缺省则用上传文件名规范化，见 validate）"""
+class PackageArtifactCreateSerializer(serializers.Serializer):
+    """
+    multipart：release + file；remote_basename 可选（缺省由上传文件名推导）。
 
-    class Meta:
-        model = PackageArtifact
-        fields = ("release", "file", "remote_basename")
-        # 模型字段 remote_basename 无 blank=True，ModelSerializer 会误判为必填；
-        # 实际上传常只带 file，远端名在 validate 里从 original_name 推导。
-        extra_kwargs = {
-            "remote_basename": {"required": False, "allow_blank": True},
-        }
+    使用显式 Serializer 而非 ModelSerializer，避免模型上 CharField 无 blank=True
+    时被 DRF 误判为「必填」——浏览器原生 multipart 常不传该字段。
+    """
 
-    def validate_release(self, value):
-        if value is None:
-            raise serializers.ValidationError("请选择版本")
-        return value
+    release = serializers.PrimaryKeyRelatedField(queryset=PackageRelease.objects.all())
+    file = serializers.FileField()
+    remote_basename = serializers.CharField(
+        max_length=255, required=False, allow_blank=True, default=""
+    )
 
     def validate(self, attrs):
         f = attrs.get("file")
