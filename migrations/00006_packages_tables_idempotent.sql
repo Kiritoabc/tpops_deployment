@@ -1,5 +1,5 @@
 -- +goose Up
--- 与 00004 等价但每条语句单独提交，避免 SQLite 在单事务内多条 DDL 未生效的问题。
+-- 幂等补建：若 00004 未在库中生效，此处用同一文件内多条语句（仅一个 Up 块，符合 goose 规则）。
 CREATE TABLE IF NOT EXISTS packages_packagerelease (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(255) NOT NULL,
@@ -8,11 +8,7 @@ CREATE TABLE IF NOT EXISTS packages_packagerelease (
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
 );
-
--- +goose Up
 CREATE INDEX IF NOT EXISTS packages_release_created_by ON packages_packagerelease(created_by_id);
-
--- +goose Up
 CREATE TABLE IF NOT EXISTS packages_packageartifact (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     release_id INTEGER NOT NULL REFERENCES packages_packagerelease(id) ON DELETE CASCADE,
@@ -25,8 +21,6 @@ CREATE TABLE IF NOT EXISTS packages_packageartifact (
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
 );
-
--- +goose Up
 CREATE INDEX IF NOT EXISTS packages_artifact_release ON packages_packageartifact(release_id);
 
 -- +goose Down
