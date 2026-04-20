@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import threading
+import time
 
 import yaml
 
@@ -40,12 +41,66 @@ def _channel_group(task_id: int) -> str:
     return "deployment_%s" % task_id
 
 
-def _emit(task_id: int, payload: dict):
+# 每条 log 都 group_send 会在 InMemoryChannelLayer 下频繁跨线程调度，短行输出严重积压；合并后再发。
+_LOG_BATCH_LOCK = threading.RLock()
+_LOG_BATCH_BUF = {}  # task_id -> {"parts": [str,...], "t0": monotonic}
+
+# 合并阈值：字符数或距首片段时间（毫秒），取先达者即 flush
+_LOG_BATCH_MAX_CHARS = 2048
+_LOG_BATCH_MAX_MS = 40
+
+
+def _emit_immediate(task_id: int, payload: dict):
     layer = get_channel_layer()
     async_to_sync(layer.group_send)(
         _channel_group(task_id),
         {"type": "deployment_event", "payload": payload},
     )
+
+
+def _flush_log_batch_for_task(task_id: int) -> None:
+    """将积压的 log 文本一次发出（须在持锁外调用 group_send）。"""
+    with _LOG_BATCH_LOCK:
+        st = _LOG_BATCH_BUF.pop(task_id, None)
+    if not st or not st.get("parts"):
+        return
+    merged = "".join(st["parts"])
+    if merged:
+        _emit_immediate(task_id, {"type": "log", "data": merged})
+
+
+def _emit(task_id: int, payload: dict):
+    # 非 log 或与 manifest 等交错时，先刷掉本任务待发日志，避免阶段消息跑到旧日志前
+    if payload.get("type") != "log" or not isinstance(payload.get("data"), str):
+        _flush_log_batch_for_task(task_id)
+        _emit_immediate(task_id, payload)
+        return
+
+    text = payload["data"]
+    if not text:
+        return
+
+    now = time.monotonic()
+    flush_now = False
+    merged_only = None
+    with _LOG_BATCH_LOCK:
+        st = _LOG_BATCH_BUF.get(task_id)
+        if st is None:
+            st = {"parts": [], "t0": now}
+            _LOG_BATCH_BUF[task_id] = st
+        if not st["parts"]:
+            st["t0"] = now
+        st["parts"].append(text)
+        total = sum(len(x) for x in st["parts"])
+        age_ms = (now - st["t0"]) * 1000
+        if total >= _LOG_BATCH_MAX_CHARS or age_ms >= _LOG_BATCH_MAX_MS:
+            merged_only = "".join(st["parts"])
+            st["parts"] = []
+            st["t0"] = now
+            flush_now = True
+
+    if flush_now and merged_only:
+        _emit_immediate(task_id, {"type": "log", "data": merged_only})
 
 
 def _deploy_root(host) -> str:
@@ -858,8 +913,8 @@ def _run_task_body(task_id: int):
     buffer = ""
     stream_for_init_scan = ""
     init_stdout_hinted = False
-    # 按行尽快推送日志（原先每 256 字节才 emit，无换行时 stdout 易整块缓冲，界面几乎不动）
-    _LOG_LINE_FLUSH_MAX = 120
+    # 无换行时尽快按小块推送（与 _emit 内 batch 合并配合，避免单行过长卡住）
+    _LOG_LINE_FLUSH_MAX = 64
 
     def _flush_log_lines(buf: str, emit_partial_tail: bool) -> str:
         """Emit complete lines; optionally emit tail without trailing \\n if long enough."""
@@ -919,12 +974,14 @@ def _run_task_body(task_id: int):
                     if buffer:
                         _emit(task_id, {"type": "log", "data": buffer})
                 buffer = ""
+                _flush_log_batch_for_task(task_id)
                 break
             buffer = _flush_log_lines(buffer, emit_partial_tail=True)
         if buffer:
             buffer = _flush_log_lines(buffer, emit_partial_tail=True)
             if buffer:
                 _emit(task_id, {"type": "log", "data": buffer})
+        _flush_log_batch_for_task(task_id)
     except Exception as exc:
         task.status = DeploymentTask.STATUS_FAILED
         task.error_message = str(exc)
