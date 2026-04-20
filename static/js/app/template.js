@@ -1,70 +1,94 @@
 window.TPOPSApp = window.TPOPSApp || {};
 window.TPOPSApp.template = String.raw`
-    <!-- 登录（TPOPS Platform 科技风参考） -->
-    <div v-if="!token" class="login-wrap">
-      <div class="login-bg-pattern" aria-hidden="true"></div>
-      <div class="login-bg-dots" aria-hidden="true"></div>
-      <div class="login-bg-glow login-bg-glow--tl" aria-hidden="true"></div>
-      <div class="login-bg-glow login-bg-glow--br" aria-hidden="true"></div>
-      <div class="login-panel">
-        <div class="login-brand">
-          <div class="login-brand-icon" aria-hidden="true">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-          </div>
-          <h1 class="login-brand-title">TPOPS <span class="login-brand-sub">Platform</span></h1>
-          <p class="login-brand-tagline">Technical Platform Operations</p>
-        </div>
-        <div class="login-form-switcher">
-          <div class="login-switch-slider" :class="{ 'is-register': loginPanelTab === 'register' }"></div>
-          <button type="button" class="login-switch-item" :class="{ active: loginPanelTab === 'login' }" @click="loginPanelTab = 'login'">身份验证</button>
-          <button type="button" class="login-switch-item" :class="{ active: loginPanelTab === 'register' }" @click="loginPanelTab = 'register'">申请访问</button>
-        </div>
-        <div class="login-forms-clip">
-          <div class="login-forms-track" :class="{ 'is-register': loginPanelTab === 'register' }">
-            <div class="login-form-col">
-              <el-form :model="loginForm" label-position="top" class="login-el-form" @keyup.enter="doLogin">
-                <el-form-item label="用户名" class="login-form-item-plain">
-                  <el-input v-model="loginForm.username" size="large" autocomplete="username" placeholder="管理员账号 / ID" class="login-el-input"></el-input>
-                </el-form-item>
-                <el-form-item label="密码" class="login-form-item-plain">
-                  <el-input v-model="loginForm.password" size="large" type="password" show-password autocomplete="current-password" placeholder="访问令牌 / 密码" class="login-el-input"></el-input>
-                </el-form-item>
-                <div class="login-row-meta">
-                  <label class="login-remember"><input type="checkbox" /> 记住该设备</label>
-                  <span class="login-forgot-pseudo">忘记凭证?</span>
-                </div>
-                <el-button type="primary" class="login-submit-btn" size="large" :loading="loading" @click="doLogin">验证并进入系统</el-button>
-              </el-form>
+    <!-- 登录（华为云风格：左宣传 + 右表单，无外链 Tailwind） -->
+    <div v-if="!token" class="login-wrap login-wrap--hw">
+      <div class="login-hw-card">
+        <div class="login-hw-promo" aria-hidden="false">
+          <div class="login-hw-promo-inner">
+            <div class="login-hw-promo-head">
+              <svg class="login-hw-promo-logo" width="32" height="32" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+              <span class="login-hw-promo-cloud">HUAWEI CLOUD</span>
             </div>
-            <div class="login-form-col">
-              <el-form :model="regForm" label-position="top" class="login-el-form">
-                <el-form-item label="用户名" class="login-form-item-plain">
-                  <el-input v-model="regForm.username" size="large" autocomplete="username" placeholder="登录用户名" class="login-el-input"></el-input>
-                </el-form-item>
-                <el-form-item label="邮箱" class="login-form-item-plain">
-                  <el-input v-model="regForm.email" size="large" autocomplete="email" placeholder="工作邮箱" class="login-el-input"></el-input>
-                </el-form-item>
-                <el-form-item label="密码" class="login-form-item-plain">
-                  <el-input v-model="regForm.password" size="large" type="password" show-password autocomplete="new-password" placeholder="密码" class="login-el-input"></el-input>
-                </el-form-item>
-                <el-form-item label="确认密码" class="login-form-item-plain">
-                  <el-input v-model="regForm.password_confirm" size="large" type="password" show-password autocomplete="new-password" placeholder="再次输入密码" class="login-el-input"></el-input>
-                </el-form-item>
-                <el-form-item label="角色" class="login-form-item-plain">
-                  <el-select v-model="regForm.role" size="large" placeholder="选择角色" style="width:100%">
-                    <el-option label="只读" value="viewer"></el-option>
-                    <el-option label="操作员" value="operator"></el-option>
-                    <el-option label="管理员" value="admin"></el-option>
-                  </el-select>
-                </el-form-item>
-                <el-button type="primary" class="login-submit-btn" size="large" :loading="loading" @click="doRegister">提交访问申请</el-button>
-              </el-form>
+            <h2 class="login-hw-promo-title">TPOPS 运维管理平台</h2>
+            <p class="login-hw-promo-desc">
+              面向云原生架构的一站式运维解决方案。<br />
+              提供全链路监控、自动化部署及智能自愈能力。
+            </p>
+            <div class="login-hw-promo-tags">
+              <span>节点治理</span>
+              <span>智能告警</span>
+              <span>架构拓扑</span>
             </div>
           </div>
+          <svg class="login-hw-node-deco" width="200" height="200" viewBox="0 0 100 100" aria-hidden="true">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="white" stroke-width="0.5" stroke-dasharray="2 2" />
+            <circle cx="50" cy="50" r="2" fill="white" />
+            <circle cx="20" cy="30" r="1.5" fill="white" />
+            <circle cx="80" cy="40" r="1.5" fill="white" />
+            <line x1="50" y1="50" x2="20" y2="30" stroke="white" stroke-width="0.2" />
+            <line x1="50" y1="50" x2="80" y2="40" stroke="white" stroke-width="0.2" />
+          </svg>
         </div>
-        <div class="login-footer-meta">TPOPS 白屏化部署 · JWT 鉴权 · 请妥善保管账号</div>
+        <div class="login-hw-form-side">
+          <div class="login-hw-tabs">
+            <button type="button" class="login-hw-tab" :class="{ active: loginPanelTab === 'login' }" @click="loginPanelTab = 'login'">账号登录</button>
+            <button type="button" class="login-hw-tab" :class="{ active: loginPanelTab === 'register' }" @click="loginPanelTab = 'register'">立即注册</button>
+          </div>
+          <div class="login-forms-clip login-hw-forms-clip">
+            <div class="login-forms-track" :class="{ 'is-register': loginPanelTab === 'register' }">
+              <div class="login-form-col login-hw-form-col">
+                <el-form :model="loginForm" label-position="top" class="login-el-form login-hw-el-form" @keyup.enter="doLogin">
+                  <el-form-item label="IAM 用户名 / 账号名" class="login-form-item-hw">
+                    <el-input v-model="loginForm.username" size="large" autocomplete="username" placeholder="请输入用户名" class="login-el-input login-hw-input"></el-input>
+                  </el-form-item>
+                  <el-form-item label="密码" class="login-form-item-hw">
+                    <el-input v-model="loginForm.password" size="large" type="password" show-password autocomplete="current-password" placeholder="请输入密码" class="login-el-input login-hw-input"></el-input>
+                  </el-form-item>
+                  <div class="login-row-meta login-hw-row-meta">
+                    <label class="login-remember"><input type="checkbox" /> 记住账号</label>
+                    <span class="login-forgot-pseudo">忘记密码？</span>
+                  </div>
+                  <el-button type="primary" class="login-submit-btn login-hw-submit" size="large" :loading="loading" @click="doLogin">登录</el-button>
+                </el-form>
+              </div>
+              <div class="login-form-col login-hw-form-col">
+                <el-form :model="regForm" label-position="top" class="login-el-form login-hw-el-form">
+                  <el-form-item label="用户名" class="login-form-item-hw">
+                    <el-input v-model="regForm.username" size="large" autocomplete="username" placeholder="登录用户名" class="login-el-input login-hw-input"></el-input>
+                  </el-form-item>
+                  <el-form-item label="邮箱" class="login-form-item-hw">
+                    <el-input v-model="regForm.email" size="large" autocomplete="email" placeholder="工作邮箱" class="login-el-input login-hw-input"></el-input>
+                  </el-form-item>
+                  <el-form-item label="密码" class="login-form-item-hw">
+                    <el-input v-model="regForm.password" size="large" type="password" show-password autocomplete="new-password" placeholder="密码" class="login-el-input login-hw-input"></el-input>
+                  </el-form-item>
+                  <el-form-item label="确认密码" class="login-form-item-hw">
+                    <el-input v-model="regForm.password_confirm" size="large" type="password" show-password autocomplete="new-password" placeholder="再次输入密码" class="login-el-input login-hw-input"></el-input>
+                  </el-form-item>
+                  <el-form-item label="角色" class="login-form-item-hw">
+                    <el-select v-model="regForm.role" size="large" placeholder="选择角色" class="login-hw-select" style="width:100%">
+                      <el-option label="只读" value="viewer"></el-option>
+                      <el-option label="操作员" value="operator"></el-option>
+                      <el-option label="管理员" value="admin"></el-option>
+                    </el-select>
+                  </el-form-item>
+                  <el-button type="primary" class="login-submit-btn login-hw-submit" size="large" :loading="loading" @click="doRegister">注册</el-button>
+                </el-form>
+              </div>
+            </div>
+          </div>
+          <div class="login-hw-register-hint" v-show="loginPanelTab === 'login'">
+            还没有账号？<button type="button" class="login-hw-link-btn" @click="loginPanelTab = 'register'">立即注册</button>
+          </div>
+          <div class="login-hw-register-hint" v-show="loginPanelTab === 'register'">
+            已有账号？<button type="button" class="login-hw-link-btn" @click="loginPanelTab = 'login'">返回登录</button>
+          </div>
+          <div class="login-hw-footer-links">
+            <span class="login-hw-footer-muted">TPOPS 白屏化部署 · JWT 鉴权</span>
+          </div>
+        </div>
       </div>
     </div>
 
