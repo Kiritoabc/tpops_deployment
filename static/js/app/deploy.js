@@ -15,7 +15,7 @@ window.TPOPSDeploy = {
     const deployWizardSteps = [
       { key: 'mode', title: '部署形态', desc: '单节点或三节点拓扑' },
       { key: 'hosts', title: '选择节点', desc: '指定执行 SSH 与 appctl 的主机' },
-      { key: 'packages', title: '选择安装包', desc: 'TPOPS GaussDB 介质与 CPU/OS 校验' },
+      { key: 'packages', title: '选择安装包', desc: 'TPOPS GaussDB 介质与文件名约定' },
       { key: 'config', title: '操作与配置', desc: 'appctl 动作与 user_edit 内容' },
     ];
 
@@ -49,14 +49,8 @@ window.TPOPSDeploy = {
         setDeployPackageStepError('请勾选要下发的安装包，或勾选「跳过同步」若远端已有介质。');
         return false;
       }
-      const cpuHint = String(deployForm.package_cpu_type || '').trim().toLowerCase();
-      const osHint = String(deployForm.package_os_type || '').trim().toLowerCase();
       const action = deployForm.action;
       if ((action === 'install' || action === 'upgrade')) {
-        if (!cpuHint || !osHint) {
-          setDeployPackageStepError('安装 / 升级且同步介质时，请填写「CPU 类型」与「OS 类型」（须与包名中的段一致，例如 Hce 内核包应选 OS 为 Hce）。');
-          return false;
-        }
         const arts = deployWizardArtifacts.value || [];
         const selected = arts.filter((a) => ids.indexOf(a.id) >= 0);
         let nTp = 0;
@@ -66,14 +60,6 @@ window.TPOPSDeploy = {
           const inf = classifyDeployArtifactBasename(selected[i].remote_basename);
           if (inf.role === 'unknown') {
             setDeployPackageStepError('文件名不符合约定：' + selected[i].remote_basename + '。须为 TPOPS-GaussDB-Server_{CPU}_*.tar.gz、DBS-GaussDB-Kernel_{CPU}_*.tar.gz 或 DBS-GaussDB-{OS}-Kernel_{CPU}_*.tar.gz。');
-            return false;
-          }
-          if (String(inf.cpu || '').toLowerCase() !== cpuHint) {
-            setDeployPackageStepError('包「' + selected[i].remote_basename + '」中的 CPU 与上方所选「CPU 类型」不一致，请修改下拉或更换包。');
-            return false;
-          }
-          if (inf.role === 'os_kernel' && String(inf.os || '').toLowerCase() !== osHint) {
-            setDeployPackageStepError('包「' + selected[i].remote_basename + '」中的 OS 段为「' + (inf.os || '') + '」，与上方所选「OS 类型」不一致（例如 Hce 内核包请选择 OS 类型 Hce）。');
             return false;
           }
           if (inf.role === 'tpops_server') nTp += 1;
@@ -799,8 +785,6 @@ window.TPOPSDeploy = {
           skip_package_sync: !!deployForm.skip_package_sync,
           package_release: deployForm.skip_package_sync ? null : deployForm.package_release,
           package_artifact_ids: deployForm.skip_package_sync ? [] : (deployForm.package_artifact_ids || []).slice(),
-          package_cpu_type: deployForm.skip_package_sync ? '' : String(deployForm.package_cpu_type || '').trim(),
-          package_os_type: deployForm.skip_package_sync ? '' : String(deployForm.package_os_type || '').trim(),
         };
         if (deployForm.deploy_mode === 'triple') {
           body.host_node2 = deployForm.host_node2;

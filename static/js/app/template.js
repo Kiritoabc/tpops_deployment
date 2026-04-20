@@ -720,23 +720,11 @@ window.TPOPSApp.template = String.raw`
 
                     <div v-show="deployStep === 2">
                       <h2 class="installer-step-heading">选择安装包</h2>
-                      <p class="installer-step-lead">安装 / 升级且同步介质时，需选择 TPOPS 主包（必选）及可选 om-agent / OS 内核包；文件名须含所选 CPU、OS 段。</p>
+                      <p class="installer-step-lead">安装 / 升级且同步介质时，需选择 TPOPS 主包（必选）及可选 om-agent / OS 内核包；包名须符合约定（CPU/OS 由文件名自身体现，无需单独选择）。</p>
                       <el-alert v-if="deployPackageStepError" type="warning" :closable="false" show-icon style="margin-bottom:12px;max-width:720px;">
                         <template #title><span style="white-space:pre-wrap;" v-text="deployPackageStepError"></span></template>
                       </el-alert>
                       <el-form label-width="112px" label-position="left" style="max-width:720px;">
-                        <el-form-item label="CPU 类型">
-                          <el-select v-model="deployForm.package_cpu_type" filterable allow-create default-first-option placeholder="如 x86_64" style="width:100%;max-width:320px;">
-                            <el-option label="x86_64" value="x86_64"></el-option>
-                            <el-option label="aarch64" value="aarch64"></el-option>
-                          </el-select>
-                        </el-form-item>
-                        <el-form-item label="OS 类型">
-                          <el-select v-model="deployForm.package_os_type" filterable allow-create default-first-option placeholder="须与包名一致，如 Hce / openEuler" style="width:100%;max-width:320px;">
-                            <el-option label="openEuler" value="openEuler"></el-option>
-                            <el-option label="Hce（华为云 Hce 内核包名中的 OS 段）" value="Hce"></el-option>
-                          </el-select>
-                        </el-form-item>
                         <el-form-item label="安装包">
                           <div style="width:100%;">
                             <el-checkbox v-model="deployForm.skip_package_sync" @change="onSkipPackageChange">跳过同步（远端 <code>pkgs/</code> 已有介质）</el-checkbox>

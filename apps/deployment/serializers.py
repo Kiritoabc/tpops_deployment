@@ -114,8 +114,6 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
             "target",
             "package_release",
             "package_artifact_ids",
-            "package_cpu_type",
-            "package_os_type",
             "skip_package_sync",
         )
 
@@ -175,11 +173,6 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
                     )
         attrs["package_artifact_ids"] = ids
 
-        cpu_hint = (attrs.get("package_cpu_type") or "").strip()
-        os_hint = (attrs.get("package_os_type") or "").strip()
-        attrs["package_cpu_type"] = cpu_hint
-        attrs["package_os_type"] = os_hint
-
         if skip:
             attrs["package_release"] = None
             attrs["package_artifact_ids"] = []
@@ -200,15 +193,6 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
                 )
             action = attrs.get("action")
             if action in (DeploymentTask.INSTALL, DeploymentTask.UPGRADE):
-                if not cpu_hint or not os_hint:
-                    raise serializers.ValidationError(
-                        {
-                            "package_cpu_type": "安装 / 升级且同步介质时需填写 CPU 与 OS 类型（用于校验文件名）",
-                            "package_os_type": "安装 / 升级且同步介质时需填写 CPU 与 OS 类型（用于校验文件名）",
-                        }
-                    )
-                cpu_key = cpu_hint.lower()
-                os_key = os_hint.lower()
                 roles = []
                 for art in qs:
                     info = classify_package_basename(art.remote_basename)
@@ -236,24 +220,6 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
                             "package_artifact_ids": "om-agent 内核包与 OS 内核包每种至多选择一个"
                         }
                     )
-                for name, inf in roles:
-                    icpu = (inf.get("cpu") or "").lower()
-                    if icpu != cpu_key:
-                        raise serializers.ValidationError(
-                            {
-                                "package_artifact_ids": "文件 %s 中的 CPU 类型与所选「%s」不一致"
-                                % (name, cpu_hint)
-                            }
-                        )
-                    if inf["role"] == ROLE_OS_KERNEL:
-                        ios = (inf.get("os") or "").lower()
-                        if ios != os_key:
-                            raise serializers.ValidationError(
-                                {
-                                    "package_artifact_ids": "文件 %s 中的 OS 段与所选「%s」不一致"
-                                    % (name, os_hint)
-                                }
-                            )
         else:
             if ids:
                 raise serializers.ValidationError(
@@ -274,6 +240,6 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
         if validated_data.get("skip_package_sync"):
             validated_data["package_release"] = None
             validated_data["package_artifact_ids"] = []
-            validated_data["package_cpu_type"] = ""
-            validated_data["package_os_type"] = ""
+        validated_data["package_cpu_type"] = ""
+        validated_data["package_os_type"] = ""
         return super().create(validated_data)

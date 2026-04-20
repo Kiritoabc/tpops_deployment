@@ -19,9 +19,9 @@
 
 ## 数据模型
 
-- `DeploymentTask.package_cpu_type`、`package_os_type`：用于校验文件名中的 `{CPU}`、`{OS}`；向导提供下拉默认值。
+- `DeploymentTask.package_cpu_type`、`package_os_type`：字段保留；创建任务时不再由向导填写，服务端写空字符串。安装 / 升级时的介质规则仅依赖**文件名模式**（不再与用户所选 CPU/OS 交叉校验）。
 
 ## 验收
 
-- 向导四步可走完；`install`/`upgrade` 未跳过时必选 TPOPS 主包且文件名符合 CPU/OS 约定。
+- 向导四步可走完；`install`/`upgrade` 未跳过时必选 TPOPS 主包且所选包文件名符合约定模式。
 - 任务执行日志可见 `/data` 与 `pkgs` 准备阶段；`appctl` 行为不变。
