@@ -54,18 +54,23 @@ go run ./cmd/server
 {
   "host": 1,
   "action": "install",
-  "target": "echo step1 && your-remote-command-here",
+  "target": "gaussdb",
   "deploy_mode": "single",
   "user_edit_content": "...",
-  "skip_package_sync": true,
+  "package_release": 1,
+  "package_artifact_ids": [1, 2],
+  "skip_package_sync": false,
   "no_start": false
 }
 ```
 
-`target` 在远端以 `bash -lc` 在部署根目录下执行（输出写入 `remote_log_path`，默认 `logs/deploy_<id>.log`）。
+- **`action`** 为 `install` / `upgrade` / `uninstall_all` / `precheck_install` / `precheck_upgrade` 时，Runner 在部署根下执行 **`appctl <子命令> <target>`**（优先 `$ROOT/appctl`，否则 `PATH` 中的 `appctl`）。**`target`** 为传给 appctl 的**组件名**（如 `gaussdb`），勿再写整段 shell。
+- **其它 `action`**：仍把 **`target` 当作整段 shell** 在部署根下执行（高级用法）。
+- **`skip_package_sync`: false** 且提供 **`package_release` + `package_artifact_ids`** 时，Runner 会先将文件 **SFTP 到远端** `<部署根>/pkgs/<文件名>`，再跑 appctl/shell。
+- 日志仍写入 `remote_log_path`（默认 `logs/deploy_<id>.log`）。
 
 ## 与完整后端的差异（前端兼容说明）
 
-- 安装包文件存于本地 `data/packages/release_<id>/`；与远端 `pkgs/` 同步等能力可按需扩展。
+- 安装包本地目录：`data/packages/release_<id>/`；远端目录：`<部署根>/pkgs/`。
 
 详见 `plan/plan-go-gin-sqlite-lightweight.md`。

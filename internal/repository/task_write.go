@@ -6,16 +6,16 @@ import (
 )
 
 // InsertTask 创建 pending 任务，返回新 id。
-func (r *Repos) InsertTask(ctx context.Context, hostID int64, hostNode2, hostNode3 *int64, action, target, deployMode, userEdit, remotePath, remoteLogPath string, skipSync int, createdBy *int64) (int64, error) {
+func (r *Repos) InsertTask(ctx context.Context, hostID int64, hostNode2, hostNode3 *int64, action, target, deployMode, userEdit, remotePath, remoteLogPath string, packageReleaseID *int64, skipSync int, createdBy *int64) (int64, error) {
 	if deployMode == "" {
 		deployMode = "single"
 	}
 	res, err := r.db.ExecContext(ctx, `
 		INSERT INTO deployment_deploymenttask (
 			host_id, host_node2_id, host_node3_id, action, target, deploy_mode, user_edit_content, remote_user_edit_path, remote_log_path,
-			package_artifact_ids, skip_package_sync, status, created_by_id
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, 'pending', ?)`,
-		hostID, hostNode2, hostNode3, action, target, deployMode, userEdit, remotePath, remoteLogPath, skipSync, createdBy)
+			package_release_id, package_artifact_ids, skip_package_sync, status, created_by_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, 'pending', ?)`,
+		hostID, hostNode2, hostNode3, action, target, deployMode, userEdit, remotePath, remoteLogPath, packageReleaseID, skipSync, createdBy)
 	if err != nil {
 		return 0, err
 	}

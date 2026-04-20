@@ -21,6 +21,16 @@ type Broadcaster interface {
 // ConfigSubset runner 所需配置子集。
 type ConfigSubset struct {
 	FernetSecret string
+	PackagesDir  string // 本地安装包根目录（与上传存储一致）
+}
+
+func useAppctlForAction(action string) bool {
+	switch strings.TrimSpace(action) {
+	case "install", "upgrade", "uninstall_all", "precheck_install", "precheck_upgrade":
+		return true
+	default:
+		return false
+	}
 }
 
 // RunSSHDeployment 在后台执行：认领 pending→running、SSH 流式命令、可选 manifest 轮询、写库终态。
@@ -81,10 +91,13 @@ func RunSSHDeployment(
 		}
 		absLog := deploypaths.AbsolutePath(host.DockerServiceRoot, logRel)
 
-		cmdLine := strings.TrimSpace(t.Target)
-		if cmdLine == "" {
-			cmdLine = "echo \"[TPOPS] 未配置 target 远程命令，跳过\""
+		if err := SyncPackagesToRemote(context.Background(), repos, cfg.PackagesDir, host, secret, t, emit); err != nil {
+			_ = repos.UpdateTaskFinished(context.Background(), taskID, "failed", intPtr(1), err.Error())
+			emit(donePayload("failed", 1, err.Error()))
+			return
 		}
+
+		cmdLine := BuildRemoteCommand(host.DockerServiceRoot, t.Action, t.Target, useAppctlForAction(t.Action))
 
 		inner := fmt.Sprintf(
 			`set -o pipefail; LOG=%s; mkdir -p "$(dirname "$LOG")"; cd %s; { %s; } 2>&1 | tee -a "$LOG"; exit ${PIPESTATUS[0]}`,

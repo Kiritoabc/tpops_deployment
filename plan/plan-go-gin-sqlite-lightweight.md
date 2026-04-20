@@ -104,4 +104,5 @@ CI：`go test ./...` 在仓库根执行。
 - **2026-04**：Runner：`POST /api/deployment/tasks/`、`POST .../start/`、`RunRemoteStream`、`phase`/`log`/`manifest`/`done`；`GET /ws/deploy/:id/log/`；`POST /api/auth/token/refresh/`；DB 列 `remote_log_path`。
 - **2026-04**：从 `main` 迁入 **`web/templates/index.html`** 与 **`web/static/**`；任务列表/详情 JSON 与前端对齐；`deploy.js` 兼容 Go WS。
 - **2026-04**：**主机录入**：`POST/PATCH/DELETE /api/hosts/`、`POST .../test_connection/`；Fernet **Encrypt**；列表 `owner_username`。
-- **2026-04**：**安装包**：`packages_packagerelease` / `packages_packageartifact`、本地 `data/packages/` 存储、REST + multipart 上传；Fernet 密钥文件回退。**待办**：`appctl` 封装、登录限流、与远端 pkgs 同步。
+- **2026-04**：**安装包**：`packages_packagerelease` / `packages_packageartifact`、本地 `data/packages/` 存储、REST + multipart 上传；Fernet 密钥文件回退。
+- **2026-04**：Runner：**SFTP 同步**选中制品到远端 `<部署根>/pkgs/`；**appctl 封装**（install/upgrade/uninstall_all/precheck_*）。**待办**：登录限流、user_edit 下发远端、多节点并行同步。

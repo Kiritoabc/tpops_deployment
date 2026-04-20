@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"strings"
 )
 
 type PackageRelease struct {
@@ -74,6 +75,24 @@ type PackageArtifact struct {
 	Size           int64  `db:"size"`
 	Sha256         string `db:"sha256"`
 	CreatedAt      string `db:"created_at"`
+}
+
+// ListArtifactsByIDs 按主键批量读取（用于任务关联的安装包）。
+func (r *Repos) ListArtifactsByIDs(ctx context.Context, ids []int64) ([]PackageArtifact, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	q := "SELECT id, release_id, original_name, remote_basename, storage_path, size, sha256, created_at FROM packages_packageartifact WHERE id IN (" +
+		strings.Join(placeholders, ",") + ") ORDER BY id"
+	var rows []PackageArtifact
+	err := r.db.SelectContext(ctx, &rows, q, args...)
+	return rows, err
 }
 
 func (r *Repos) ListArtifactsByRelease(ctx context.Context, releaseID int64) ([]PackageArtifact, error) {

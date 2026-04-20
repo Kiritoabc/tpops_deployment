@@ -75,11 +75,11 @@ func (s *Service) CreateTask(ctx context.Context, userID int64, in CreateTaskIn)
 		artifactJSON = string(b)
 	}
 	id, err := s.repos.InsertTask(ctx, in.Host, in.HostNode2, in.HostNode3, action, strings.TrimSpace(in.Target), deployMode,
-		in.UserEditContent, strings.TrimSpace(in.RemoteUserEdit), strings.TrimSpace(in.RemoteLogPath), skip, &uid)
+		in.UserEditContent, strings.TrimSpace(in.RemoteUserEdit), strings.TrimSpace(in.RemoteLogPath), in.PackageRelease, skip, &uid)
 	if err != nil {
 		return nil, http.StatusInternalServerError, err
 	}
-	if artifactJSON != "[]" || in.PackageRelease != nil {
+	if artifactJSON != "[]" {
 		if err := s.repos.UpdateTaskPackageFields(ctx, id, in.PackageRelease, artifactJSON); err != nil {
 			return nil, http.StatusInternalServerError, err
 		}
@@ -107,7 +107,7 @@ func (s *Service) StartRunner(taskID, userID int64) {
 	if err != nil || !ok {
 		return
 	}
-	cfg := runner.ConfigSubset{FernetSecret: s.cfg.FernetSecret}
+	cfg := runner.ConfigSubset{FernetSecret: s.cfg.FernetSecret, PackagesDir: s.cfg.PackagesStorageDir}
 	runner.RunSSHDeployment(context.Background(), taskID, userID, s.repos, cfg, s.RunnerBroadcaster(),
 		func(c context.Context, uid, tid int64) (map[string]interface{}, error) {
 			return s.ManifestSnapshot(c, uid, tid)

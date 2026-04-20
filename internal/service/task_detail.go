@@ -71,7 +71,7 @@ func (s *Service) buildTaskDetailJSON(ctx context.Context, t *repository.Deploym
 		FinishedAt:         t.FinishedAt,
 		HostNode2ID:        t.HostNode2ID,
 		HostNode3ID:        t.HostNode3ID,
-		PackageRelease:     nil,
+		PackageRelease:     t.PackageReleaseID,
 		PackageArtifactIDs: parseArtifactIDs(t.PackageArtifactIDs),
 	}
 	if h, _ := s.repos.GetHostByID(ctx, t.HostID); h != nil {
