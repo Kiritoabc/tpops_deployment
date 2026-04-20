@@ -48,7 +48,7 @@ go run ./cmd/server
 | POST | `/api/hosts/:id/test_connection/` | SSH 连通性检测 → `{ok,message}` |
 | GET/POST | `/api/deployment/tasks/` 等 | 任务列表、创建、详情、`manifest_snapshot` |
 | GET/POST/DELETE | `/api/packages/releases/`、`/api/packages/artifacts/` | 安装包版本；上传 `multipart` 字段 `file`、`release` |
-| GET | `/ws/deploy/:id/`、`/ws/deploy/:id/log/` | WebSocket |
+| GET | `/ws/deploy/:id/`、`/ws/deploy/:id/log/` | WebSocket（日志 WS 与 Python 一致：`kind`/`rel`、`chunk`/`meta`/`wait`，依赖 `user_edit` 中 **`log_path`**） |
 
 **创建任务**：默认**创建后立即启动 Runner**。若只要落库不执行，传 `"no_start": true`。
 

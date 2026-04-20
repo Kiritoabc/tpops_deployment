@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -13,12 +12,12 @@ import (
 	"github.com/gorilla/websocket"
 	"tpops_deployment/internal/auth"
 	"tpops_deployment/internal/crypto"
-	"tpops_deployment/internal/deploypaths"
+	"tpops_deployment/internal/remotelog"
 	"tpops_deployment/internal/service"
-	"tpops_deployment/internal/sshutil"
 )
 
-// WSDeployLog 仅日志：远端 tail -F 任务 remote_log_path，消息 type=log。
+// WSDeployLog 与 Python DeployLogTailConsumer 对齐：按字节 offset 轮询远程
+// log_path/deploy/<kind>.log 或 log_path/deploy/<rel>，消息 type=chunk|meta|hello|wait|error。
 func (h *Handler) WSDeployLog(c *gin.Context) {
 	token := c.Query("token")
 	if token == "" {
@@ -42,11 +41,15 @@ func (h *Handler) WSDeployLog(c *gin.Context) {
 	}
 
 	host, err := h.svc.HostForTask(c.Request.Context(), t.Host, claims.UserID)
-	if errors.Is(err, service.ErrForbidden) {
-		c.AbortWithStatus(http.StatusForbidden)
+	if err != nil {
+		if errors.Is(err, service.ErrForbidden) {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-	if err != nil || host == nil {
+	if host == nil {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
@@ -56,11 +59,20 @@ func (h *Handler) WSDeployLog(c *gin.Context) {
 		return
 	}
 
-	logRel := strings.TrimSpace(t.RemoteLogPath)
-	if logRel == "" {
-		logRel = "logs/deploy_" + strconv.FormatInt(taskID, 10) + ".log"
+	kind := strings.TrimSpace(c.Query("kind"))
+	if kind == "" {
+		kind = "precheck"
 	}
-	absLog := deploypaths.AbsolutePath(host.DockerServiceRoot, logRel)
+	if kind != "precheck" && kind != "install" && kind != "uninstall" {
+		kind = "precheck"
+	}
+	rel := strings.TrimSpace(c.Query("rel"))
+
+	rpath, err := remotelog.ResolveRemoteLogPath(t.UserEditContent, kind, rel)
+	if err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -70,29 +82,59 @@ func (h *Handler) WSDeployLog(c *gin.Context) {
 	defer h.hub.UnregisterLog(taskID, conn)
 
 	hello := map[string]interface{}{
-		"type": "hello", "channel": "log",
-		"task_id": taskID, "remote_log": absLog,
+		"type": "hello", "task_id": taskID, "kind": kind, "rel": rel,
 	}
 	b, _ := json.Marshal(hello)
 	_ = conn.WriteMessage(websocket.TextMessage, b)
 
-	ctx, cancel := context.WithCancel(c.Request.Context())
-	defer cancel()
+	send := func(v interface{}) {
+		bb, _ := json.Marshal(v)
+		_ = conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
+		_ = conn.WriteMessage(websocket.TextMessage, bb)
+	}
+
+	send(map[string]interface{}{"type": "meta", "path": rpath, "kind": kind})
+
+	stop := make(chan struct{})
 	go func() {
 		for {
 			_, _, err := conn.ReadMessage()
 			if err != nil {
-				cancel()
+				close(stop)
 				return
 			}
 		}
 	}()
 
-	_ = sshutil.TailRemoteFile(ctx, host.Hostname, host.Port, host.Username, host.AuthMethod, secret, absLog,
-		func(line string) {
-			payload := map[string]interface{}{"type": "log", "line": line}
-			bb, _ := json.Marshal(payload)
-			_ = conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
-			_ = conn.WriteMessage(websocket.TextMessage, bb)
-		})
+	var off int64
+	missingCount := 0
+	ticker := time.NewTicker(400 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			chunk, newOff, missing, err := remotelog.TailRemoteLogChunk(
+				host.Hostname, host.Port, host.Username, host.AuthMethod, secret,
+				rpath, off, 65536, 30*time.Second)
+			if err != nil {
+				send(map[string]interface{}{"type": "error", "message": err.Error()})
+				return
+			}
+			off = newOff
+			if chunk != "" {
+				send(map[string]interface{}{"type": "chunk", "data": chunk})
+			}
+			if missing {
+				missingCount++
+				if missingCount > 30 {
+					send(map[string]interface{}{"type": "wait", "message": "日志文件尚未创建…"})
+					missingCount = 0
+				}
+			} else {
+				missingCount = 0
+			}
+		}
+	}
 }

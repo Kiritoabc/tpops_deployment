@@ -107,3 +107,4 @@ CI：`go test ./...` 在仓库根执行。
 - **2026-04**：**安装包**：`packages_packagerelease` / `packages_packageartifact`、本地 `data/packages/` 存储、REST + multipart 上传；Fernet 密钥文件回退。
 - **2026-04**：Runner：**SFTP 同步**选中制品到远端 `<部署根>/pkgs/`；**appctl 封装**（install/upgrade/uninstall_all/precheck_*）；**user_edit** SFTP 下发到 `config/user_edit.conf`（或可配置路径）。
 - **2026-04**：**`use_raw_shell`** 字段与向导勾选；安装包 SFTP **仅节点 1**。**待办**：登录限流。
+- **2026-04**：`/ws/deploy/:id/log/` 与 Python 对齐：`log_path`+`kind`/`rel`、`python3` 分块读取、`chunk`/`meta`/`wait`。
