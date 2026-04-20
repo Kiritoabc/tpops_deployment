@@ -38,11 +38,16 @@ class PackageArtifactSerializer(serializers.ModelSerializer):
 
 
 class PackageArtifactCreateSerializer(serializers.ModelSerializer):
-    """multipart 上传：file + 可选 remote_basename"""
+    """multipart 上传：file + 可选 remote_basename（缺省则用上传文件名规范化，见 validate）"""
 
     class Meta:
         model = PackageArtifact
         fields = ("release", "file", "remote_basename")
+        # 模型字段 remote_basename 无 blank=True，ModelSerializer 会误判为必填；
+        # 实际上传常只带 file，远端名在 validate 里从 original_name 推导。
+        extra_kwargs = {
+            "remote_basename": {"required": False, "allow_blank": True},
+        }
 
     def validate_release(self, value):
         if value is None:
