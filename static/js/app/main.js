@@ -52,6 +52,13 @@ use_import_ca = no
         skip_package_sync: false,
         package_release: null,
         package_artifact_ids: [],
+        /** 三类介质：未勾选「同步此类」则不下发；勾选后须在下拉中选一个包 */
+        sync_package_tpops: false,
+        sync_package_om: false,
+        sync_package_os: false,
+        package_tpops_artifact_id: null,
+        package_om_artifact_id: null,
+        package_os_artifact_id: null,
         user_edit_content: USER_EDIT_TEMPLATE,
       });
       const shared = {

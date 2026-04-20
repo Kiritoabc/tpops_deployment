@@ -40,13 +40,79 @@ window.TPOPSDeploy = {
       }
     };
 
+    const syncPackageArtifactIds = () => {
+      const out = [];
+      if (deployForm.sync_package_tpops && deployForm.package_tpops_artifact_id != null) {
+        out.push(deployForm.package_tpops_artifact_id);
+      }
+      if (deployForm.sync_package_om && deployForm.package_om_artifact_id != null) {
+        out.push(deployForm.package_om_artifact_id);
+      }
+      if (deployForm.sync_package_os && deployForm.package_os_artifact_id != null) {
+        out.push(deployForm.package_os_artifact_id);
+      }
+      deployForm.package_artifact_ids = out;
+    };
+
+    const deployArtifactsTpops = computed(() => {
+      const list = deployWizardArtifacts.value || [];
+      return list.filter((a) => classifyDeployArtifactBasename(a.remote_basename).role === 'tpops_server');
+    });
+    const deployArtifactsOm = computed(() => {
+      const list = deployWizardArtifacts.value || [];
+      return list.filter((a) => classifyDeployArtifactBasename(a.remote_basename).role === 'om_kernel');
+    });
+    const deployArtifactsOs = computed(() => {
+      const list = deployWizardArtifacts.value || [];
+      return list.filter((a) => classifyDeployArtifactBasename(a.remote_basename).role === 'os_kernel');
+    });
+
+    const deployPkgsHint = computed(() => {
+      const hid = deployForm.host;
+      const hlist = hosts.hosts && hosts.hosts.value ? hosts.hosts.value : [];
+      const row = Array.isArray(hlist) ? hlist.find((x) => x && x.id === hid) : null;
+      const root = (row && row.docker_service_root) ? String(row.docker_service_root).replace(/\/$/, '') : '/data/docker-service';
+      return '同步安装包时，平台将 SSH 到节点 1（执行机），将文件写入：' + root + '/pkgs/（与主机登记的部署根目录一致）。';
+    });
+
     const validateDeployPackageStep = () => {
       deployPackageStepError.value = '';
       if (deployForm.skip_package_sync) return true;
       if (!deployForm.package_release) return true;
+      syncPackageArtifactIds();
+      if (deployForm.sync_package_tpops) {
+        if (!deployArtifactsTpops.value.length) {
+          setDeployPackageStepError('已勾选「同步 TPOPS 主包」，但该版本下没有符合命名的主包文件，请上传或取消勾选。');
+          return false;
+        }
+        if (deployForm.package_tpops_artifact_id == null) {
+          setDeployPackageStepError('已勾选「同步 TPOPS 主包」，请在下方下拉中选择一个文件。');
+          return false;
+        }
+      }
+      if (deployForm.sync_package_om) {
+        if (!deployArtifactsOm.value.length) {
+          setDeployPackageStepError('已勾选「同步 om-agent 包」，但该版本下没有 DBS-GaussDB-Kernel_* 文件，请上传或取消勾选。');
+          return false;
+        }
+        if (deployForm.package_om_artifact_id == null) {
+          setDeployPackageStepError('已勾选「同步 om-agent 包」，请在下方下拉中选择一个文件。');
+          return false;
+        }
+      }
+      if (deployForm.sync_package_os) {
+        if (!deployArtifactsOs.value.length) {
+          setDeployPackageStepError('已勾选「同步 OS 内核包」，但该版本下没有 DBS-GaussDB-*-Kernel_* 文件，请上传或取消勾选。');
+          return false;
+        }
+        if (deployForm.package_os_artifact_id == null) {
+          setDeployPackageStepError('已勾选「同步 OS 内核包」，请在下方下拉中选择一个文件。');
+          return false;
+        }
+      }
       const ids = deployForm.package_artifact_ids || [];
       if (!ids.length) {
-        setDeployPackageStepError('请勾选要下发的安装包，或勾选「跳过同步」若远端已有介质。');
+        setDeployPackageStepError('若需下发介质：请在某一类下勾选「同步此类」并选择具体包；若三类均不需要，请勾选顶部的「跳过同步」。');
         return false;
       }
       const action = deployForm.action;
@@ -66,12 +132,8 @@ window.TPOPSDeploy = {
           else if (inf.role === 'om_kernel') nOm += 1;
           else if (inf.role === 'os_kernel') nOs += 1;
         }
-        if (nTp > 1) {
-          setDeployPackageStepError('TPOPS-GaussDB-Server 主包至多勾选一个。未勾主包时不会执行 /data 解压步骤，仅将已选包同步到远端 pkgs/。');
-          return false;
-        }
-        if (nOm > 1 || nOs > 1) {
-          setDeployPackageStepError('om-agent 内核包（DBS-GaussDB-Kernel_*）与 OS 内核包（DBS-GaussDB-*-Kernel_*）每种至多选一个。');
+        if (nTp > 1 || nOm > 1 || nOs > 1) {
+          setDeployPackageStepError('每类介质至多选择一个包。');
           return false;
         }
       }
@@ -759,7 +821,10 @@ window.TPOPSDeploy = {
     const startDeploy = async () => {
       if (!deployForm.host) return ElementPlus.ElMessage.warning('请选择节点 1');
       if (!(deployForm.user_edit_content || '').trim()) return ElementPlus.ElMessage.warning('请填写或保留默认 user_edit 配置');
-      if (!deployForm.skip_package_sync && deployForm.package_release && (!deployForm.package_artifact_ids || !deployForm.package_artifact_ids.length)) return ElementPlus.ElMessage.warning('请选择要下发的安装包，或勾选跳过同步');
+      syncPackageArtifactIds();
+      if (!deployForm.skip_package_sync && deployForm.package_release && (!deployForm.package_artifact_ids || !deployForm.package_artifact_ids.length)) {
+        return ElementPlus.ElMessage.warning('请在三类介质中至少勾选一类并选择包，或勾选「跳过同步」');
+      }
       if (!validateDeployPackageStep()) return;
       if (deployForm.deploy_mode === 'triple') {
         const ids = [deployForm.host, deployForm.host_node2, deployForm.host_node3].filter(Boolean);
@@ -859,6 +924,11 @@ window.TPOPSDeploy = {
       deployStep,
       deployWizardSteps,
       deployWizardArtifacts: packages.deployWizardArtifacts,
+      deployArtifactsTpops,
+      deployArtifactsOm,
+      deployArtifactsOs,
+      deployPkgsHint,
+      syncPackageArtifactIds,
       deployRecordTableRef,
       dashboardLastTasksTableRef: ref(null),
       logText,

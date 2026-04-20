@@ -174,6 +174,12 @@ window.TPOPSPackages = {
 
     function onDeployPackageReleaseChange(deployForm) {
       deployForm.package_artifact_ids = [];
+      deployForm.sync_package_tpops = false;
+      deployForm.sync_package_om = false;
+      deployForm.sync_package_os = false;
+      deployForm.package_tpops_artifact_id = null;
+      deployForm.package_om_artifact_id = null;
+      deployForm.package_os_artifact_id = null;
       loadDeployWizardArtifacts(deployForm.package_release);
     }
 
@@ -181,6 +187,12 @@ window.TPOPSPackages = {
       if (!deployForm.skip_package_sync) return;
       deployForm.package_release = null;
       deployForm.package_artifact_ids = [];
+      deployForm.sync_package_tpops = false;
+      deployForm.sync_package_om = false;
+      deployForm.sync_package_os = false;
+      deployForm.package_tpops_artifact_id = null;
+      deployForm.package_om_artifact_id = null;
+      deployForm.package_os_artifact_id = null;
       deployWizardArtifacts.value = [];
     }
 

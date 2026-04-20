@@ -648,7 +648,7 @@ window.TPOPSApp.template = String.raw`
                       <span class="deploy-installer-step-num">{{ deployStep > idx ? '✓' : (idx + 1) }}</span>
                       <span class="deploy-installer-step-label" v-text="s.title"></span>
                     </button>
-                    <div v-if="idx < deployWizardSteps.length - 1" class="deploy-installer-connector" aria-hidden="true"></div>
+                    <div v-if="idx < (deployWizardSteps || []).length - 1" class="deploy-installer-connector" aria-hidden="true"></div>
                   </template>
                 </div>
                 <div class="deploy-wizard-body">
@@ -720,28 +720,54 @@ window.TPOPSApp.template = String.raw`
 
                     <div v-show="deployStep === 2">
                       <h2 class="installer-step-heading">选择安装包</h2>
-                      <p class="installer-step-lead">安装 / 升级且同步介质：可选 TPOPS-GaussDB-Server 主包（勾选则执行 /data 解压与介质汇聚）；可选 om-agent / OS 内核包。未勾主包则跳过该解压步骤，仅将已选文件同步到远端 pkgs/。包名须符合约定。</p>
+                      <p class="installer-step-lead">先选版本，再按三类介质分别决定是否同步；勾选「同步此类」后须在该类下选一个文件。未勾选「同步此类」即跳过该类。包名须符合约定。</p>
+                      <el-alert type="info" :closable="false" show-icon style="margin-bottom:12px;max-width:720px;">
+                        <template #title><span v-text="deployPkgsHint"></span></template>
+                      </el-alert>
                       <el-alert v-if="deployPackageStepError" type="warning" :closable="false" show-icon style="margin-bottom:12px;max-width:720px;">
                         <template #title><span style="white-space:pre-wrap;" v-text="deployPackageStepError"></span></template>
                       </el-alert>
                       <el-form label-width="112px" label-position="left" style="max-width:720px;">
                         <el-form-item label="安装包">
                           <div style="width:100%;">
-                            <el-checkbox v-model="deployForm.skip_package_sync" @change="onSkipPackageChange">跳过同步（远端 <code>pkgs/</code> 已有介质）</el-checkbox>
+                            <el-checkbox v-model="deployForm.skip_package_sync" @change="onSkipPackageChange">跳过全部介质同步（远端 <code>pkgs/</code> 已有文件）</el-checkbox>
                             <div v-if="!deployForm.skip_package_sync" style="margin-top:10px;">
-                              <el-select v-model="deployForm.package_release" clearable filterable placeholder="选择安装包版本" style="width:100%;max-width:480px;margin-bottom:10px;" @change="onDeployPackageReleaseChange">
+                              <el-select v-model="deployForm.package_release" clearable filterable placeholder="1. 选择安装包版本" style="width:100%;max-width:480px;margin-bottom:14px;" @change="onDeployPackageReleaseChange">
                                 <el-option v-for="r in packageReleases" :key="r.id" :label="r.name + '（' + (r.artifact_count || 0) + ' 个包）'" :value="r.id"></el-option>
                               </el-select>
-                              <div v-if="deployForm.package_release" style="max-height:220px;overflow:auto;border:1px solid #ebeef5;border-radius:8px;padding:10px 12px;background:#fafbfc;">
-                                <div v-if="!deployWizardArtifacts.length" class="hint">该版本下暂无包，请先到「安装包管理」上传。</div>
-                                <el-checkbox-group v-else v-model="deployForm.package_artifact_ids" style="display:flex;flex-direction:column;gap:8px;">
-                                  <el-checkbox v-for="a in deployWizardArtifacts" :key="a.id" :label="a.id">
-                                    <span v-text="a.remote_basename"></span>
-                                    <span class="hint" style="margin-left:8px;">{{ a.size }} B</span>
-                                  </el-checkbox>
-                                </el-checkbox-group>
-                              </div>
-                              <div v-else class="hint" style="margin-top:6px;">请先选择版本；不选版本则不下发安装包。</div>
+                              <div v-if="!deployForm.package_release" class="hint">请先选择版本。</div>
+                              <template v-else>
+                                <div v-if="!(deployWizardArtifacts && deployWizardArtifacts.length)" class="hint" style="margin-bottom:12px;">该版本下暂无包，请先到「安装包管理」上传。</div>
+                                <div v-else style="display:flex;flex-direction:column;gap:14px;">
+                                  <div style="border:1px solid #ebeef5;border-radius:8px;padding:12px 14px;background:#fafbfc;">
+                                    <div style="font-weight:600;margin-bottom:8px;">① TPOPS 软件包</div>
+                                    <div class="hint" style="margin-bottom:8px;">命名：<code>TPOPS-GaussDB-Server_*</code>。勾选同步后若存在主包，将在节点 1 上执行 <code>/data</code> 解压与介质汇聚；否则仅扁平同步。</div>
+                                    <el-checkbox v-model="deployForm.sync_package_tpops" style="margin-bottom:8px;">同步此类（不勾选则跳过）</el-checkbox>
+                                    <el-select v-show="deployForm.sync_package_tpops" v-model="deployForm.package_tpops_artifact_id" clearable filterable placeholder="选择主包文件" style="width:100%;max-width:520px;">
+                                      <el-option v-for="a in deployArtifactsTpops" :key="a.id" :label="a.remote_basename + '（' + a.size + ' B）'" :value="a.id"></el-option>
+                                    </el-select>
+                                    <div v-show="deployForm.sync_package_tpops && (!deployArtifactsTpops || !deployArtifactsTpops.length)" class="hint" style="margin-top:6px;">该版本下无此类文件。</div>
+                                  </div>
+                                  <div style="border:1px solid #ebeef5;border-radius:8px;padding:12px 14px;background:#fafbfc;">
+                                    <div style="font-weight:600;margin-bottom:8px;">② GaussDB om-agent 包</div>
+                                    <div class="hint" style="margin-bottom:8px;">命名：<code>DBS-GaussDB-Kernel_*</code></div>
+                                    <el-checkbox v-model="deployForm.sync_package_om" style="margin-bottom:8px;">同步此类（不勾选则跳过）</el-checkbox>
+                                    <el-select v-show="deployForm.sync_package_om" v-model="deployForm.package_om_artifact_id" clearable filterable placeholder="选择 om-agent 包" style="width:100%;max-width:520px;">
+                                      <el-option v-for="a in deployArtifactsOm" :key="a.id" :label="a.remote_basename + '（' + a.size + ' B）'" :value="a.id"></el-option>
+                                    </el-select>
+                                    <div v-show="deployForm.sync_package_om && (!deployArtifactsOm || !deployArtifactsOm.length)" class="hint" style="margin-top:6px;">该版本下无此类文件。</div>
+                                  </div>
+                                  <div style="border:1px solid #ebeef5;border-radius:8px;padding:12px 14px;background:#fafbfc;">
+                                    <div style="font-weight:600;margin-bottom:8px;">③ GaussDB OS 内核包</div>
+                                    <div class="hint" style="margin-bottom:8px;">命名：<code>DBS-GaussDB-&#123;OS&#125;-Kernel_*</code>（如 Hce、openEuler）</div>
+                                    <el-checkbox v-model="deployForm.sync_package_os" style="margin-bottom:8px;">同步此类（不勾选则跳过）</el-checkbox>
+                                    <el-select v-show="deployForm.sync_package_os" v-model="deployForm.package_os_artifact_id" clearable filterable placeholder="选择 OS 内核包" style="width:100%;max-width:520px;">
+                                      <el-option v-for="a in deployArtifactsOs" :key="a.id" :label="a.remote_basename + '（' + a.size + ' B）'" :value="a.id"></el-option>
+                                    </el-select>
+                                    <div v-show="deployForm.sync_package_os && (!deployArtifactsOs || !deployArtifactsOs.length)" class="hint" style="margin-top:6px;">该版本下无此类文件。</div>
+                                  </div>
+                                </div>
+                              </template>
                             </div>
                           </div>
                         </el-form-item>
@@ -787,7 +813,7 @@ window.TPOPSApp.template = String.raw`
               </div>
             </el-card>
             <div class="installer-tip-banner">
-              <strong>提示：</strong><code>precheck</code> 类操作需填写目标组件；安装 / 升级同步介质时请在「选择安装包」步骤勾选主包与可选内核包，并核对 CPU/OS。
+              <strong>提示：</strong><code>precheck</code> 类操作需填写目标组件；安装包按三类分别选择是否同步，介质将写入节点 1 的 <code>部署根/pkgs/</code>。
             </div>
             </div>
             </template>
