@@ -46,9 +46,13 @@ export DJANGO_SECRET_KEY='你的密钥'
 
 浏览器访问 `http://localhost:8000/`：
 
-1. 注册 / 登录获取 JWT  
+1. 注册 / 登录获取 JWT（登录页为左右分栏的华为云风格布局）  
 2. 在「主机管理」填写远程 **部署根目录**（`appctl.sh` 所在目录，如 `/data/docker-service`）及 SSH 凭证  
-3. 在「部署任务」执行 **预检查** 或 **安装**，通过 WebSocket 查看日志与 manifest 树  
+3. 在「安装包管理」维护版本与介质（可选）；在「部署任务」向导中选择节点、按 **TPOPS 主包 / om-agent / OS 内核** 三类决定是否同步（未勾「同步此类」即跳过该类；介质写入节点 1 的 `<部署根>/pkgs/`）  
+4. 在「操作与配置」步骤可点击 **从节点 1 读取远程配置**，从执行机拉取已有 `user_edit_file.conf` 填入编辑区（需主机已配置 SSH，见下文 API）  
+5. 下发任务后通过 WebSocket 查看日志与 manifest 树  
+
+**更新代码后请重启 Daphne**，否则新 API 与前端脚本不会生效；首页会为 `static/js/app/*.js` 自动追加 `?v=` 缓存破坏参数（见 `tpops_deployment/views.py` 中 `spa_index`）。
 
 ### 任务一直「待执行」、远程无动作？
 
@@ -82,12 +86,13 @@ export DJANGO_SECRET_KEY='你的密钥'
 ### 部署向导与 `user_edit_file.conf`
 
 1. 选择 **单节点** 或 **三节点**（**节点 1** 为执行 SSH、写入 `user_edit_file.conf` 与执行 appctl 的机器）。节点 2/3 可选，仅作登记；**不在后台改写配置文件中的 IP**。
-2. 填写 **`[user_edit]`** 段配置文本；**按填写内容原样写入远程文件**，不会用所选 SSH 节点的地址覆盖其中的 IP。
+2. 填写 **`[user_edit]`** 段配置文本；**按填写内容原样写入远程文件**，不会用所选 SSH 节点的地址覆盖其中的 IP。向导中可先选节点 1，再使用 **「从节点 1 读取远程配置」** 调用 `GET /api/hosts/<id>/fetch_user_edit/`：在远端按与任务相同的规则探测上述路径之一，读出全文并通过 `[user_edit]` 校验后返回 JSON（`content`、`remote_path`），供粘贴到表单。
 3. 后端在节点 1 上检测存在的文件并覆盖（与脚本一致）：
    - `<部署根>/config/gaussdb/user_edit_file.conf`
    - `<部署根>/config/user_edit_file.conf`  
    若两个都不存在，则 **创建** 默认路径 `config/gaussdb/user_edit_file.conf`（自动 `mkdir -p`）。
-4. 再执行所选 `appctl.sh` 操作。
+4. **安装包同步**（未勾选「跳过全部同步」时）：在 `install` / `upgrade` 下若勾选了 **TPOPS-GaussDB-Server** 主包，runner 会在节点 1 上走 `/data` 解压与介质汇聚；否则仅将已选文件 **扁平 SFTP** 到 `<部署根>/pkgs/`。其它任务类型为扁平同步。详见 `plan/plan-tpops-gaussdb-package-selection.md`。
+5. 再执行所选 `appctl.sh` 操作。
 
 ## 项目结构（摘要）
 
@@ -96,7 +101,8 @@ export DJANGO_SECRET_KEY='你的密钥'
 - `apps/deployment`：任务模型、user_edit 解析合并、`user_edit_file.conf` 远程写入、appctl 执行 + Channels 组播
 - `apps/manifest`：`manifest.yaml` 解析 API（调试）
 - `apps/logs`：WebSocket 路由与消费者
-- `templates/index.html`：Vue3 + Element Plus 单页（CDN）
+- `templates/index.html`：应用壳（标题、CDN 脚本、`spa_index` 注入的静态资源 `?v=`）  
+- `static/js/app/*.js`、`static/css/app.css`：Vue 单页模板与样式（登录、工作台、部署向导等）
 
 ## 安装包管理（设计）
 
@@ -105,7 +111,7 @@ export DJANGO_SECRET_KEY='你的密钥'
 ## API 前缀
 
 - `/api/auth/` — 注册、登录、刷新 Token、个人信息  
-- `/api/hosts/` — 主机 CRUD、连通性测试  
+- `/api/hosts/` — 主机 CRUD、`POST …/test_connection/` 连通性测试、`GET …/<id>/fetch_user_edit/` 从执行机读取已有 `user_edit_file.conf`（需 JWT，与主机列表同权限；返回 `content` + `remote_path`，内容须含合法 `[user_edit]` 段）  
 - `/api/deployment/tasks/` — 创建 / 列表 / 详情任务  
 - `/api/packages/releases/`、`/api/packages/artifacts/` — 安装包版本与文件上传（multipart）  
 - `/ws/deploy/<task_id>/?token=<access_jwt>` — 任务 appctl 输出与 manifest 推送  
