@@ -1,6 +1,6 @@
 window.TPOPSDeploy = {
   createDeployModule(refs, shared, pageState, auth, hosts, packages) {
-    const { ref, reactive, computed, nextTick } = refs;
+    const { ref, reactive, computed, nextTick, watch } = refs;
     const tasks = ref([]);
     const deployRecordTableRef = ref(null);
     const logText = ref('');
