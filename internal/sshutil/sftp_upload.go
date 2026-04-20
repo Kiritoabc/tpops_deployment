@@ -77,3 +77,65 @@ func UploadFileSFTP(hostname string, port int, username, authMethod, secret, loc
 	}
 	return nil
 }
+
+// UploadReaderSFTP 将 r 的内容上传到远端 remotePath（含目录创建）。
+func UploadReaderSFTP(hostname string, port int, username, authMethod, secret, remotePath string, r io.Reader, timeout time.Duration) error {
+	if r == nil {
+		return fmt.Errorf("empty reader")
+	}
+	cfg, err := clientConfig(username, authMethod, secret)
+	if err != nil {
+		return err
+	}
+	if port <= 0 {
+		port = 22
+	}
+	addr := fmt.Sprintf("%s:%d", hostname, port)
+	d := net.Dialer{Timeout: 15 * time.Second}
+	conn, err := d.Dial("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("tcp: %w", err)
+	}
+	defer conn.Close()
+
+	clientConn, chans, reqs, err := ssh.NewClientConn(conn, hostname, cfg)
+	if err != nil {
+		return fmt.Errorf("ssh: %w", err)
+	}
+	client := ssh.NewClient(clientConn, chans, reqs)
+	defer client.Close()
+
+	sftpClient, err := sftp.NewClient(client)
+	if err != nil {
+		return fmt.Errorf("sftp: %w", err)
+	}
+	defer sftpClient.Close()
+
+	remotePath = strings.TrimSpace(remotePath)
+	remoteDir := path.Dir(remotePath)
+	if remoteDir != "" && remoteDir != "." {
+		if err := sftpClient.MkdirAll(remoteDir); err != nil {
+			return fmt.Errorf("mkdir %s: %w", remoteDir, err)
+		}
+	}
+	rf, err := sftpClient.Create(remotePath)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", remotePath, err)
+	}
+	defer rf.Close()
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := io.Copy(rf, r)
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err != nil {
+			return err
+		}
+	case <-time.After(timeout):
+		return fmt.Errorf("sftp 上传超时")
+	}
+	return nil
+}

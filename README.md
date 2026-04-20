@@ -67,6 +67,7 @@ go run ./cmd/server
 - **`action`** 为 `install` / `upgrade` / `uninstall_all` / `precheck_install` / `precheck_upgrade` 时，Runner 在部署根下执行 **`appctl <子命令> <target>`**（优先 `$ROOT/appctl`，否则 `PATH` 中的 `appctl`）。**`target`** 为传给 appctl 的**组件名**（如 `gaussdb`），勿再写整段 shell。
 - **其它 `action`**：仍把 **`target` 当作整段 shell** 在部署根下执行（高级用法）。
 - **`skip_package_sync`: false** 且提供 **`package_release` + `package_artifact_ids`** 时，Runner 会先将文件 **SFTP 到远端** `<部署根>/pkgs/<文件名>`，再跑 appctl/shell。
+- **user_edit**：Runner 在包同步之后、执行主命令之前，将 **`user_edit_content`** 经 **SFTP** 写入远端 **`remote_user_edit_path`**（相对部署根；未填则默认 **`config/user_edit.conf`**）。
 - 日志仍写入 `remote_log_path`（默认 `logs/deploy_<id>.log`）。
 
 ## 与完整后端的差异（前端兼容说明）
