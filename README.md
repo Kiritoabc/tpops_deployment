@@ -68,7 +68,7 @@ go run ./cmd/server
 ```
 
 - **`use_raw_shell`: true**（或 **`action`** 不在 appctl 白名单内）时，**`target` 整段作为 shell** 在部署根下执行，**不**封装 `appctl`。
-- **`action`** 为 `install` / `upgrade` / `uninstall_all` / `precheck_install` / `precheck_upgrade` 且 **`use_raw_shell`: false** 时，Runner 执行 **`appctl <子命令> <target>`**（优先 `$ROOT/appctl`，否则 `PATH`）。**`target`** 一般为组件名（如 `gaussdb`）。
+- **`action`** 为 `install` / `upgrade` / `uninstall_all` / `precheck_install` / `precheck_upgrade` 且 **`use_raw_shell`: false** 时，Runner 在远端执行 **`sh appctl.sh <子命令> <target>`**（优先 **`<部署根>/appctl.sh`**，其次 **`PATH` 中的 `appctl.sh`**，再兼容 **`appctl`**）。**`target`** 一般为组件名（如 `gaussdb`）。脚本需事先放在远端，Runner **不会**随任务上传 `appctl.sh`。
 - **`skip_package_sync`: false** 且提供 **`package_release` + `package_artifact_ids`** 时，Runner 仅向 **节点 1（主执行机）** **SFTP** 到 `<部署根>/pkgs/`（三节点任务也不在 Runner 内向节点 2/3 传包）。
 - **user_edit**：Runner 在包同步之后、执行主命令之前，将 **`user_edit_content`** 经 **SFTP** 写入远端 **`remote_user_edit_path`**（相对部署根；未填则默认 **`config/user_edit.conf`**）。
 - 日志仍写入 `remote_log_path`（默认 `logs/deploy_<id>.log`）。
