@@ -181,6 +181,8 @@ window.TPOPSDeploy = {
     const deployForm = shared.deployForm;
     const deploySubView = pageState.deploySubView;
     const activeMenu = pageState.activeMenu;
+    /** 与 packages 模块共用，computed 内须用本引用，勿写未绑定的 deployWizardArtifacts */
+    const deployWizardArtifacts = packages.deployWizardArtifacts;
 
     const deployActionLabel = (action) => {
       const labels = {
