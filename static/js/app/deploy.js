@@ -354,6 +354,31 @@ window.TPOPSDeploy = {
       ElementPlus.ElMessage.success('已恢复为默认模板');
     };
 
+    const fetchRemoteUserEdit = async () => {
+      if (!deployForm.host) {
+        ElementPlus.ElMessage.warning('请先在「选择节点」步骤选择节点 1（执行机）');
+        return;
+      }
+      shared.loading.value = true;
+      try {
+        const res = await shared.api.get('/hosts/' + deployForm.host + '/fetch_user_edit/');
+        const c = res.data && res.data.content;
+        if (typeof c !== 'string' || !c.trim()) {
+          ElementPlus.ElMessage.error('未返回有效配置内容');
+          return;
+        }
+        deployForm.user_edit_content = c;
+        const p = (res.data && res.data.remote_path) || '';
+        ElementPlus.ElMessage.success(p ? ('已从远程读取: ' + p) : '已从远程读取 user_edit 配置');
+      } catch (e) {
+        const d = e.response && e.response.data;
+        const msg = (d && (d.detail || d.message)) || (typeof d === 'string' ? d : '') || (e.message || '读取失败');
+        ElementPlus.ElMessage.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      } finally {
+        shared.loading.value = false;
+      }
+    };
+
     const applyLiveTaskPatch = (partial) => {
       const id = currentTaskId.value;
       if (!id) return;
@@ -995,6 +1020,7 @@ window.TPOPSDeploy = {
       goDeployWizardStepPackagesToConfig,
       deployPackageStepError,
       fillUserEditTemplate,
+      fetchRemoteUserEdit,
       deployActionLabel,
       deployStatusLabel,
       deployStatusTagType,

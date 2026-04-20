@@ -799,8 +799,10 @@ window.TPOPSApp.template = String.raw`
                         </el-form-item>
                         <el-form-item label="user_edit">
                           <el-input v-model="deployForm.user_edit_content" type="textarea" :rows="12" placeholder="[user_edit] ..." class="mono-ta"></el-input>
-                          <div style="margin-top:8px;">
+                          <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
                             <el-button size="small" @click="fillUserEditTemplate">恢复默认模板</el-button>
+                            <el-button size="small" type="primary" plain :loading="loading" :disabled="!deployForm.host" @click="fetchRemoteUserEdit">从节点 1 读取远程配置</el-button>
+                            <span class="hint">按主机「部署根」探测 <code>config/gaussdb/user_edit_file.conf</code> 或 <code>config/user_edit_file.conf</code>，读取成功后覆盖下方编辑区。</span>
                           </div>
                         </el-form-item>
                       </el-form>
