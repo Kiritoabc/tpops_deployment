@@ -226,6 +226,7 @@ def enrich_pipeline_multi_nodes(
                         "node_index": idx,
                         "node_label": lab,
                         "status": _norm_status(nm_entry.get("status")),
+                        "start_time": nm_entry.get("start_time"),
                         "finish_execute_time": nm_entry.get("finish_execute_time"),
                     }
                 )
@@ -619,6 +620,7 @@ def merge_tpops_manifest_dicts(
                         {
                             "node_index": ni,
                             "status": stn,
+                            "start_time": item.get("start_time"),
                             "finish_execute_time": item.get("finish_execute_time"),
                         }
                     )

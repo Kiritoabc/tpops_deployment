@@ -965,7 +965,8 @@ window.TPOPSApp.template = String.raw`
                               >
                                 <span>·</span>
                                 <span v-text="subLabelWithoutStatus(sub)"></span>
-                                <span v-if="subFinishExecuteTime(sub)" class="hint" style="margin-left:6px;">完成 <span class="mono" v-text="subFinishExecuteTime(sub)"></span></span>
+                                <span v-if="subRunningElapsedHint(sub)" class="hint" style="margin-left:6px;" v-text="subRunningElapsedHint(sub)"></span>
+                                <span v-else-if="subFinishExecuteTime(sub)" class="hint" style="margin-left:6px;">完成 <span class="mono" v-text="subFinishExecuteTime(sub)"></span></span>
                                 <span class="sub-st-pill" :class="subStPillClass(sub._nodeStatus || sub.status)" v-text="sub._nodeStatus || sub.status"></span>
                               </div>
                             </div>
@@ -979,7 +980,8 @@ window.TPOPSApp.template = String.raw`
                           >
                             <span>·</span>
                             <span v-text="sub.label"></span>
-                            <span v-if="subFinishExecuteTime(sub)" class="hint" style="margin-left:6px;">完成 <span class="mono" v-text="subFinishExecuteTime(sub)"></span></span>
+                            <span v-if="subRunningElapsedHint(sub)" class="hint" style="margin-left:6px;" v-text="subRunningElapsedHint(sub)"></span>
+                            <span v-else-if="subFinishExecuteTime(sub)" class="hint" style="margin-left:6px;">完成 <span class="mono" v-text="subFinishExecuteTime(sub)"></span></span>
                             <span class="sub-st-pill" :class="subStPillClass(sub.status)" v-text="sub.status"></span>
                             <div v-if="sub.node_details && sub.node_details.length && !tripleDeployForManifest" class="node-status-dots">
                               <span

@@ -617,6 +617,46 @@ window.TPOPSDeploy = {
       return String(sub.label);
     };
 
+    const parseManifestTimeToMs = (raw) => {
+      if (raw == null || raw === '') return null;
+      const t = String(raw).trim();
+      if (!t) return null;
+      const d = Date.parse(t);
+      if (!Number.isNaN(d)) return d;
+      const d2 = Date.parse(t.replace(/-/g, '/'));
+      if (!Number.isNaN(d2)) return d2;
+      return null;
+    };
+
+    const formatElapsedBrief = (sec) => {
+      if (sec == null || Number.isNaN(sec) || sec < 0) return '';
+      const s = Math.floor(sec);
+      if (s < 60) return s + 's';
+      const m = Math.floor(s / 60);
+      const rs = s % 60;
+      if (m < 60) return m + 'm' + (rs ? rs + 's' : '');
+      const h = Math.floor(m / 60);
+      const rm = m % 60;
+      return h + 'h' + (rm ? rm + 'm' : '');
+    };
+
+    /** running/retrying 时展示已运行时长（依赖 deployNowMs 每秒刷新） */
+    const subRunningElapsedHint = (sub) => {
+      deployNowMs.value;
+      if (!sub) return '';
+      const st = normSt(sub._nodeStatus != null ? sub._nodeStatus : sub.status);
+      if (st !== 'running' && st !== 'retrying') return '';
+      const rawStart = sub._nodeStartTime != null && sub._nodeStartTime !== ''
+        ? sub._nodeStartTime
+        : (sub.meta && sub.meta.start_time);
+      const ms = parseManifestTimeToMs(rawStart);
+      if (ms == null) return '运行中';
+      const elapsed = (Date.now() - ms) / 1000;
+      if (elapsed < 0) return '运行中';
+      const brief = formatElapsedBrief(elapsed);
+      return brief ? ('已运行 ' + brief) : '运行中';
+    };
+
     const subFinishExecuteTime = (sub) => {
       const m = sub && sub.meta;
       if (m && m.finish_execute_time != null && m.finish_execute_time !== '') {
@@ -644,7 +684,12 @@ window.TPOPSDeploy = {
           nds.forEach((nd) => {
             const lab = nd.node_label || ('节点' + ((nd.node_index || 0) + 1));
             if (!byLabel[lab]) byLabel[lab] = { node_label: lab, subs: [] };
-            byLabel[lab].subs.push(Object.assign({}, sub, { _nodeStatus: nd.status }));
+            byLabel[lab].subs.push(
+              Object.assign({}, sub, {
+                _nodeStatus: nd.status,
+                _nodeStartTime: nd.start_time,
+              }),
+            );
           });
         }
       });
@@ -1088,6 +1133,7 @@ window.TPOPSDeploy = {
       tripleNodeRoleText,
       subLabelWithoutStatus,
       subFinishExecuteTime,
+      subRunningElapsedHint,
       tripleGroupedSubs,
       refreshCurrentTaskSnapshot,
       scrollLogEl,
