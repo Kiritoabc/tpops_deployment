@@ -744,7 +744,7 @@ window.TPOPSApp.template = String.raw`
                                     <div class="hint" style="margin-bottom:8px;">命名：<code>TPOPS-GaussDB-Server_*</code>。勾选同步后若存在主包，将在节点 1 上执行 <code>/data</code> 解压与介质汇聚；否则仅扁平同步。</div>
                                     <el-checkbox v-model="deployForm.sync_package_tpops" style="margin-bottom:8px;">同步此类（不勾选则跳过）</el-checkbox>
                                     <el-select v-show="deployForm.sync_package_tpops" v-model="deployForm.package_tpops_artifact_id" clearable filterable placeholder="选择主包文件" style="width:100%;max-width:520px;">
-                                      <el-option v-for="a in deployArtifactsTpops" :key="a.id" :label="a.remote_basename + '（' + a.size + ' B）'" :value="a.id"></el-option>
+                                      <el-option v-for="a in deployArtifactsTpops" :key="a.id" :label="deployArtifactDisplayName(a) + '（' + a.size + ' B）'" :value="a.id"></el-option>
                                     </el-select>
                                     <div v-show="deployForm.sync_package_tpops && (!deployArtifactsTpops || !deployArtifactsTpops.length)" class="hint" style="margin-top:6px;">该版本下无此类文件。</div>
                                   </div>
@@ -753,7 +753,7 @@ window.TPOPSApp.template = String.raw`
                                     <div class="hint" style="margin-bottom:8px;">命名：<code>DBS-GaussDB-Kernel_*</code></div>
                                     <el-checkbox v-model="deployForm.sync_package_om" style="margin-bottom:8px;">同步此类（不勾选则跳过）</el-checkbox>
                                     <el-select v-show="deployForm.sync_package_om" v-model="deployForm.package_om_artifact_id" clearable filterable placeholder="选择 om-agent 包" style="width:100%;max-width:520px;">
-                                      <el-option v-for="a in deployArtifactsOm" :key="a.id" :label="a.remote_basename + '（' + a.size + ' B）'" :value="a.id"></el-option>
+                                      <el-option v-for="a in deployArtifactsOm" :key="a.id" :label="deployArtifactDisplayName(a) + '（' + a.size + ' B）'" :value="a.id"></el-option>
                                     </el-select>
                                     <div v-show="deployForm.sync_package_om && (!deployArtifactsOm || !deployArtifactsOm.length)" class="hint" style="margin-top:6px;">该版本下无此类文件。</div>
                                   </div>
@@ -762,7 +762,7 @@ window.TPOPSApp.template = String.raw`
                                     <div class="hint" style="margin-bottom:8px;">命名：以 <code>DBS-GaussDB-&#123;OS&#125;-Kernel</code> 开头、以 <code>.tar.gz</code> 结尾即可（<code>Kernel</code> 后版本号格式不校验；如 Hce、openEuler）。</div>
                                     <el-checkbox v-model="deployForm.sync_package_os" style="margin-bottom:8px;">同步此类（不勾选则跳过）</el-checkbox>
                                     <el-select v-show="deployForm.sync_package_os" v-model="deployForm.package_os_artifact_id" clearable filterable placeholder="选择 OS 内核包" style="width:100%;max-width:520px;">
-                                      <el-option v-for="a in deployArtifactsOs" :key="a.id" :label="a.remote_basename + '（' + a.size + ' B）'" :value="a.id"></el-option>
+                                      <el-option v-for="a in deployArtifactsOs" :key="a.id" :label="deployArtifactDisplayName(a) + '（' + a.size + ' B）'" :value="a.id"></el-option>
                                     </el-select>
                                     <div v-show="deployForm.sync_package_os && (!deployArtifactsOs || !deployArtifactsOs.length)" class="hint" style="margin-top:6px;">该版本下无此类文件。</div>
                                   </div>

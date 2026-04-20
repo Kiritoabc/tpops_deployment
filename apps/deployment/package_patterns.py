@@ -23,6 +23,27 @@ _RE_OS = re.compile(
     r"^DBS-GaussDB-(?P<os>[A-Za-z0-9]+)-Kernel.*\.tar\.gz$",
     re.IGNORECASE,
 )
+# 经 _safe_remote_basename 等处理后连字符可能变成下划线
+_RE_OS_UNDERSCORE = re.compile(
+    r"^DBS_GaussDB_(?P<os>[A-Za-z0-9]+)_Kernel.*\.tar\.gz$",
+    re.IGNORECASE,
+)
+
+
+def artifact_basename_for_classify(artifact):
+    """
+    与前端一致：优先 remote_basename；为空则用 original_name 的末段（部分历史数据）。
+    """
+    if artifact is None:
+        return ""
+    rb = (getattr(artifact, "remote_basename", None) or "").strip()
+    if rb:
+        return rb
+    orig = (getattr(artifact, "original_name", None) or "").strip().replace("\\", "/")
+    if not orig:
+        return ""
+    parts = orig.split("/")
+    return (parts[-1] or "").strip()
 
 
 def classify_package_basename(basename):
@@ -58,5 +79,13 @@ def classify_package_basename(basename):
             "cpu": None,
             "os": m.group("os"),
             "pattern_name": "DBS-GaussDB-{OS}-Kernel*.tar.gz",
+        }
+    m = _RE_OS_UNDERSCORE.match(name)
+    if m:
+        return {
+            "role": ROLE_OS_KERNEL,
+            "cpu": None,
+            "os": m.group("os"),
+            "pattern_name": "DBS_GaussDB_{OS}_Kernel*.tar.gz",
         }
     return {"role": ROLE_UNKNOWN, "cpu": None, "os": None, "pattern_name": ""}

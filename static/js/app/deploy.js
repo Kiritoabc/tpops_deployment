@@ -28,8 +28,26 @@ window.TPOPSDeploy = {
       if (m) return { role: 'om_kernel', cpu: m[1], os: '' };
       m = name.match(/^DBS-GaussDB-([A-Za-z0-9]+)-Kernel.*\.tar\.gz$/i);
       if (m) return { role: 'os_kernel', cpu: '', os: m[1] };
+      m = name.match(/^DBS_GaussDB_([A-Za-z0-9]+)_Kernel.*\.tar\.gz$/i);
+      if (m) return { role: 'os_kernel', cpu: '', os: m[1] };
       return { role: 'unknown', cpu: '', os: '' };
     };
+
+    const deployArtifactBasenameForClassify = (a) => {
+      if (!a) return '';
+      const rb = a.remote_basename != null && String(a.remote_basename).trim() !== ''
+        ? String(a.remote_basename).trim()
+        : '';
+      let ob = '';
+      if (a.original_name != null && String(a.original_name).trim() !== '') {
+        const p = String(a.original_name).trim().replace(/\\/g, '/');
+        const parts = p.split('/');
+        ob = parts[parts.length - 1] || '';
+      }
+      return rb || ob;
+    };
+
+    const deployArtifactDisplayName = (a) => deployArtifactBasenameForClassify(a) || ('#' + (a && a.id));
 
     const deployPackageStepError = ref('');
 
@@ -56,15 +74,15 @@ window.TPOPSDeploy = {
 
     const deployArtifactsTpops = computed(() => {
       const list = deployWizardArtifacts.value || [];
-      return list.filter((a) => classifyDeployArtifactBasename(a.remote_basename).role === 'tpops_server');
+      return list.filter((a) => classifyDeployArtifactBasename(deployArtifactBasenameForClassify(a)).role === 'tpops_server');
     });
     const deployArtifactsOm = computed(() => {
       const list = deployWizardArtifacts.value || [];
-      return list.filter((a) => classifyDeployArtifactBasename(a.remote_basename).role === 'om_kernel');
+      return list.filter((a) => classifyDeployArtifactBasename(deployArtifactBasenameForClassify(a)).role === 'om_kernel');
     });
     const deployArtifactsOs = computed(() => {
       const list = deployWizardArtifacts.value || [];
-      return list.filter((a) => classifyDeployArtifactBasename(a.remote_basename).role === 'os_kernel');
+      return list.filter((a) => classifyDeployArtifactBasename(deployArtifactBasenameForClassify(a)).role === 'os_kernel');
     });
 
     const deployPkgsHint = computed(() => {
@@ -123,9 +141,10 @@ window.TPOPSDeploy = {
         let nOm = 0;
         let nOs = 0;
         for (let i = 0; i < selected.length; i += 1) {
-          const inf = classifyDeployArtifactBasename(selected[i].remote_basename);
+          const bn = deployArtifactBasenameForClassify(selected[i]);
+          const inf = classifyDeployArtifactBasename(bn);
           if (inf.role === 'unknown') {
-            setDeployPackageStepError('文件名不符合约定：' + selected[i].remote_basename + '。须为 TPOPS-GaussDB-Server_{CPU}_*.tar.gz、DBS-GaussDB-Kernel_{CPU}_*.tar.gz 或 DBS-GaussDB-{OS}-Kernel_{CPU}_*.tar.gz。');
+            setDeployPackageStepError('文件名不符合约定：' + bn + '。须为 TPOPS-GaussDB-Server_*.tar.gz、DBS-GaussDB-Kernel_*.tar.gz 或 DBS-GaussDB-{OS}-Kernel*.tar.gz（连字符或下划线形式均可）。');
             return false;
           }
           if (inf.role === 'tpops_server') nTp += 1;
@@ -306,6 +325,9 @@ window.TPOPSDeploy = {
           if (new Set(ids).size !== ids.length) return ElementPlus.ElMessage.warning('所选主机不能重复');
         }
         deployPackageStepError.value = '';
+        if (deployForm.package_release) {
+          loadDeployWizardArtifacts(deployForm.package_release).catch(() => {});
+        }
         deployStep.value = 2;
         return;
       }
@@ -928,6 +950,7 @@ window.TPOPSDeploy = {
       deployArtifactsOm,
       deployArtifactsOs,
       deployPkgsHint,
+      deployArtifactDisplayName,
       syncPackageArtifactIds,
       deployRecordTableRef,
       dashboardLastTasksTableRef: ref(null),

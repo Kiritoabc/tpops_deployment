@@ -31,7 +31,7 @@ window.TPOPSPackages = {
       if (!releaseId) return;
       shared.loading.value = true;
       try {
-        const result = await shared.api.get('/packages/artifacts/', { params: { release: releaseId } });
+        const result = await shared.api.get('/packages/artifacts/', { params: { release: String(releaseId) } });
         packageArtifacts.value = normalizeListResponse(result.data);
       } catch (_) {
         packageArtifacts.value = [];
@@ -165,7 +165,7 @@ window.TPOPSPackages = {
       deployWizardArtifacts.value = [];
       if (!releaseId) return;
       try {
-        const result = await shared.api.get('/packages/artifacts/', { params: { release: releaseId } });
+        const result = await shared.api.get('/packages/artifacts/', { params: { release: String(releaseId) } });
         deployWizardArtifacts.value = normalizeListResponse(result.data);
       } catch (_) {
         deployWizardArtifacts.value = [];

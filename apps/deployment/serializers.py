@@ -8,6 +8,7 @@ from .package_patterns import (
     ROLE_OM_KERNEL,
     ROLE_TPOPS_SERVER,
     ROLE_UNKNOWN,
+    artifact_basename_for_classify,
     classify_package_basename,
 )
 from .user_edit import parse_user_edit_block
@@ -195,8 +196,9 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
             if action in (DeploymentTask.INSTALL, DeploymentTask.UPGRADE):
                 roles = []
                 for art in qs:
-                    info = classify_package_basename(art.remote_basename)
-                    roles.append((art.remote_basename, info))
+                    bn = artifact_basename_for_classify(art)
+                    info = classify_package_basename(bn)
+                    roles.append((bn, info))
                 unknowns = [n for n, inf in roles if inf["role"] == ROLE_UNKNOWN]
                 if unknowns:
                     raise serializers.ValidationError(

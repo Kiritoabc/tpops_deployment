@@ -30,6 +30,7 @@ from .package_patterns import (
     ROLE_OS_KERNEL,
     ROLE_OM_KERNEL,
     ROLE_TPOPS_SERVER,
+    artifact_basename_for_classify,
     classify_package_basename,
 )
 from .user_edit import parse_user_edit_block
@@ -239,8 +240,10 @@ def _should_tpops_gaussdb_media_prep(task) -> bool:
 
     for art in PackageArtifact.objects.filter(
         release_id=rel_id, pk__in=ids
-    ).only("remote_basename"):
-        if classify_package_basename(art.remote_basename)["role"] == ROLE_TPOPS_SERVER:
+    ).only("remote_basename", "original_name"):
+        if classify_package_basename(artifact_basename_for_classify(art))[
+            "role"
+        ] == ROLE_TPOPS_SERVER:
             return True
     return False
 
@@ -269,7 +272,7 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
     om_art = None
     os_art = None
     for art in qs:
-        info = classify_package_basename(art.remote_basename)
+        info = classify_package_basename(artifact_basename_for_classify(art))
         role = info["role"]
         if role == ROLE_TPOPS_SERVER:
             tpops_art = art
