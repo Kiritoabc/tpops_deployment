@@ -937,11 +937,15 @@ window.TPOPSApp.template = String.raw`
                         v-for="row in displayPipelineRows"
                         :key="row.key"
                         class="pipeline-step"
-                        :class="{ sel: activePipelineKey === row.key }"
+                        :class="{
+                          sel: activePipelineKey === row.key,
+                          'pipeline-step--running': rowEffectiveLevelStatus(row) === 'running' || rowEffectiveLevelStatus(row) === 'retrying'
+                        }"
                       >
                         <div class="pipeline-head" @click="onPipelineStepClick(row)">
                           <span v-text="row.title"></span>
                           <span class="pipeline-lv-pill" :class="pipelineLvPillClass(rowEffectiveLevelStatus(row))" v-text="rowEffectiveLevelStatus(row)"></span>
+                          <span v-if="row.level_finish_time" class="hint mono" style="margin-left:8px;">完成 <span v-text="row.level_finish_time"></span></span>
                           <span class="parallel-badge" v-text="'（' + row.parallel_note + '）'"></span>
                         </div>
                         <div class="pipeline-sub">
@@ -961,7 +965,7 @@ window.TPOPSApp.template = String.raw`
                               >
                                 <span>·</span>
                                 <span v-text="subLabelWithoutStatus(sub)"></span>
-                                <span v-if="subFinishExecuteTime(sub)" class="hint" style="margin-left:6px;">用时 <span class="mono" v-text="subFinishExecuteTime(sub)"></span></span>
+                                <span v-if="subFinishExecuteTime(sub)" class="hint" style="margin-left:6px;">完成 <span class="mono" v-text="subFinishExecuteTime(sub)"></span></span>
                                 <span class="sub-st-pill" :class="subStPillClass(sub._nodeStatus || sub.status)" v-text="sub._nodeStatus || sub.status"></span>
                               </div>
                             </div>
@@ -975,7 +979,7 @@ window.TPOPSApp.template = String.raw`
                           >
                             <span>·</span>
                             <span v-text="sub.label"></span>
-                            <span v-if="subFinishExecuteTime(sub)" class="hint" style="margin-left:6px;">用时 <span class="mono" v-text="subFinishExecuteTime(sub)"></span></span>
+                            <span v-if="subFinishExecuteTime(sub)" class="hint" style="margin-left:6px;">完成 <span class="mono" v-text="subFinishExecuteTime(sub)"></span></span>
                             <span class="sub-st-pill" :class="subStPillClass(sub.status)" v-text="sub.status"></span>
                             <div v-if="sub.node_details && sub.node_details.length && !tripleDeployForManifest" class="node-status-dots">
                               <span

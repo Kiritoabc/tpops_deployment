@@ -504,8 +504,6 @@ window.TPOPSDeploy = {
       return pipe;
     });
 
-    const activePipelineKey = computed(() => selectedPipelineKey.value || '');
-
     const tripleDeployForManifest = computed(() => {
       const snap = currentTaskSnapshot.value;
       if (snap && snap.deploy_mode === 'triple') return true;
@@ -542,6 +540,37 @@ window.TPOPSDeploy = {
       }
       return row.level_status || 'none';
     };
+
+    const activePipelineKey = computed(() => {
+      if (selectedPipelineKey.value) return selectedPipelineKey.value;
+      const rows = displayPipelineRows.value || [];
+      for (let i = 0; i < rows.length; i += 1) {
+        const st = rowEffectiveLevelStatus(rows[i]);
+        if (st === 'running' || st === 'retrying') return rows[i].key || '';
+      }
+      for (let j = rows.length - 1; j >= 0; j -= 1) {
+        const st2 = rowEffectiveLevelStatus(rows[j]);
+        if (st2 === 'done') return rows[j].key || '';
+      }
+      return rows[0] && rows[0].key ? rows[0].key : '';
+    });
+
+    watch(
+      () => manifestPayload.value,
+      () => {
+        const key = selectedPipelineKey.value;
+        if (!key) return;
+        const rows = displayPipelineRows.value || [];
+        const hasRun = rows.some((r) => {
+          const s = rowEffectiveLevelStatus(r);
+          return s === 'running' || s === 'retrying';
+        });
+        if (!hasRun) return;
+        const row = rows.find((r) => r.key === key);
+        if (row && rowEffectiveLevelStatus(row) === 'done') selectedPipelineKey.value = '';
+      },
+      { deep: true },
+    );
 
     const pipelineLvPillClass = (st) => {
       const s = normSt(st);
@@ -590,8 +619,19 @@ window.TPOPSDeploy = {
 
     const subFinishExecuteTime = (sub) => {
       const m = sub && sub.meta;
-      if (!m || m.finish_execute_time == null || m.finish_execute_time === '') return '';
-      return String(m.finish_execute_time);
+      if (m && m.finish_execute_time != null && m.finish_execute_time !== '') {
+        return String(m.finish_execute_time);
+      }
+      const nds = sub && sub.node_details;
+      if (nds && nds.length) {
+        const parts = [];
+        nds.forEach((nd) => {
+          const t = nd && nd.finish_execute_time;
+          if (t != null && t !== '') parts.push((nd.node_label || '') + ':' + String(t));
+        });
+        if (parts.length) return parts.join(' · ');
+      }
+      return '';
     };
 
     const tripleGroupedSubs = (row) => {

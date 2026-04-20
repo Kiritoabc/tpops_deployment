@@ -226,11 +226,32 @@ def enrich_pipeline_multi_nodes(
                         "node_index": idx,
                         "node_label": lab,
                         "status": _norm_status(nm_entry.get("status")),
+                        "finish_execute_time": nm_entry.get("finish_execute_time"),
                     }
                 )
             if node_details:
                 sub["node_details"] = node_details
     return pipeline
+
+
+def _rollup_level_status_from_children(children: List[Dict[str, Any]]) -> str:
+    """
+    大层状态以子服务为准聚合，避免 manifest 顶层 *_status 滞后导致「子项 done 父层仍 running」。
+    """
+    if not children:
+        return "none"
+    sts = [_norm_status(c.get("status")) for c in children if isinstance(c, dict)]
+    if not sts:
+        return "none"
+    if any(s == "error" for s in sts):
+        return "error"
+    if any(s in ("running", "retrying") for s in sts):
+        return "running"
+    if all(s == "done" for s in sts):
+        return "done"
+    if any(s == "done" for s in sts) and any(s == "none" for s in sts):
+        return "running"
+    return sts[0]
 
 
 def build_pipeline_from_roots(roots: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -255,14 +276,29 @@ def build_pipeline_from_roots(roots: List[Dict[str, Any]]) -> List[Dict[str, Any
                     "id": ch.get("id"),
                     "label": lab,
                     "status": ch.get("status") or "none",
+                    "meta": ch.get("meta") if isinstance(ch.get("meta"), dict) else {},
                 }
             )
+        agg = _rollup_level_status_from_children(subs)
+        manifest_lv = _norm_status(root.get("status"))
+        last_finish = ""
+        for s in reversed(subs):
+            if _norm_status(s.get("status")) != "done":
+                continue
+            meta = s.get("meta") if isinstance(s.get("meta"), dict) else {}
+            ft = meta.get("finish_execute_time")
+            if ft is not None and str(ft).strip():
+                last_finish = str(ft).strip()
+                break
         pipeline.append(
             {
                 "index": idx,
                 "key": root.get("id"),
                 "title": title,
-                "level_status": root.get("status") or "none",
+                # 展示用聚合状态；manifest 原始层状态供对照
+                "level_status": agg,
+                "level_status_manifest": manifest_lv,
+                "level_finish_time": last_finish,
                 "parallel_note": "本层内子步骤并发执行",
                 "children": subs,
             }
