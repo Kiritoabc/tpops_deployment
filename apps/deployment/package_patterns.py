@@ -9,16 +9,17 @@ ROLE_OS_KERNEL = "os_kernel"
 ROLE_UNKNOWN = "unknown"
 
 # 远端 / 平台 basename 仅含安全字符（见 packages.models._safe_remote_basename）
+# CPU 段后允许「无下划后缀」直接 .tar.gz，如 Kernel_x86_64.tar.gz
 _RE_TPOPS = re.compile(
-    r"^TPOPS-GaussDB-Server_(?P<cpu>[A-Za-z0-9_]+)_.+\.tar\.gz$",
+    r"^TPOPS-GaussDB-Server_(?P<cpu>[A-Za-z0-9_]+)(?:_.+)?\.tar\.gz$",
     re.IGNORECASE,
 )
 _RE_OM = re.compile(
-    r"^DBS-GaussDB-Kernel_(?P<cpu>[A-Za-z0-9_]+)_.+\.tar\.gz$",
+    r"^DBS-GaussDB-Kernel_(?P<cpu>[A-Za-z0-9_]+)(?:_.+)?\.tar\.gz$",
     re.IGNORECASE,
 )
 _RE_OS = re.compile(
-    r"^DBS-GaussDB-(?P<os>[A-Za-z0-9]+)-Kernel_(?P<cpu>[A-Za-z0-9_]+)_.+\.tar\.gz$",
+    r"^DBS-GaussDB-(?P<os>[A-Za-z0-9]+)-Kernel_(?P<cpu>[A-Za-z0-9_]+)(?:_.+)?\.tar\.gz$",
     re.IGNORECASE,
 )
 

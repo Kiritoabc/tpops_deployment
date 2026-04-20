@@ -22,11 +22,11 @@ window.TPOPSDeploy = {
     const classifyDeployArtifactBasename = (basename) => {
       const name = String(basename || '').trim();
       if (!name) return { role: 'unknown', cpu: '', os: '' };
-      let m = name.match(/^TPOPS-GaussDB-Server_([A-Za-z0-9_]+)_.+\.tar\.gz$/i);
+      let m = name.match(/^TPOPS-GaussDB-Server_([A-Za-z0-9_]+)(?:_.+)?\.tar\.gz$/i);
       if (m) return { role: 'tpops_server', cpu: m[1], os: '' };
-      m = name.match(/^DBS-GaussDB-Kernel_([A-Za-z0-9_]+)_.+\.tar\.gz$/i);
+      m = name.match(/^DBS-GaussDB-Kernel_([A-Za-z0-9_]+)(?:_.+)?\.tar\.gz$/i);
       if (m) return { role: 'om_kernel', cpu: m[1], os: '' };
-      m = name.match(/^DBS-GaussDB-([A-Za-z0-9]+)-Kernel_([A-Za-z0-9_]+)_.+\.tar\.gz$/i);
+      m = name.match(/^DBS-GaussDB-([A-Za-z0-9]+)-Kernel_([A-Za-z0-9_]+)(?:_.+)?\.tar\.gz$/i);
       if (m) return { role: 'os_kernel', cpu: m[2], os: m[1] };
       return { role: 'unknown', cpu: '', os: '' };
     };

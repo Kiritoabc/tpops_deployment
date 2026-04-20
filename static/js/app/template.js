@@ -759,7 +759,7 @@ window.TPOPSApp.template = String.raw`
                                   </div>
                                   <div style="border:1px solid #ebeef5;border-radius:8px;padding:12px 14px;background:#fafbfc;">
                                     <div style="font-weight:600;margin-bottom:8px;">③ GaussDB OS 内核包</div>
-                                    <div class="hint" style="margin-bottom:8px;">命名：<code>DBS-GaussDB-&#123;OS&#125;-Kernel_*</code>（如 Hce、openEuler）</div>
+                                    <div class="hint" style="margin-bottom:8px;">命名：<code>DBS-GaussDB-&#123;OS&#125;-Kernel_&#123;CPU&#125;</code> 后可直接 <code>.tar.gz</code> 或再跟 <code>_版本号…</code>（如 Hce、openEuler）</div>
                                     <el-checkbox v-model="deployForm.sync_package_os" style="margin-bottom:8px;">同步此类（不勾选则跳过）</el-checkbox>
                                     <el-select v-show="deployForm.sync_package_os" v-model="deployForm.package_os_artifact_id" clearable filterable placeholder="选择 OS 内核包" style="width:100%;max-width:520px;">
                                       <el-option v-for="a in deployArtifactsOs" :key="a.id" :label="a.remote_basename + '（' + a.size + ' B）'" :value="a.id"></el-option>
