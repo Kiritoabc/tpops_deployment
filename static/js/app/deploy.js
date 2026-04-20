@@ -619,8 +619,19 @@ window.TPOPSDeploy = {
 
     const parseManifestTimeToMs = (raw) => {
       if (raw == null || raw === '') return null;
+      if (typeof raw === 'number' && Number.isFinite(raw)) {
+        if (raw > 1e12) return Math.floor(raw);
+        if (raw > 1e9) return Math.floor(raw * 1000);
+        return null;
+      }
       const t = String(raw).trim();
       if (!t) return null;
+      if (/^\d+(\.\d+)?$/.test(t)) {
+        const n = parseFloat(t);
+        if (!Number.isFinite(n)) return null;
+        if (n > 1e12) return Math.floor(n);
+        if (n > 1e9) return Math.floor(n * 1000);
+      }
       const d = Date.parse(t);
       if (!Number.isNaN(d)) return d;
       const d2 = Date.parse(t.replace(/-/g, '/'));
