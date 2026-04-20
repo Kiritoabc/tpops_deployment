@@ -62,6 +62,7 @@ func (h *Handler) Register(r *gin.Engine) {
 		protected.PATCH("/hosts/:id/", h.updateHost)
 		protected.DELETE("/hosts/:id/", h.deleteHost)
 		protected.POST("/hosts/:id/test_connection/", h.testHostConnection)
+		protected.GET("/hosts/:id/remote_user_edit/", h.fetchHostRemoteUserEdit)
 		protected.GET("/deployment/tasks/", h.listTasks)
 		protected.POST("/deployment/tasks/", h.createTask)
 		protected.GET("/deployment/tasks/:id/", h.getTask)

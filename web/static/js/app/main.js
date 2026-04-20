@@ -54,6 +54,7 @@ use_import_ca = no
         package_release: null,
         package_artifact_ids: [],
         user_edit_content: USER_EDIT_TEMPLATE,
+        user_edit_source: 'local',
       });
       const shared = {
         api,

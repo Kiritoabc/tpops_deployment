@@ -193,7 +193,25 @@ window.TPOPSDeploy = {
 
     const fillUserEditTemplate = () => {
       deployForm.user_edit_content = shared.USER_EDIT_TEMPLATE;
+      deployForm.user_edit_source = 'local';
       ElementPlus.ElMessage.success('已恢复为默认模板');
+    };
+
+    const fetchRemoteUserEdit = async () => {
+      if (!deployForm.host) return ElementPlus.ElMessage.warning('请先在步骤 2 选择节点 1');
+      shared.loading.value = true;
+      try {
+        const r = await shared.api.get('/hosts/' + deployForm.host + '/remote_user_edit/');
+        const data = r.data || {};
+        deployForm.user_edit_content = data.content || '';
+        deployForm.user_edit_source = 'remote';
+        ElementPlus.ElMessage.success('已从节点 1 读取：' + (data.resolved_remote_path || '远端配置'));
+      } catch (e) {
+        const d = (e.response && e.response.data) || {};
+        ElementPlus.ElMessage.error(d.detail || e.message || '拉取远端 user_edit 失败');
+      } finally {
+        shared.loading.value = false;
+      }
     };
 
     const applyLiveTaskPatch = (partial) => {
@@ -841,6 +859,7 @@ window.TPOPSDeploy = {
       setDeployModeAndAdvance,
       goDeployStep2,
       fillUserEditTemplate,
+      fetchRemoteUserEdit,
       deployActionLabel,
       deployStatusLabel,
       deployStatusTagType,

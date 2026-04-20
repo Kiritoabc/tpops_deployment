@@ -46,6 +46,7 @@ go run ./cmd/server
 | PATCH | `/api/hosts/:id/` | 更新主机；不传 `password`/`private_key` 则保留原凭证 |
 | DELETE | `/api/hosts/:id/` | 删除主机 |
 | POST | `/api/hosts/:id/test_connection/` | SSH 连通性检测 → `{ok,message}` |
+| GET | `/api/hosts/:id/remote_user_edit/` | 从该主机 SSH 读取远端 user_edit 文本（与 Python 探测路径一致） |
 | GET/POST | `/api/deployment/tasks/` 等 | 任务列表、创建、详情、`manifest_snapshot` |
 | GET/POST/DELETE | `/api/packages/releases/`、`/api/packages/artifacts/` | 安装包版本；上传 `multipart` 字段 `file`、`release` |
 | GET | `/ws/deploy/:id/`、`/ws/deploy/:id/log/` | WebSocket（日志 WS 与 Python 一致：`kind`/`rel`、`chunk`/`meta`/`wait`，依赖 `user_edit` 中 **`log_path`**） |

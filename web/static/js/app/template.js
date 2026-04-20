@@ -762,8 +762,10 @@ window.TPOPSApp.template = String.raw`
                         </el-form-item>
                         <el-form-item label="user_edit">
                           <el-input v-model="deployForm.user_edit_content" type="textarea" :rows="12" placeholder="[user_edit] ..." class="mono-ta"></el-input>
-                          <div style="margin-top:8px;">
+                          <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
                             <el-button size="small" @click="fillUserEditTemplate">恢复默认模板</el-button>
+                            <el-button size="small" type="primary" plain :loading="loading" @click="fetchRemoteUserEdit">从节点 1 拉取远端配置</el-button>
+                            <span v-if="deployForm.user_edit_source === 'remote'" class="hint">当前内容来自远端</span>
                           </div>
                         </el-form-item>
                       </el-form>
