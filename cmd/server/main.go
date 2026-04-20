@@ -31,6 +31,9 @@ func main() {
 	if err := db.RunMigrations(sqlDB, cfg.MigrationsDir); err != nil {
 		log.Fatalf("migrations: %v", err)
 	}
+	if err := db.EnsurePackageTables(sqlDB); err != nil {
+		log.Fatalf("bootstrap schema: %v", err)
+	}
 
 	repos := repository.New(sqlDB)
 	hub := wshub.NewHub()

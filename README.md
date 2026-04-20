@@ -23,6 +23,8 @@ go run ./cmd/server
 
 浏览器打开 **`/`** 即控制台（与 API 同域）。
 
+若升级代码后出现 **`no such table: packages_*`**，请**重启服务**以执行 `goose` 迁移；启动时也会自动补建安装包表（`EnsurePackageTables`）。
+
 ## 开发账号（仅迁移种子）
 
 - 用户名：`admin`
