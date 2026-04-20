@@ -106,6 +106,10 @@ func RunSSHDeployment(
 		useAppctl := useAppctlForAction(t.Action) && t.UseRawShell == 0
 		cmdLine := BuildRemoteCommand(host.DockerServiceRoot, t.Action, t.Target, useAppctl)
 
+		// 远端落盘 + 流式回传：与无 tee 时一样，SSH 会话在 appctl 进程结束后才结束。
+		// - tee：一份写到 $LOG（便于任务结束后在机器上 tail），一份仍走 stdout 给 TPOPS。
+		// - pipefail + exit ${PIPESTATUS[0]}：管道整体退出码取「左侧 appctl」的码，而不是 tee 的 0。
+		// 若界面显示已结束但现场安装仍在跑，多半是 appctl 父进程已退出、子进程在后台继续（与 tee 无关）。
 		inner := fmt.Sprintf(
 			`set -o pipefail; LOG=%s; mkdir -p "$(dirname "$LOG")"; cd %s; { %s; } 2>&1 | tee -a "$LOG"; exit ${PIPESTATUS[0]}`,
 			sshutil.ShellQuote(absLog),
