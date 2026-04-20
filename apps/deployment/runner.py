@@ -858,6 +858,29 @@ def _run_task_body(task_id: int):
     buffer = ""
     stream_for_init_scan = ""
     init_stdout_hinted = False
+    # 按行尽快推送日志（原先每 256 字节才 emit，无换行时 stdout 易整块缓冲，界面几乎不动）
+    _LOG_LINE_FLUSH_MAX = 120
+
+    def _flush_log_lines(buf: str, emit_partial_tail: bool) -> str:
+        """Emit complete lines; optionally emit tail without trailing \\n if long enough."""
+        if not buf:
+            return ""
+        if "__EXIT_CODE__:" in buf:
+            return buf
+        parts = buf.split("\n")
+        if len(parts) == 1:
+            if emit_partial_tail and len(parts[0]) >= _LOG_LINE_FLUSH_MAX:
+                _emit(task_id, {"type": "log", "data": parts[0]})
+                return ""
+            return buf
+        for line in parts[:-1]:
+            _emit(task_id, {"type": "log", "data": line + "\n"})
+        tail = parts[-1]
+        if emit_partial_tail and len(tail) >= _LOG_LINE_FLUSH_MAX:
+            _emit(task_id, {"type": "log", "data": tail})
+            return ""
+        return tail
+
     try:
         for chunk in run_remote_command(
             h.hostname,
@@ -892,14 +915,16 @@ def _run_task_body(task_id: int):
                 exit_code = int(m.group(1))
                 out = buffer[: m.start()]
                 if out:
-                    _emit(task_id, {"type": "log", "data": out})
+                    buffer = _flush_log_lines(out, emit_partial_tail=True)
+                    if buffer:
+                        _emit(task_id, {"type": "log", "data": buffer})
                 buffer = ""
                 break
-            if len(buffer) >= 256:
-                _emit(task_id, {"type": "log", "data": buffer})
-                buffer = ""
+            buffer = _flush_log_lines(buffer, emit_partial_tail=True)
         if buffer:
-            _emit(task_id, {"type": "log", "data": buffer})
+            buffer = _flush_log_lines(buffer, emit_partial_tail=True)
+            if buffer:
+                _emit(task_id, {"type": "log", "data": buffer})
     except Exception as exc:
         task.status = DeploymentTask.STATUS_FAILED
         task.error_message = str(exc)

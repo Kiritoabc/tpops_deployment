@@ -112,7 +112,8 @@ def run_remote_command(
                     yield data.decode("utf-8", errors="replace")
             if ch.exit_status_ready():
                 break
-            select.select([ch], [], [], 0.05)
+            # 略短轮询间隔，便于 appctl 小块输出时尽快经 Channels 推到前端
+            select.select([ch], [], [], 0.02)
 
         while ch.recv_ready():
             data = ch.recv(4096)
