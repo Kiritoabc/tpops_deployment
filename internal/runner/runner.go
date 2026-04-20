@@ -91,7 +91,7 @@ func RunSSHDeployment(
 		}
 		absLog := deploypaths.AbsolutePath(host.DockerServiceRoot, logRel)
 
-		if err := SyncPackagesToRemote(ctx, repos, cfg.FernetSecret, cfg.PackagesDir, host, secret, t, emit); err != nil {
+		if err := SyncPackagesToRemote(ctx, repos, cfg.PackagesDir, host, secret, t, emit); err != nil {
 			_ = repos.UpdateTaskFinished(context.Background(), taskID, "failed", intPtr(1), err.Error())
 			emit(donePayload("failed", 1, err.Error()))
 			return
