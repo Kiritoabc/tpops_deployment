@@ -26,8 +26,8 @@ window.TPOPSDeploy = {
       if (m) return { role: 'tpops_server', cpu: m[1], os: '' };
       m = name.match(/^DBS-GaussDB-Kernel_([A-Za-z0-9_]+)(?:_.+)?\.tar\.gz$/i);
       if (m) return { role: 'om_kernel', cpu: m[1], os: '' };
-      m = name.match(/^DBS-GaussDB-([A-Za-z0-9]+)-Kernel_([A-Za-z0-9_]+)(?:_.+)?\.tar\.gz$/i);
-      if (m) return { role: 'os_kernel', cpu: m[2], os: m[1] };
+      m = name.match(/^DBS-GaussDB-([A-Za-z0-9]+)-Kernel.*\.tar\.gz$/i);
+      if (m) return { role: 'os_kernel', cpu: '', os: m[1] };
       return { role: 'unknown', cpu: '', os: '' };
     };
 

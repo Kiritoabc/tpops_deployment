@@ -18,15 +18,18 @@ _RE_OM = re.compile(
     r"^DBS-GaussDB-Kernel_(?P<cpu>[A-Za-z0-9_]+)(?:_.+)?\.tar\.gz$",
     re.IGNORECASE,
 )
+# OS 内核：只固定前缀 DBS-GaussDB-{OS}-Kernel，其后版本/CPU 等由现场命名，不再强解析
 _RE_OS = re.compile(
-    r"^DBS-GaussDB-(?P<os>[A-Za-z0-9]+)-Kernel_(?P<cpu>[A-Za-z0-9_]+)(?:_.+)?\.tar\.gz$",
+    r"^DBS-GaussDB-(?P<os>[A-Za-z0-9]+)-Kernel.*\.tar\.gz$",
     re.IGNORECASE,
 )
 
 
 def classify_package_basename(basename):
     """
-    Returns dict: role, cpu, os (os 仅 os_kernel 角色), pattern_name
+    Returns dict: role, cpu, os, pattern_name
+
+    os_kernel：仅解析 OS 段；``Kernel`` 之后不再强匹配 CPU/版本格式。
     """
     name = (basename or "").strip()
     if not name:
@@ -52,8 +55,8 @@ def classify_package_basename(basename):
     if m:
         return {
             "role": ROLE_OS_KERNEL,
-            "cpu": m.group("cpu"),
+            "cpu": None,
             "os": m.group("os"),
-            "pattern_name": "DBS-GaussDB-{OS}-Kernel_{CPU}_*.tar.gz",
+            "pattern_name": "DBS-GaussDB-{OS}-Kernel*.tar.gz",
         }
     return {"role": ROLE_UNKNOWN, "cpu": None, "os": None, "pattern_name": ""}
