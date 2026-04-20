@@ -714,28 +714,24 @@ window.TPOPSApp.template = String.raw`
                       </el-form>
                       <div class="deploy-installer-footer">
                         <el-button @click="goDeployWizardStep(0)">上一步</el-button>
-                        <el-button type="primary" @click="goDeployStep2">下一步：操作与配置</el-button>
+                        <el-button type="primary" @click="goDeployWizardStepHostsToPackages">下一步：选择安装包</el-button>
                       </div>
                     </div>
 
                     <div v-show="deployStep === 2">
-                      <h2 class="installer-step-heading">操作与配置</h2>
-                      <p class="installer-step-lead">选择 appctl 操作并编辑 <code>user_edit</code>；内容将原样写入远程配置文件。</p>
-                      <el-alert type="info" :closable="false" show-icon style="margin-bottom:14px;">
-                        <template #title>选择 appctl 操作后点击「下发执行」；<code>user_edit</code> 将<strong>原样</strong>写入远程配置文件。</template>
-                      </el-alert>
-                      <el-form label-width="100px" style="max-width:100%;">
-                        <el-form-item label="操作类型">
-                          <el-radio-group v-model="deployForm.action" class="deploy-action-rg">
-                            <el-radio-button label="precheck_install">安装前置检查 — <code>precheck install</code>（需填目标组件）</el-radio-button>
-                            <el-radio-button label="precheck_upgrade">升级前置检查 — <code>precheck upgrade</code>（需填目标组件）</el-radio-button>
-                            <el-radio-button label="install">安装 — <code>install</code></el-radio-button>
-                            <el-radio-button label="upgrade">升级 — <code>upgrade</code></el-radio-button>
-                            <el-radio-button label="uninstall_all">卸载全部 — <code>uninstall_all</code>（高危；单/三节点均自动应答 y）</el-radio-button>
-                          </el-radio-group>
+                      <h2 class="installer-step-heading">选择安装包</h2>
+                      <p class="installer-step-lead">安装 / 升级且同步介质时，需选择 TPOPS 主包（必选）及可选 om-agent / OS 内核包；文件名须含所选 CPU、OS 段。</p>
+                      <el-form label-width="112px" label-position="left" style="max-width:720px;">
+                        <el-form-item label="CPU 类型">
+                          <el-select v-model="deployForm.package_cpu_type" filterable allow-create default-first-option placeholder="如 x86_64" style="width:100%;max-width:320px;">
+                            <el-option label="x86_64" value="x86_64"></el-option>
+                            <el-option label="aarch64" value="aarch64"></el-option>
+                          </el-select>
                         </el-form-item>
-                        <el-form-item label="目标参数">
-                          <el-input v-model="deployForm.target" placeholder="precheck 类必填组件名（如 gaussdb）；install / upgrade / uninstall_all 按现场可留空"></el-input>
+                        <el-form-item label="OS 类型">
+                          <el-select v-model="deployForm.package_os_type" filterable allow-create default-first-option placeholder="如 openEuler" style="width:100%;max-width:320px;">
+                            <el-option label="openEuler" value="openEuler"></el-option>
+                          </el-select>
                         </el-form-item>
                         <el-form-item label="安装包">
                           <div style="width:100%;">
@@ -757,6 +753,32 @@ window.TPOPSApp.template = String.raw`
                             </div>
                           </div>
                         </el-form-item>
+                      </el-form>
+                      <div class="deploy-installer-footer">
+                        <el-button @click="goDeployWizardStep(1)">上一步</el-button>
+                        <el-button type="primary" @click="goDeployWizardStepPackagesToConfig">下一步：操作与配置</el-button>
+                      </div>
+                    </div>
+
+                    <div v-show="deployStep === 3">
+                      <h2 class="installer-step-heading">操作与配置</h2>
+                      <p class="installer-step-lead">选择 appctl 操作并编辑 <code>user_edit</code>；内容将原样写入远程配置文件。</p>
+                      <el-alert type="info" :closable="false" show-icon style="margin-bottom:14px;">
+                        <template #title>选择 appctl 操作后点击「下发执行」；<code>user_edit</code> 将<strong>原样</strong>写入远程配置文件。</template>
+                      </el-alert>
+                      <el-form label-width="100px" style="max-width:100%;">
+                        <el-form-item label="操作类型">
+                          <el-radio-group v-model="deployForm.action" class="deploy-action-rg">
+                            <el-radio-button label="precheck_install">安装前置检查 — <code>precheck install</code>（需填目标组件）</el-radio-button>
+                            <el-radio-button label="precheck_upgrade">升级前置检查 — <code>precheck upgrade</code>（需填目标组件）</el-radio-button>
+                            <el-radio-button label="install">安装 — <code>install</code></el-radio-button>
+                            <el-radio-button label="upgrade">升级 — <code>upgrade</code></el-radio-button>
+                            <el-radio-button label="uninstall_all">卸载全部 — <code>uninstall_all</code>（高危；单/三节点均自动应答 y）</el-radio-button>
+                          </el-radio-group>
+                        </el-form-item>
+                        <el-form-item label="目标参数">
+                          <el-input v-model="deployForm.target" placeholder="precheck 类必填组件名（如 gaussdb）；install / upgrade / uninstall_all 按现场可留空"></el-input>
+                        </el-form-item>
                         <el-form-item label="user_edit">
                           <el-input v-model="deployForm.user_edit_content" type="textarea" :rows="12" placeholder="[user_edit] ..." class="mono-ta"></el-input>
                           <div style="margin-top:8px;">
@@ -765,7 +787,7 @@ window.TPOPSApp.template = String.raw`
                         </el-form-item>
                       </el-form>
                       <div class="deploy-installer-footer">
-                        <el-button @click="goDeployWizardStep(1)">上一步</el-button>
+                        <el-button @click="goDeployWizardStep(2)">上一步</el-button>
                         <el-button type="primary" size="large" @click="startDeploy" :loading="loading">下发执行</el-button>
                       </div>
                     </div>
@@ -773,7 +795,7 @@ window.TPOPSApp.template = String.raw`
               </div>
             </el-card>
             <div class="installer-tip-banner">
-              <strong>提示：</strong><code>precheck</code> 类操作需填写目标组件；不跳过安装包同步时请选择版本与具体包文件。
+              <strong>提示：</strong><code>precheck</code> 类操作需填写目标组件；安装 / 升级同步介质时请在「选择安装包」步骤勾选主包与可选内核包，并核对 CPU/OS。
             </div>
             </div>
             </template>

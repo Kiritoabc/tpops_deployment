@@ -18,6 +18,7 @@ from apps.hosts.ssh_client import (
     resolve_user_edit_conf_path,
     remote_cat_file,
     run_remote_command,
+    run_remote_command_output,
     sftp_put_file,
     write_remote_file_utf8,
 )
@@ -25,6 +26,12 @@ from apps.hosts.ssh_client import (
 from apps.manifest.parser import manifest_to_tree, merge_tpops_manifest_dicts
 
 from .models import DeploymentTask
+from .package_patterns import (
+    ROLE_OS_KERNEL,
+    ROLE_OM_KERNEL,
+    ROLE_TPOPS_SERVER,
+    classify_package_basename,
+)
 from .user_edit import parse_user_edit_block
 
 
@@ -215,6 +222,255 @@ def _remote_pkgs_dir(host) -> str:
     return "%s/pkgs" % _deploy_root(host)
 
 
+def _should_tpops_gaussdb_media_prep(task) -> bool:
+    """install/upgrade 且已选安装包时走 /data 解压与 pkgs 汇聚流程。"""
+    if getattr(task, "skip_package_sync", False):
+        return False
+    if task.action not in (DeploymentTask.INSTALL, DeploymentTask.UPGRADE):
+        return False
+    ids = getattr(task, "package_artifact_ids", None) or []
+    return bool(ids) and getattr(task, "package_release_id", None)
+
+
+def _shell_quote(path: str) -> str:
+    return "'%s'" % (path or "").replace("'", "'\"'\"'")
+
+
+def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
+    """
+    TPOPS GaussDB：在节点 1 上准备 /data 下介质并汇入 <部署根>/pkgs/。
+    返回 (ok: bool, error_message: str)
+    """
+    from apps.packages.models import PackageArtifact
+
+    h = task.host
+    rel = task.package_release
+    ids = [int(x) for x in (task.package_artifact_ids or [])]
+    qs = list(
+        PackageArtifact.objects.filter(release=rel, pk__in=ids).order_by("pk")
+    )
+    if len(qs) != len(set(ids)):
+        return False, "安装包列表与版本不一致或存在无效 ID"
+
+    tpops_art = None
+    om_art = None
+    os_art = None
+    for art in qs:
+        info = classify_package_basename(art.remote_basename)
+        role = info["role"]
+        if role == ROLE_TPOPS_SERVER:
+            tpops_art = art
+        elif role == ROLE_OM_KERNEL:
+            om_art = art
+        elif role == ROLE_OS_KERNEL:
+            os_art = art
+
+    if tpops_art is None:
+        return False, "缺少 TPOPS-GaussDB-Server 主包"
+
+    pkgs = _remote_pkgs_dir(h)
+    data_dir = "/data"
+
+    _emit(
+        task_id,
+        {
+            "type": "phase",
+            "phase": "tpops_media_prep",
+            "message": "TPOPS GaussDB 介质准备（/data 与 pkgs）",
+        },
+    )
+
+    if not remote_mkdir_p(
+        h.hostname, h.port, h.username, h.auth_method, secret, data_dir
+    ):
+        return False, "无法创建远程目录 %s" % data_dir
+
+    if not remote_mkdir_p(
+        h.hostname, h.port, h.username, h.auth_method, secret, pkgs
+    ):
+        return False, "无法创建远程目录 %s" % pkgs
+
+    for art in qs:
+        local_path = art.file.path if art.file else ""
+        if not local_path or not os.path.isfile(local_path):
+            return False, "本地找不到安装包文件 id=%s" % art.id
+        remote_path = "%s/%s" % (data_dir, art.remote_basename)
+        ok, msg = sftp_put_file(
+            h.hostname,
+            h.port,
+            h.username,
+            h.auth_method,
+            secret,
+            local_path,
+            remote_path,
+        )
+        if not ok:
+            return False, "上传至 %s 失败: %s" % (remote_path, msg)
+        _emit(
+            task_id,
+            {"type": "log", "data": "[tpops-media] 已上传 /data/%s\n" % art.remote_basename},
+        )
+
+    tpops_archive = "%s/%s" % (data_dir, tpops_art.remote_basename)
+    q_arch = _shell_quote(tpops_archive)
+    q_data = _shell_quote(data_dir)
+
+    tar_cmd = (
+        "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
+        "set -e; cd %s && tar -xzf %s -C %s" % (q_data, q_arch, q_data)
+    )
+    out, code = run_remote_command_output(
+        h.hostname,
+        h.port,
+        h.username,
+        h.auth_method,
+        secret,
+        tar_cmd,
+        timeout=7200,
+        get_pty=False,
+    )
+    if out:
+        _emit(task_id, {"type": "log", "data": out})
+    if code != 0:
+        return False, "解压 TPOPS 主包失败（退出码 %s）" % code
+
+    find_dir_cmd = (
+        "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
+        "set -e; cd %s && for d in TPOPS-GaussDB-Server_*; do "
+        'if [ -d "$d" ]; then printf %%s "$d"; exit 0; fi; done; exit 1' % q_data
+    )
+    tpops_subdir, dcode = run_remote_command_output(
+        h.hostname,
+        h.port,
+        h.username,
+        h.auth_method,
+        secret,
+        find_dir_cmd,
+        timeout=60,
+        get_pty=False,
+    )
+    tpops_subdir = (tpops_subdir or "").strip().splitlines()[0].strip()
+    if dcode != 0 or not tpops_subdir or "/" in tpops_subdir or tpops_subdir.startswith("."):
+        return False, "解压后未找到 TPOPS-GaussDB-Server_* 目录（请确认压缩包内容）"
+
+    q_sub = _shell_quote("%s/%s" % (data_dir, tpops_subdir))
+
+    ds_glob_cmd = (
+        "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
+        "set -e; cd %s && "
+        'for f in DBS-*docker-service*.tar.gz DBS-*docker-service*.tgz; do '
+        'if [ -f "$f" ]; then printf %%s\\n "$f"; exit 0; fi; done; exit 0' % q_sub
+    )
+    ds_path, _ = run_remote_command_output(
+        h.hostname,
+        h.port,
+        h.username,
+        h.auth_method,
+        secret,
+        ds_glob_cmd,
+        timeout=60,
+        get_pty=False,
+    )
+    ds_path = (ds_path or "").strip().splitlines()[0].strip()
+    if ds_path and not ds_path.startswith("/"):
+        ds_path = "%s/%s/%s" % (data_dir, tpops_subdir, ds_path)
+
+    if ds_path:
+        q_ds = _shell_quote(ds_path)
+        ds_tar_cmd = (
+            "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
+            "set -e; tar -xzf %s -C %s" % (q_ds, q_data)
+        )
+        out_ds, code_ds = run_remote_command_output(
+            h.hostname,
+            h.port,
+            h.username,
+            h.auth_method,
+            secret,
+            ds_tar_cmd,
+            timeout=7200,
+            get_pty=False,
+        )
+        if out_ds:
+            _emit(task_id, {"type": "log", "data": out_ds})
+        if code_ds != 0:
+            return False, "解压 docker-service 包失败（退出码 %s）" % code_ds
+        _emit(
+            task_id,
+            {"type": "log", "data": "[tpops-media] 已解压 docker-service 包\n"},
+        )
+    else:
+        _emit(
+            task_id,
+            {
+                "type": "log",
+                "data": "[tpops-media] 未找到 DBS-*docker-service*.tar.gz，跳过解压\n",
+            },
+        )
+
+    q_pkgs = _shell_quote(pkgs)
+    mv_cmd = (
+        "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
+        "set -e; cd %s && "
+        "for f in DBS-*; do "
+        'if [ -f "$f" ] || [ -d "$f" ]; then mv -f "$f" %s/; fi; done && '
+        "for f in GaussDB_*; do "
+        'if [ -f "$f" ] || [ -d "$f" ]; then mv -f "$f" %s/; fi; done'
+        % (q_sub, q_pkgs, q_pkgs)
+    )
+    out_mv, code_mv = run_remote_command_output(
+        h.hostname,
+        h.port,
+        h.username,
+        h.auth_method,
+        secret,
+        mv_cmd,
+        timeout=600,
+        get_pty=False,
+    )
+    if out_mv:
+        _emit(task_id, {"type": "log", "data": out_mv})
+    if code_mv != 0:
+        return False, "移动 TPOPS 目录内介质到 pkgs 失败（退出码 %s）" % code_mv
+    _emit(
+        task_id,
+        {"type": "log", "data": "[tpops-media] 已将 DBS-* / GaussDB_* 移至 %s\n" % pkgs},
+    )
+
+    for label, art in (("om-agent", om_art), ("OS 内核", os_art)):
+        if not art:
+            continue
+        src = "%s/%s" % (data_dir, art.remote_basename)
+        dst = "%s/%s" % (pkgs, art.remote_basename)
+        mv_one = (
+            "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
+            "set -e; if [ -f %s ]; then mv -f %s %s; fi"
+            % (_shell_quote(src), _shell_quote(src), _shell_quote(dst))
+        )
+        out_m, code_m = run_remote_command_output(
+            h.hostname,
+            h.port,
+            h.username,
+            h.auth_method,
+            secret,
+            mv_one,
+            timeout=120,
+            get_pty=False,
+        )
+        if code_m != 0:
+            return False, "移动 %s 包到 pkgs 失败" % label
+        _emit(
+            task_id,
+            {"type": "log", "data": "[tpops-media] 已移入 pkgs: %s\n" % art.remote_basename},
+        )
+
+    _emit(
+        task_id,
+        {"type": "log", "data": "[tpops-media] 介质准备完成，pkgs: %s\n" % pkgs},
+    )
+    return True, ""
+
+
 def _sync_pkgs_to_remote(task_id: int, task, secret: str) -> tuple:
     """
     将任务勾选的安装包同步到执行机 <部署根>/pkgs/（扁平文件名）。
@@ -225,6 +481,9 @@ def _sync_pkgs_to_remote(task_id: int, task, secret: str) -> tuple:
     if getattr(task, "skip_package_sync", False):
         _emit(task_id, {"type": "log", "data": "[pkgs] 已跳过安装包同步（使用环境已有包）\n"})
         return True, ""
+
+    if _should_tpops_gaussdb_media_prep(task):
+        return _sync_tpops_gaussdb_media(task_id, task, secret)
 
     ids = getattr(task, "package_artifact_ids", None) or []
     if not ids:

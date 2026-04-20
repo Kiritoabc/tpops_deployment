@@ -3,6 +3,13 @@ from rest_framework import serializers
 from apps.packages.models import PackageArtifact
 
 from .models import DeploymentTask
+from .package_patterns import (
+    ROLE_OS_KERNEL,
+    ROLE_OM_KERNEL,
+    ROLE_TPOPS_SERVER,
+    ROLE_UNKNOWN,
+    classify_package_basename,
+)
 from .user_edit import parse_user_edit_block
 
 _VALID_ACTIONS = {
@@ -40,6 +47,8 @@ class DeploymentTaskSerializer(serializers.ModelSerializer):
             "package_release",
             "package_release_name",
             "package_artifact_ids",
+            "package_cpu_type",
+            "package_os_type",
             "skip_package_sync",
             "action",
             "target",
@@ -105,6 +114,8 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
             "target",
             "package_release",
             "package_artifact_ids",
+            "package_cpu_type",
+            "package_os_type",
             "skip_package_sync",
         )
 
@@ -164,6 +175,11 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
                     )
         attrs["package_artifact_ids"] = ids
 
+        cpu_hint = (attrs.get("package_cpu_type") or "").strip()
+        os_hint = (attrs.get("package_os_type") or "").strip()
+        attrs["package_cpu_type"] = cpu_hint
+        attrs["package_os_type"] = os_hint
+
         if skip:
             attrs["package_release"] = None
             attrs["package_artifact_ids"] = []
@@ -182,6 +198,62 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"package_artifact_ids": "存在无效的安装包 ID 或所选包不属于该版本"}
                 )
+            action = attrs.get("action")
+            if action in (DeploymentTask.INSTALL, DeploymentTask.UPGRADE):
+                if not cpu_hint or not os_hint:
+                    raise serializers.ValidationError(
+                        {
+                            "package_cpu_type": "安装 / 升级且同步介质时需填写 CPU 与 OS 类型（用于校验文件名）",
+                            "package_os_type": "安装 / 升级且同步介质时需填写 CPU 与 OS 类型（用于校验文件名）",
+                        }
+                    )
+                cpu_key = cpu_hint.lower()
+                os_key = os_hint.lower()
+                roles = []
+                for art in qs:
+                    info = classify_package_basename(art.remote_basename)
+                    roles.append((art.remote_basename, info))
+                unknowns = [n for n, inf in roles if inf["role"] == ROLE_UNKNOWN]
+                if unknowns:
+                    raise serializers.ValidationError(
+                        {
+                            "package_artifact_ids": "以下文件不符合 TPOPS GaussDB 介质命名约定，请改名或取消选择: %s"
+                            % ", ".join(unknowns)
+                        }
+                    )
+                n_tpops = sum(1 for _, inf in roles if inf["role"] == ROLE_TPOPS_SERVER)
+                n_om = sum(1 for _, inf in roles if inf["role"] == ROLE_OM_KERNEL)
+                n_osk = sum(1 for _, inf in roles if inf["role"] == ROLE_OS_KERNEL)
+                if n_tpops != 1:
+                    raise serializers.ValidationError(
+                        {
+                            "package_artifact_ids": "安装 / 升级需且仅需选择一个 TPOPS-GaussDB-Server_{CPU}_*.tar.gz 主包"
+                        }
+                    )
+                if n_om > 1 or n_osk > 1:
+                    raise serializers.ValidationError(
+                        {
+                            "package_artifact_ids": "om-agent 内核包与 OS 内核包每种至多选择一个"
+                        }
+                    )
+                for name, inf in roles:
+                    icpu = (inf.get("cpu") or "").lower()
+                    if icpu != cpu_key:
+                        raise serializers.ValidationError(
+                            {
+                                "package_artifact_ids": "文件 %s 中的 CPU 类型与所选「%s」不一致"
+                                % (name, cpu_hint)
+                            }
+                        )
+                    if inf["role"] == ROLE_OS_KERNEL:
+                        ios = (inf.get("os") or "").lower()
+                        if ios != os_key:
+                            raise serializers.ValidationError(
+                                {
+                                    "package_artifact_ids": "文件 %s 中的 OS 段与所选「%s」不一致"
+                                    % (name, os_hint)
+                                }
+                            )
         else:
             if ids:
                 raise serializers.ValidationError(
@@ -202,4 +274,6 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
         if validated_data.get("skip_package_sync"):
             validated_data["package_release"] = None
             validated_data["package_artifact_ids"] = []
+            validated_data["package_cpu_type"] = ""
+            validated_data["package_os_type"] = ""
         return super().create(validated_data)

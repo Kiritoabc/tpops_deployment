@@ -52,6 +52,8 @@ use_import_ca = no
         skip_package_sync: false,
         package_release: null,
         package_artifact_ids: [],
+        package_cpu_type: 'x86_64',
+        package_os_type: 'openEuler',
         user_edit_content: USER_EDIT_TEMPLATE,
       });
       const shared = {

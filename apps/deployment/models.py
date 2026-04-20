@@ -101,6 +101,20 @@ class DeploymentTask(models.Model):
         verbose_name="跳过安装包同步",
         help_text="为 True 时不向远端 pkgs 上传（使用环境已有包）",
     )
+    package_cpu_type = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        verbose_name="安装包 CPU 类型",
+        help_text="用于校验 GaussDB 介质文件名中的 CPU 段（如 x86_64）",
+    )
+    package_os_type = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        verbose_name="安装包 OS 类型",
+        help_text="用于校验 DBS-GaussDB-{OS}-Kernel_* 文件名中的 OS 段（如 openEuler）",
+    )
     status = models.CharField(
         max_length=32, choices=STATUS_CHOICES, default=STATUS_PENDING
     )

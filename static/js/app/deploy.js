@@ -15,8 +15,72 @@ window.TPOPSDeploy = {
     const deployWizardSteps = [
       { key: 'mode', title: '部署形态', desc: '单节点或三节点拓扑' },
       { key: 'hosts', title: '选择节点', desc: '指定执行 SSH 与 appctl 的主机' },
+      { key: 'packages', title: '选择安装包', desc: 'TPOPS GaussDB 介质与 CPU/OS 校验' },
       { key: 'config', title: '操作与配置', desc: 'appctl 动作与 user_edit 内容' },
     ];
+
+    const classifyDeployArtifactBasename = (basename) => {
+      const name = String(basename || '').trim();
+      if (!name) return { role: 'unknown', cpu: '', os: '' };
+      let m = name.match(/^TPOPS-GaussDB-Server_([A-Za-z0-9_]+)_.+\.tar\.gz$/i);
+      if (m) return { role: 'tpops_server', cpu: m[1], os: '' };
+      m = name.match(/^DBS-GaussDB-Kernel_([A-Za-z0-9_]+)_.+\.tar\.gz$/i);
+      if (m) return { role: 'om_kernel', cpu: m[1], os: '' };
+      m = name.match(/^DBS-GaussDB-([A-Za-z0-9]+)-Kernel_([A-Za-z0-9_]+)_.+\.tar\.gz$/i);
+      if (m) return { role: 'os_kernel', cpu: m[2], os: m[1] };
+      return { role: 'unknown', cpu: '', os: '' };
+    };
+
+    const validateDeployPackageStep = () => {
+      if (deployForm.skip_package_sync) return true;
+      if (!deployForm.package_release) return true;
+      const ids = deployForm.package_artifact_ids || [];
+      if (!ids.length) {
+        ElementPlus.ElMessage.warning('请选择要下发的安装包，或勾选跳过同步');
+        return false;
+      }
+      const cpuHint = String(deployForm.package_cpu_type || '').trim().toLowerCase();
+      const osHint = String(deployForm.package_os_type || '').trim().toLowerCase();
+      const action = deployForm.action;
+      if ((action === 'install' || action === 'upgrade')) {
+        if (!cpuHint || !osHint) {
+          ElementPlus.ElMessage.warning('安装 / 升级且同步介质时请填写 CPU 与 OS 类型');
+          return false;
+        }
+        const arts = deployWizardArtifacts.value || [];
+        const selected = arts.filter((a) => ids.indexOf(a.id) >= 0);
+        let nTp = 0;
+        let nOm = 0;
+        let nOs = 0;
+        for (let i = 0; i < selected.length; i += 1) {
+          const inf = classifyDeployArtifactBasename(selected[i].remote_basename);
+          if (inf.role === 'unknown') {
+            ElementPlus.ElMessage.warning('存在不符合命名约定的包: ' + selected[i].remote_basename);
+            return false;
+          }
+          if (String(inf.cpu || '').toLowerCase() !== cpuHint) {
+            ElementPlus.ElMessage.warning('包「' + selected[i].remote_basename + '」与所选 CPU 不一致');
+            return false;
+          }
+          if (inf.role === 'os_kernel' && String(inf.os || '').toLowerCase() !== osHint) {
+            ElementPlus.ElMessage.warning('包「' + selected[i].remote_basename + '」与所选 OS 不一致');
+            return false;
+          }
+          if (inf.role === 'tpops_server') nTp += 1;
+          else if (inf.role === 'om_kernel') nOm += 1;
+          else if (inf.role === 'os_kernel') nOs += 1;
+        }
+        if (nTp !== 1) {
+          ElementPlus.ElMessage.warning('安装 / 升级需且仅需选择一个 TPOPS-GaussDB-Server_{CPU}_*.tar.gz 主包');
+          return false;
+        }
+        if (nOm > 1 || nOs > 1) {
+          ElementPlus.ElMessage.warning('om-agent 与 OS 内核包每种至多选一个');
+          return false;
+        }
+      }
+      return true;
+    };
     const deployStep = ref(0);
     const taskRunStartedMs = ref(null);
     const taskRunEndedMs = ref(null);
@@ -183,13 +247,24 @@ window.TPOPSDeploy = {
           const ids = [deployForm.host, deployForm.host_node2, deployForm.host_node3].filter(Boolean);
           if (new Set(ids).size !== ids.length) return ElementPlus.ElMessage.warning('所选主机不能重复');
         }
-        if (!(deployForm.user_edit_content || '').trim()) deployForm.user_edit_content = shared.USER_EDIT_TEMPLATE;
         deployStep.value = 2;
         return;
       }
+      if (n === 3) {
+        if (!deployForm.host) return ElementPlus.ElMessage.warning('请选择节点 1（执行机）');
+        if (deployForm.deploy_mode === 'triple') {
+          const ids = [deployForm.host, deployForm.host_node2, deployForm.host_node3].filter(Boolean);
+          if (new Set(ids).size !== ids.length) return ElementPlus.ElMessage.warning('所选主机不能重复');
+        }
+        if (!validateDeployPackageStep()) return;
+        if (!(deployForm.user_edit_content || '').trim()) deployForm.user_edit_content = shared.USER_EDIT_TEMPLATE;
+        deployStep.value = 3;
+      }
     };
 
-    const goDeployStep2 = () => goDeployWizardStep(2);
+    const goDeployWizardStepHostsToPackages = () => goDeployWizardStep(2);
+
+    const goDeployWizardStepPackagesToConfig = () => goDeployWizardStep(3);
 
     const fillUserEditTemplate = () => {
       deployForm.user_edit_content = shared.USER_EDIT_TEMPLATE;
@@ -688,6 +763,7 @@ window.TPOPSDeploy = {
       if (!deployForm.host) return ElementPlus.ElMessage.warning('请选择节点 1');
       if (!(deployForm.user_edit_content || '').trim()) return ElementPlus.ElMessage.warning('请填写或保留默认 user_edit 配置');
       if (!deployForm.skip_package_sync && deployForm.package_release && (!deployForm.package_artifact_ids || !deployForm.package_artifact_ids.length)) return ElementPlus.ElMessage.warning('请选择要下发的安装包，或勾选跳过同步');
+      if (!validateDeployPackageStep()) return;
       if (deployForm.deploy_mode === 'triple') {
         const ids = [deployForm.host, deployForm.host_node2, deployForm.host_node3].filter(Boolean);
         if (new Set(ids).size !== ids.length) return ElementPlus.ElMessage.warning('所选主机不能重复');
@@ -712,6 +788,8 @@ window.TPOPSDeploy = {
           skip_package_sync: !!deployForm.skip_package_sync,
           package_release: deployForm.skip_package_sync ? null : deployForm.package_release,
           package_artifact_ids: deployForm.skip_package_sync ? [] : (deployForm.package_artifact_ids || []).slice(),
+          package_cpu_type: deployForm.skip_package_sync ? '' : String(deployForm.package_cpu_type || '').trim(),
+          package_os_type: deployForm.skip_package_sync ? '' : String(deployForm.package_os_type || '').trim(),
         };
         if (deployForm.deploy_mode === 'triple') {
           body.host_node2 = deployForm.host_node2;
@@ -823,7 +901,8 @@ window.TPOPSDeploy = {
       isHostDisabledTriple,
       goDeployWizardStep,
       setDeployModeAndAdvance,
-      goDeployStep2,
+      goDeployWizardStepHostsToPackages,
+      goDeployWizardStepPackagesToConfig,
       fillUserEditTemplate,
       deployActionLabel,
       deployStatusLabel,
