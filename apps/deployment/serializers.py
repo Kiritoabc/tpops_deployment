@@ -208,10 +208,10 @@ class DeploymentTaskCreateSerializer(serializers.ModelSerializer):
                 n_tpops = sum(1 for _, inf in roles if inf["role"] == ROLE_TPOPS_SERVER)
                 n_om = sum(1 for _, inf in roles if inf["role"] == ROLE_OM_KERNEL)
                 n_osk = sum(1 for _, inf in roles if inf["role"] == ROLE_OS_KERNEL)
-                if n_tpops != 1:
+                if n_tpops > 1:
                     raise serializers.ValidationError(
                         {
-                            "package_artifact_ids": "安装 / 升级需且仅需选择一个 TPOPS-GaussDB-Server_{CPU}_*.tar.gz 主包"
+                            "package_artifact_ids": "TPOPS-GaussDB-Server 主包至多选择一个；未选主包则跳过 /data 解压步骤，仅同步其它包到 pkgs/"
                         }
                     )
                 if n_om > 1 or n_osk > 1:

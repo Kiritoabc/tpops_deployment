@@ -720,7 +720,7 @@ window.TPOPSApp.template = String.raw`
 
                     <div v-show="deployStep === 2">
                       <h2 class="installer-step-heading">选择安装包</h2>
-                      <p class="installer-step-lead">安装 / 升级且同步介质时，需选择 TPOPS 主包（必选）及可选 om-agent / OS 内核包；包名须符合约定（CPU/OS 由文件名自身体现，无需单独选择）。</p>
+                      <p class="installer-step-lead">安装 / 升级且同步介质：可选 TPOPS-GaussDB-Server 主包（勾选则执行 /data 解压与介质汇聚）；可选 om-agent / OS 内核包。未勾主包则跳过该解压步骤，仅将已选文件同步到远端 pkgs/。包名须符合约定。</p>
                       <el-alert v-if="deployPackageStepError" type="warning" :closable="false" show-icon style="margin-bottom:12px;max-width:720px;">
                         <template #title><span style="white-space:pre-wrap;" v-text="deployPackageStepError"></span></template>
                       </el-alert>

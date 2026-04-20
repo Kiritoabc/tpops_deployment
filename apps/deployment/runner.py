@@ -223,13 +223,26 @@ def _remote_pkgs_dir(host) -> str:
 
 
 def _should_tpops_gaussdb_media_prep(task) -> bool:
-    """install/upgrade 且已选安装包时走 /data 解压与 pkgs 汇聚流程。"""
+    """
+    install/upgrade 且勾选了 TPOPS-GaussDB-Server 主包时，走 /data 解压与 pkgs 汇聚。
+    未选主包则不走该流程（仅扁平同步其它已选包到 pkgs/）。
+    """
     if getattr(task, "skip_package_sync", False):
         return False
     if task.action not in (DeploymentTask.INSTALL, DeploymentTask.UPGRADE):
         return False
     ids = getattr(task, "package_artifact_ids", None) or []
-    return bool(ids) and getattr(task, "package_release_id", None)
+    rel_id = getattr(task, "package_release_id", None)
+    if not ids or not rel_id:
+        return False
+    from apps.packages.models import PackageArtifact
+
+    for art in PackageArtifact.objects.filter(
+        release_id=rel_id, pk__in=ids
+    ).only("remote_basename"):
+        if classify_package_basename(art.remote_basename)["role"] == ROLE_TPOPS_SERVER:
+            return True
+    return False
 
 
 def _shell_quote(path: str) -> str:

@@ -6,11 +6,11 @@
 ## 目标
 
 1. **部署向导**：将「安装包 / 介质」从「操作与配置」中拆出，**先选节点 → 再选包 → 最后配置与下发**。
-2. **介质类型（当前版本）**：与上传命名一致的三类（可选除 TPOPS 主包外）：
-   - `TPOPS-GaussDB-Server_{CPU}_*.tar.gz`（安装 / 升级且未跳过时 **必选**）
+2. **介质类型（当前版本）**：与上传命名一致的三类：
+   - `TPOPS-GaussDB-Server_{CPU}_*.tar.gz`（安装 / 升级且未跳过时 **可选**；勾选才走 `/data` 解压与汇聚，否则仅扁平同步其它包）
    - `DBS-GaussDB-Kernel_{CPU}_*.tar.gz`（om-agent，可选）
    - `DBS-GaussDB-{OS}-Kernel_{CPU}_*.tar.gz`（内核，可选）
-3. **执行机（节点 1）**：在 `install` / `upgrade` 且未跳过同步时，于远端执行：`/data` 落盘 → 解压 TPOPS 包 → 解压包内 `DBS-*docker-service*.tar.gz`（若存在）→ 将 TPOPS 目录下 `DBS-*` / `GaussDB_*` 移入 `<部署根>/pkgs/` → 将所选内核包上传至 `pkgs/`。其余动作仍使用原有扁平 `pkgs/` 同步。
+3. **执行机（节点 1）**：在 `install` / `upgrade`、未跳过同步且**勾选了 TPOPS 主包**时，于远端执行 `/data` 解压与 pkgs 汇聚；**未勾主包**则跳过该段，仅对已选 artifact 执行扁平 `pkgs/` 同步。其余动作仍使用原有扁平同步。
 
 ## 非目标（MVP）
 
@@ -23,5 +23,5 @@
 
 ## 验收
 
-- 向导四步可走完；`install`/`upgrade` 未跳过时必选 TPOPS 主包且所选包文件名符合约定模式。
+- 向导可走完；`install`/`upgrade` 未跳过时所选包文件名符合约定；主包可选（有则走 `/data` 流程，无则只同步已选包到 pkgs）。
 - 任务执行日志可见 `/data` 与 `pkgs` 准备阶段；`appctl` 行为不变。

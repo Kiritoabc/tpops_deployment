@@ -66,8 +66,8 @@ window.TPOPSDeploy = {
           else if (inf.role === 'om_kernel') nOm += 1;
           else if (inf.role === 'os_kernel') nOs += 1;
         }
-        if (nTp !== 1) {
-          setDeployPackageStepError('当前为「安装」或「升级」且未跳过同步：必须勾选且仅能勾选一个 TPOPS-GaussDB-Server_{CPU}_*.tar.gz 主包（用于解压与准备 /data）。仅选内核包无法进入下一步；若主包已在远端，请勾选「跳过同步」。');
+        if (nTp > 1) {
+          setDeployPackageStepError('TPOPS-GaussDB-Server 主包至多勾选一个。未勾主包时不会执行 /data 解压步骤，仅将已选包同步到远端 pkgs/。');
           return false;
         }
         if (nOm > 1 || nOs > 1) {
