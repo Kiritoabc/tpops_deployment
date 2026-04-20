@@ -48,7 +48,7 @@ use_import_ca = no
         host_node2: null,
         host_node3: null,
         action: 'install',
-        target: 'gaussdb',
+        target: '',
         skip_package_sync: false,
         use_raw_shell: false,
         package_release: null,

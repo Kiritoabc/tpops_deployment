@@ -727,15 +727,15 @@ window.TPOPSApp.template = String.raw`
                       <el-form label-width="100px" style="max-width:100%;">
                         <el-form-item label="操作类型">
                           <el-radio-group v-model="deployForm.action" class="deploy-action-rg">
-                            <el-radio-button label="precheck_install">安装前置检查 — <code>precheck install</code>（需填目标组件）</el-radio-button>
-                            <el-radio-button label="precheck_upgrade">升级前置检查 — <code>precheck upgrade</code>（需填目标组件）</el-radio-button>
+                            <el-radio-button label="precheck_install">安装前置检查 — <code>precheck install</code></el-radio-button>
+                            <el-radio-button label="precheck_upgrade">升级前置检查 — <code>precheck upgrade</code></el-radio-button>
                             <el-radio-button label="install">安装 — <code>install</code></el-radio-button>
                             <el-radio-button label="upgrade">升级 — <code>upgrade</code></el-radio-button>
                             <el-radio-button label="uninstall_all">卸载全部 — <code>uninstall_all</code>（高危；单/三节点均自动应答 y）</el-radio-button>
                           </el-radio-group>
                         </el-form-item>
                         <el-form-item label="目标参数">
-                          <el-input v-model="deployForm.target" placeholder="precheck 类必填组件名（如 gaussdb）；install / upgrade / uninstall_all 按现场可留空"></el-input>
+                          <el-input v-model="deployForm.target" placeholder="传给 appctl 的组件参数，可留空（由远端 appctl 决定）"></el-input>
                         </el-form-item>
                         <el-form-item label="执行方式">
                           <el-checkbox v-model="deployForm.use_raw_shell">整段 shell（不封装 appctl；<code>target</code> 为远端 bash 脚本）</el-checkbox>
@@ -778,7 +778,7 @@ window.TPOPSApp.template = String.raw`
               </div>
             </el-card>
             <div class="installer-tip-banner">
-              <strong>提示：</strong><code>precheck</code> 类操作需填写目标组件；不跳过安装包同步时请选择版本与具体包文件。
+              <strong>提示：</strong>目标参数可按现场留空；不跳过安装包同步时请选择版本与具体包文件。
             </div>
             </div>
             </template>

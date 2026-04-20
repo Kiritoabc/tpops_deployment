@@ -21,9 +21,6 @@ func BuildRemoteCommand(deployRoot, action, rawCmd string, useAppctlWrap bool) s
 		return rawCmd
 	}
 	component := rawCmd
-	if component == "" {
-		component = "gaussdb"
-	}
 	sub := appctlSubcommand(action)
 	qRoot := sshutil.ShellQuote(root)
 	qComp := sshutil.ShellQuote(component)
