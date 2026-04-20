@@ -31,12 +31,22 @@ window.TPOPSDeploy = {
       return { role: 'unknown', cpu: '', os: '' };
     };
 
+    const deployPackageStepError = ref('');
+
+    const setDeployPackageStepError = (msg) => {
+      deployPackageStepError.value = msg || '';
+      if (msg) {
+        ElementPlus.ElMessage.warning(msg);
+      }
+    };
+
     const validateDeployPackageStep = () => {
+      deployPackageStepError.value = '';
       if (deployForm.skip_package_sync) return true;
       if (!deployForm.package_release) return true;
       const ids = deployForm.package_artifact_ids || [];
       if (!ids.length) {
-        ElementPlus.ElMessage.warning('请选择要下发的安装包，或勾选跳过同步');
+        setDeployPackageStepError('请勾选要下发的安装包，或勾选「跳过同步」若远端已有介质。');
         return false;
       }
       const cpuHint = String(deployForm.package_cpu_type || '').trim().toLowerCase();
@@ -44,7 +54,7 @@ window.TPOPSDeploy = {
       const action = deployForm.action;
       if ((action === 'install' || action === 'upgrade')) {
         if (!cpuHint || !osHint) {
-          ElementPlus.ElMessage.warning('安装 / 升级且同步介质时请填写 CPU 与 OS 类型');
+          setDeployPackageStepError('安装 / 升级且同步介质时，请填写「CPU 类型」与「OS 类型」（须与包名中的段一致，例如 Hce 内核包应选 OS 为 Hce）。');
           return false;
         }
         const arts = deployWizardArtifacts.value || [];
@@ -55,15 +65,15 @@ window.TPOPSDeploy = {
         for (let i = 0; i < selected.length; i += 1) {
           const inf = classifyDeployArtifactBasename(selected[i].remote_basename);
           if (inf.role === 'unknown') {
-            ElementPlus.ElMessage.warning('存在不符合命名约定的包: ' + selected[i].remote_basename);
+            setDeployPackageStepError('文件名不符合约定：' + selected[i].remote_basename + '。须为 TPOPS-GaussDB-Server_{CPU}_*.tar.gz、DBS-GaussDB-Kernel_{CPU}_*.tar.gz 或 DBS-GaussDB-{OS}-Kernel_{CPU}_*.tar.gz。');
             return false;
           }
           if (String(inf.cpu || '').toLowerCase() !== cpuHint) {
-            ElementPlus.ElMessage.warning('包「' + selected[i].remote_basename + '」与所选 CPU 不一致');
+            setDeployPackageStepError('包「' + selected[i].remote_basename + '」中的 CPU 与上方所选「CPU 类型」不一致，请修改下拉或更换包。');
             return false;
           }
           if (inf.role === 'os_kernel' && String(inf.os || '').toLowerCase() !== osHint) {
-            ElementPlus.ElMessage.warning('包「' + selected[i].remote_basename + '」与所选 OS 不一致');
+            setDeployPackageStepError('包「' + selected[i].remote_basename + '」中的 OS 段为「' + (inf.os || '') + '」，与上方所选「OS 类型」不一致（例如 Hce 内核包请选择 OS 类型 Hce）。');
             return false;
           }
           if (inf.role === 'tpops_server') nTp += 1;
@@ -71,11 +81,11 @@ window.TPOPSDeploy = {
           else if (inf.role === 'os_kernel') nOs += 1;
         }
         if (nTp !== 1) {
-          ElementPlus.ElMessage.warning('安装 / 升级需且仅需选择一个 TPOPS-GaussDB-Server_{CPU}_*.tar.gz 主包');
+          setDeployPackageStepError('当前为「安装」或「升级」且未跳过同步：必须勾选且仅能勾选一个 TPOPS-GaussDB-Server_{CPU}_*.tar.gz 主包（用于解压与准备 /data）。仅选内核包无法进入下一步；若主包已在远端，请勾选「跳过同步」。');
           return false;
         }
         if (nOm > 1 || nOs > 1) {
-          ElementPlus.ElMessage.warning('om-agent 与 OS 内核包每种至多选一个');
+          setDeployPackageStepError('om-agent 内核包（DBS-GaussDB-Kernel_*）与 OS 内核包（DBS-GaussDB-*-Kernel_*）每种至多选一个。');
           return false;
         }
       }
@@ -247,6 +257,7 @@ window.TPOPSDeploy = {
           const ids = [deployForm.host, deployForm.host_node2, deployForm.host_node3].filter(Boolean);
           if (new Set(ids).size !== ids.length) return ElementPlus.ElMessage.warning('所选主机不能重复');
         }
+        deployPackageStepError.value = '';
         deployStep.value = 2;
         return;
       }
@@ -903,6 +914,7 @@ window.TPOPSDeploy = {
       setDeployModeAndAdvance,
       goDeployWizardStepHostsToPackages,
       goDeployWizardStepPackagesToConfig,
+      deployPackageStepError,
       fillUserEditTemplate,
       deployActionLabel,
       deployStatusLabel,
