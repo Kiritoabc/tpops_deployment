@@ -503,10 +503,14 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
         },
     )
 
+    # 现场包解压后多为固定目录名 TPOPS-GaussDB-Server；旧包可能为 TPOPS-GaussDB-Server_<后缀>
     find_dir_cmd = (
         "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
-        "set -e; cd %s && for d in TPOPS-GaussDB-Server_*; do "
-        'if [ -d "$d" ]; then printf %%s "$d"; exit 0; fi; done; exit 1' % q_data
+        "set -e; cd %s && "
+        "if [ -d TPOPS-GaussDB-Server ]; then printf %%s TPOPS-GaussDB-Server; exit 0; fi; "
+        "for d in TPOPS-GaussDB-Server_*; do "
+        'if [ -d "$d" ]; then printf %%s "$d"; exit 0; fi; '
+        "done; exit 1" % q_data
     )
     tpops_subdir, dcode = run_remote_command_output(
         h.hostname,
@@ -523,7 +527,9 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
     ]
     tpops_subdir = _tp_lines[0] if _tp_lines else ""
     if dcode != 0 or not tpops_subdir or "/" in tpops_subdir or tpops_subdir.startswith("."):
-        return False, "解压后未找到 TPOPS-GaussDB-Server_* 目录（请确认压缩包内容）"
+        return False, (
+            "解压后未找到 TPOPS-GaussDB-Server 或 TPOPS-GaussDB-Server_* 目录（请确认压缩包内容）"
+        )
 
     q_sub = _shell_quote("%s/%s" % (data_dir, tpops_subdir))
 

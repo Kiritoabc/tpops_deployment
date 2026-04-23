@@ -765,7 +765,7 @@ window.TPOPSApp.template = String.raw`
                                 <div v-else style="display:flex;flex-direction:column;gap:14px;">
                                   <div style="border:1px solid #ebeef5;border-radius:8px;padding:12px 14px;background:#fafbfc;">
                                     <div style="font-weight:600;margin-bottom:8px;">① TPOPS 软件包</div>
-                                    <div class="hint" style="margin-bottom:8px;">命名：<code>TPOPS-GaussDB-Server_*</code>。勾选同步后若存在主包，将在节点 1 上执行 <code>/data</code> 解压与介质汇聚；否则仅扁平同步。</div>
+                                    <div class="hint" style="margin-bottom:8px;">主包解压后目录名为 <code>TPOPS-GaussDB-Server</code> 或 <code>TPOPS-GaussDB-Server_*</code>。勾选同步后若存在主包，将在节点 1 上执行 <code>/data</code> 解压与介质汇聚；否则仅扁平同步。</div>
                                     <el-checkbox v-model="deployForm.sync_package_tpops" style="margin-bottom:8px;">同步此类（不勾选则跳过）</el-checkbox>
                                     <el-select v-show="deployForm.sync_package_tpops" v-model="deployForm.package_tpops_artifact_id" clearable filterable placeholder="选择主包文件" style="width:100%;max-width:520px;">
                                       <el-option v-for="a in deployArtifactsTpops" :key="a.id" :label="deployArtifactDisplayName(a) + '（' + a.size + ' B）'" :value="a.id"></el-option>
