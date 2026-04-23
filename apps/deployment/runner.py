@@ -518,7 +518,10 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
         timeout=60,
         get_pty=False,
     )
-    tpops_subdir = (tpops_subdir or "").strip().splitlines()[0].strip()
+    _tp_lines = [
+        ln.strip() for ln in (tpops_subdir or "").splitlines() if ln.strip()
+    ]
+    tpops_subdir = _tp_lines[0] if _tp_lines else ""
     if dcode != 0 or not tpops_subdir or "/" in tpops_subdir or tpops_subdir.startswith("."):
         return False, "解压后未找到 TPOPS-GaussDB-Server_* 目录（请确认压缩包内容）"
 
@@ -540,7 +543,8 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
         timeout=60,
         get_pty=False,
     )
-    ds_path = (ds_glob_out or "").strip().splitlines()[0].strip()
+    _ds_lines = [ln.strip() for ln in (ds_glob_out or "").splitlines() if ln.strip()]
+    ds_path = _ds_lines[0] if _ds_lines else ""
     if ds_path and not ds_path.startswith("/"):
         ds_path = "%s/%s/%s" % (data_dir, tpops_subdir, ds_path)
 
