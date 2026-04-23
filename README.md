@@ -6,6 +6,8 @@
 
 **按顺序读代码：** [`docs/CODE_READING_GUIDE.md`](docs/CODE_READING_GUIDE.md) — 建议阅读路径、主链路、路由与 WebSocket 速查。
 
+**全站技术参考（数据库建模、所有 URL/WS 实现细节、文件职责、Mermaid 流程图）：** [`docs/PLATFORM_REFERENCE.md`](docs/PLATFORM_REFERENCE.md)
+
 ## 环境说明
 
 - **生产目标**：Linux 上 **Python 3.7.9**（Django 4.x 需要 Python 3.8+，因此依赖锁定为 **Django 3.2 LTS**）。
