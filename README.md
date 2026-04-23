@@ -6,7 +6,9 @@
 
 **按顺序读代码：** [`docs/CODE_READING_GUIDE.md`](docs/CODE_READING_GUIDE.md) — 建议阅读路径、主链路、路由与 WebSocket 速查。
 
-**全站技术参考（数据库建模、所有 URL/WS 实现细节、文件职责、Mermaid 流程图）：** [`docs/PLATFORM_REFERENCE.md`](docs/PLATFORM_REFERENCE.md)
+**全站技术参考索引：** [`docs/PLATFORM_REFERENCE.md`](docs/PLATFORM_REFERENCE.md)  
+
+**按模块分章、小白向详细说明（推荐细读）：** [`docs/chapters/README.md`](docs/chapters/README.md)
 
 ## 环境说明
 

@@ -2,7 +2,7 @@
 
 This file orients automated agents and humans who edit **TPOPS 白屏化部署工具**: a Django + DRF + Channels backend with a **Vue 3 + Element Plus (CDN)** single-page UI served from `templates/index.html`.
 
-For full architecture and data flow, read **`docs/PROJECT_GUIDE.md`** first. **`README.md`** covers setup, env vars, remote `appctl.sh` commands, and `user_edit_file.conf` behavior.
+For full architecture and data flow, read **`docs/PROJECT_GUIDE.md`** first. **`README.md`** covers setup, env vars, remote `appctl.sh` commands, and `user_edit_file.conf` behavior. For **per-module, beginner-friendly** chapters (DB, each app, URLs, WS, frontend), see **`docs/chapters/README.md`** and the index **`docs/PLATFORM_REFERENCE.md`**.
 
 ## Tech stack
 

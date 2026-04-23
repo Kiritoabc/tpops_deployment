@@ -22,3 +22,7 @@
 | 文件 | 说明 |
 |------|------|
 | [plan-install-packages.md](./plan-install-packages.md) | TPOPS 安装包版本管理、下发至 `pkgs/`、与部署任务衔接 |
+
+## 实现与架构说明（非 Plan）
+
+平台**已实现代码**的按模块说明见 **`docs/chapters/README.md`**（分章、偏小白）；总索引见 **`docs/PLATFORM_REFERENCE.md`**。

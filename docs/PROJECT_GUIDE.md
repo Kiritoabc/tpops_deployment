@@ -2,7 +2,9 @@
 
 本文面向**需要自行阅读代码、理解实现与数据流**的开发者，说明本仓库的定位、架构、核心模块与执行路径。更偏「设计 + 导航」，与根目录 `README.md` 的「快速上手」互补。
 
-**更系统的参考（数据模型表、每个 HTTP/WS URL 的实现说明、仓库文件地图、多张 Mermaid 图）：** [`PLATFORM_REFERENCE.md`](PLATFORM_REFERENCE.md)
+**更系统的参考索引：** [`PLATFORM_REFERENCE.md`](PLATFORM_REFERENCE.md)  
+
+**按模块分章、小白向详细说明：** [`chapters/README.md`](chapters/README.md)
 
 ---
 
