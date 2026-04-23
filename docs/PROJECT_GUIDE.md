@@ -10,7 +10,7 @@
 
 - 在 Web 上**纳管 SSH 主机**（部署根目录即 `appctl.sh` 所在目录，如 `/data/docker-service`）。
 - 创建**部署任务**：选择操作类型（前置检查 / 安装 / 升级 / 卸载等）、填写 `user_edit_file.conf` 内容、可选**安装包版本与文件**。
-- 服务端在**后台线程**中通过 **Paramiko** SSH 到**节点 1（执行机）**，**先**同步/解压安装介质（含 TPOPS 主包时：所选包先落到 `/data/`，解压后再汇入 `<部署根>/pkgs/`；若部署根已存在可跳过包内 `docker-service` 解压；避免覆盖已写配置），**再**写入 `user_edit_file.conf`、执行 `sh appctl.sh ...`。任务日志除 WebSocket 外可追加写入 `logs/deployment_tasks/task_<id>.log`。
+- 服务端在**后台线程**中通过 **Paramiko** SSH 到**节点 1（执行机）**，**先**同步/解压安装介质（含 TPOPS 主包时：所选包先落到 `/data/`，解压 TPOPS 与包内 `docker-service` 后再创建 `<部署根>/pkgs/` 并汇入；避免覆盖已写配置），**再**写入 `user_edit_file.conf`、执行 `sh appctl.sh ...`。任务日志除 WebSocket 外可追加写入 `logs/deployment_tasks/task_<id>.log`。
 - 通过 **Django Channels WebSocket** 向浏览器**实时推送**标准输出、manifest 解析结果、任务状态；可选连接**文件日志 tail**。
 
 **非目标（当前 MVP）：** 不替代 `appctl.sh` 的业务逻辑；不在此项目内实现集群编排引擎；默认单机 SQLite 仅适合演示/小规模（生产建议 PostgreSQL 等）。

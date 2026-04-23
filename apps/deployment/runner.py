@@ -413,7 +413,6 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
 
     pkgs = _remote_pkgs_dir(h)
     data_dir = "/data"
-    deploy_root = _deploy_root(h)
 
     _emit(
         task_id,
@@ -428,11 +427,6 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
         h.hostname, h.port, h.username, h.auth_method, secret, data_dir
     ):
         return False, "无法创建远程目录 %s" % data_dir
-
-    if not remote_mkdir_p(
-        h.hostname, h.port, h.username, h.auth_method, secret, pkgs
-    ):
-        return False, "无法创建远程目录 %s" % pkgs
 
     for art in qs:
         local_path = art.file.path if art.file else ""
@@ -530,61 +524,25 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
 
     q_sub = _shell_quote("%s/%s" % (data_dir, tpops_subdir))
 
-    ds_skip_cmd = (
+    ds_glob_cmd = (
         "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
-        "if [ -d %s ]; then echo 1; else echo 0; fi"
-        % _shell_quote(deploy_root)
+        "set -e; cd %s && "
+        'for f in DBS-*docker-service*.tar.gz DBS-*docker-service*.tgz; do '
+        'if [ -f "$f" ]; then printf %%s\\n "$f"; exit 0; fi; done; exit 0' % q_sub
     )
-    ds_skip_out, _ = run_remote_command_output(
+    ds_glob_out, _ = run_remote_command_output(
         h.hostname,
         h.port,
         h.username,
         h.auth_method,
         secret,
-        ds_skip_cmd,
-        timeout=30,
+        ds_glob_cmd,
+        timeout=60,
         get_pty=False,
     )
-    skip_ds_extract = (ds_skip_out or "").strip().startswith("1")
-
-    ds_path = ""
-    if skip_ds_extract:
-        _emit(
-            task_id,
-            {
-                "type": "phase",
-                "phase": "media_extract_docker_service",
-                "message": "已存在部署根 %s，跳过解压 docker-service 包" % deploy_root,
-            },
-        )
-        _emit(
-            task_id,
-            {
-                "type": "log",
-                "data": "[tpops-media] 远程已存在 %s，跳过解压 DBS-*docker-service* 包\n"
-                % deploy_root,
-            },
-        )
-    else:
-        ds_glob_cmd = (
-            "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
-            "set -e; cd %s && "
-            'for f in DBS-*docker-service*.tar.gz DBS-*docker-service*.tgz; do '
-            'if [ -f "$f" ]; then printf %%s\\n "$f"; exit 0; fi; done; exit 0' % q_sub
-        )
-        ds_glob_out, _ = run_remote_command_output(
-            h.hostname,
-            h.port,
-            h.username,
-            h.auth_method,
-            secret,
-            ds_glob_cmd,
-            timeout=60,
-            get_pty=False,
-        )
-        ds_path = (ds_glob_out or "").strip().splitlines()[0].strip()
-        if ds_path and not ds_path.startswith("/"):
-            ds_path = "%s/%s/%s" % (data_dir, tpops_subdir, ds_path)
+    ds_path = (ds_glob_out or "").strip().splitlines()[0].strip()
+    if ds_path and not ds_path.startswith("/"):
+        ds_path = "%s/%s/%s" % (data_dir, tpops_subdir, ds_path)
 
     if ds_path:
         q_bn = _shell_quote(os.path.basename(ds_path))
@@ -642,7 +600,7 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
                 "message": "docker-service 包已解压",
             },
         )
-    elif not skip_ds_extract:
+    else:
         _emit(
             task_id,
             {
@@ -658,6 +616,12 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
                 "data": "[tpops-media] 未找到 DBS-*docker-service*.tar.gz，跳过解压\n",
             },
         )
+
+    # 在解压 TPOPS / docker-service 之后再创建 pkgs，避免仅靠空目录被误判为「已有完整部署根」
+    if not remote_mkdir_p(
+        h.hostname, h.port, h.username, h.auth_method, secret, pkgs
+    ):
+        return False, "无法创建远程目录 %s" % pkgs
 
     q_pkgs = _shell_quote(pkgs)
     _emit(

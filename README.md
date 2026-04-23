@@ -88,7 +88,7 @@ export DJANGO_SECRET_KEY='你的密钥'
 
 1. 选择 **单节点** 或 **三节点**（**节点 1** 为执行 SSH、写入 `user_edit_file.conf` 与执行 appctl 的机器）。节点 2/3 可选，仅作登记；**不在后台改写配置文件中的 IP**。
 2. 填写 **`[user_edit]`** 段配置文本；**按填写内容原样写入远程文件**，不会用所选 SSH 节点的地址覆盖其中的 IP。向导中可先选节点 1，再使用 **「从节点 1 读取远程配置」** 调用 `GET /api/hosts/<id>/fetch_user_edit/`：在远端按与任务相同的规则探测上述路径之一，读出全文并通过 `[user_edit]` 校验后返回 JSON（`content`、`remote_path`），供粘贴到表单。
-3. **Runner 顺序**（未勾选「跳过全部同步」时）：**①** 同步/解压安装包。`install` / `upgrade` 且勾选了 **TPOPS-GaussDB-Server** 主包时：所选包先 SFTP 到 `/data/`，解压 TPOPS 后再汇入 `<部署根>/pkgs/`；若远程已存在部署根目录则跳过包内 `docker-service` 解压。**未勾主包**或其它动作：**扁平 SFTP** 到 `pkgs/`。**先于**写入 `user_edit`，避免解压出的 `docker-service` 覆盖已写配置；详见 `plan/plan-tpops-gaussdb-package-selection.md`。
+3. **Runner 顺序**（未勾选「跳过全部同步」时）：**①** 同步/解压安装包。`install` / `upgrade` 且勾选了 **TPOPS-GaussDB-Server** 主包时：所选包先 SFTP 到 `/data/`，解压 TPOPS 与包内 `docker-service` 介质后再创建 `<部署根>/pkgs/` 并汇入。**未勾主包**或其它动作：**扁平 SFTP** 到 `pkgs/`。**先于**写入 `user_edit`，避免解压出的 `docker-service` 覆盖已写配置；详见 `plan/plan-tpops-gaussdb-package-selection.md`。
 4. **②** 在节点 1 上检测并写入 `user_edit_file.conf`（与脚本一致）：
    - `<部署根>/config/gaussdb/user_edit_file.conf`
    - `<部署根>/config/user_edit_file.conf`  
