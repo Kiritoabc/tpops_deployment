@@ -10,7 +10,7 @@
 
 - 在 Web 上**纳管 SSH 主机**（部署根目录即 `appctl.sh` 所在目录，如 `/data/docker-service`）。
 - 创建**部署任务**：选择操作类型（前置检查 / 安装 / 升级 / 卸载等）、填写 `user_edit_file.conf` 内容、可选**安装包版本与文件**。
-- 服务端在**后台线程**中通过 **Paramiko** SSH 到**节点 1（执行机）**，**先**同步/解压安装介质（含 TPOPS 时在 `<部署根>` 外 `/data` 准备，避免覆盖已写配置），**再**写入 `user_edit_file.conf`、执行 `sh appctl.sh ...`。
+- 服务端在**后台线程**中通过 **Paramiko** SSH 到**节点 1（执行机）**，**先**同步/解压安装介质（含 TPOPS 主包时：所选包先落到 `/data/`，解压后再汇入 `<部署根>/pkgs/`；若部署根已存在可跳过包内 `docker-service` 解压；避免覆盖已写配置），**再**写入 `user_edit_file.conf`、执行 `sh appctl.sh ...`。任务日志除 WebSocket 外可追加写入 `logs/deployment_tasks/task_<id>.log`。
 - 通过 **Django Channels WebSocket** 向浏览器**实时推送**标准输出、manifest 解析结果、任务状态；可选连接**文件日志 tail**。
 
 **非目标（当前 MVP）：** 不替代 `appctl.sh` 的业务逻辑；不在此项目内实现集群编排引擎；默认单机 SQLite 仅适合演示/小规模（生产建议 PostgreSQL 等）。
@@ -140,7 +140,7 @@ plan/                      # 功能设计文档（plan-xxx.md）
 1. **加载任务** `select_related(host, host_node2, host_node3, package_release)`。
 2. **解密 SSH 凭证**；若无凭证则失败并 WS 通知。
 3. **`parse_user_edit_block`**：校验 `[user_edit]` 段落；得到 **kv**（含 `node1_ip` / `node2_ip` / `node3_ip` 等）供 manifest 路径使用。
-4. **`_sync_pkgs_to_remote`**：若未勾选跳过且选了 artifact，则同步介质（扁平到 `<root>/pkgs/`；或含 TPOPS 主包时在 `/data` 解压后再汇入 `pkgs/`）。**先于**写入 `user_edit`，避免解压出的 `docker-service` 覆盖刚写入的配置。
+4. **`_sync_pkgs_to_remote`**：若未勾选跳过且选了 artifact，则同步介质（扁平到 `<root>/pkgs/`；或含 TPOPS 主包时先 `/data` 落盘再解压、移动/移入 `pkgs/`）。**先于**写入 `user_edit`，避免解压出的 `docker-service` 覆盖刚写入的配置。上传过程可通过 WebSocket `phase`（如 `media_upload`）驱动前端进度条。
 5. **`resolve_user_edit_conf_path`**：在远端探测 `user_edit_file.conf` 位于 `config/gaussdb/` 或 `config/`；失败则可在默认路径创建目录。
 6. **`write_remote_file_utf8`**：将 `user_edit_content` **原样**写入远程路径。
 7. **`_build_appctl_command`**：拼出  

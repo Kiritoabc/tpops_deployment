@@ -35,6 +35,7 @@ from .package_patterns import (
     classify_package_basename,
 )
 from .user_edit import parse_user_edit_block
+from .task_file_log import close_task_log, open_task_log, write_task_log
 
 
 def _channel_group(task_id: int) -> str:
@@ -51,6 +52,15 @@ _LOG_BATCH_MAX_MS = 40
 
 
 def _emit_immediate(task_id: int, payload: dict):
+    ptype = payload.get("type")
+    if ptype == "log" and isinstance(payload.get("data"), str):
+        write_task_log(task_id, payload["data"])
+    elif ptype == "phase":
+        write_task_log(
+            task_id,
+            "[phase:%s] %s\n"
+            % (payload.get("phase") or "", (payload.get("message") or "").strip()),
+        )
     layer = get_channel_layer()
     async_to_sync(layer.group_send)(
         _channel_group(task_id),
@@ -307,6 +317,68 @@ def _shell_quote(path: str) -> str:
     return "'%s'" % (path or "").replace("'", "'\"'\"'")
 
 
+def _sftp_put_with_progress(
+    task_id: int,
+    hostname: str,
+    port: int,
+    username: str,
+    auth_method: str,
+    secret: str,
+    local_path: str,
+    remote_path: str,
+    label: str,
+) -> tuple:
+    """sftp_put_file + 周期性 phase（供前端进度条）。"""
+    try:
+        total = os.path.getsize(local_path)
+    except OSError:
+        total = 0
+    last_emit = {"t": 0.0, "pct": -1}
+
+    def on_progress(transferred: int, tot: int) -> None:
+        now = time.monotonic()
+        denom = tot if tot > 0 else total
+        pct = int((transferred * 100) // denom) if denom else 0
+        if transferred >= denom or now - last_emit["t"] >= 0.75 or pct != last_emit["pct"]:
+            last_emit["t"] = now
+            last_emit["pct"] = pct
+            _emit(
+                task_id,
+                {
+                    "type": "phase",
+                    "phase": "media_upload",
+                    "message": "上传 %s …" % label,
+                    "bytes_done": transferred,
+                    "bytes_total": denom,
+                    "percent": pct,
+                },
+            )
+
+    ok, msg = sftp_put_file(
+        hostname,
+        port,
+        username,
+        auth_method,
+        secret,
+        local_path,
+        remote_path,
+        on_progress=on_progress if total > 0 else None,
+    )
+    if ok and total > 0:
+        _emit(
+            task_id,
+            {
+                "type": "phase",
+                "phase": "media_upload",
+                "message": "上传 %s 完成" % label,
+                "bytes_done": total,
+                "bytes_total": total,
+                "percent": 100,
+            },
+        )
+    return ok, msg
+
+
 def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
     """
     TPOPS GaussDB：在节点 1 上准备 /data 下介质并汇入 <部署根>/pkgs/。
@@ -341,13 +413,14 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
 
     pkgs = _remote_pkgs_dir(h)
     data_dir = "/data"
+    deploy_root = _deploy_root(h)
 
     _emit(
         task_id,
         {
             "type": "phase",
             "phase": "tpops_media_prep",
-            "message": "TPOPS GaussDB 介质准备（/data 与 pkgs）",
+            "message": "TPOPS GaussDB 介质准备（先 /data，再汇入 pkgs）",
         },
     )
 
@@ -366,7 +439,8 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
         if not local_path or not os.path.isfile(local_path):
             return False, "本地找不到安装包文件 id=%s" % art.id
         remote_path = "%s/%s" % (data_dir, art.remote_basename)
-        ok, msg = sftp_put_file(
+        ok, msg = _sftp_put_with_progress(
+            task_id,
             h.hostname,
             h.port,
             h.username,
@@ -374,6 +448,7 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
             secret,
             local_path,
             remote_path,
+            art.remote_basename,
         )
         if not ok:
             return False, "上传至 %s 失败: %s" % (remote_path, msg)
@@ -386,6 +461,14 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
     q_arch = _shell_quote(tpops_archive)
     q_data = _shell_quote(data_dir)
 
+    _emit(
+        task_id,
+        {
+            "type": "phase",
+            "phase": "media_extract_tpops",
+            "message": "解压 TPOPS 主包到 %s …" % data_dir,
+        },
+    )
     _emit(
         task_id,
         {
@@ -417,6 +500,14 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
         )
     if code != 0:
         return False, "解压 TPOPS 主包失败（退出码 %s）" % code
+    _emit(
+        task_id,
+        {
+            "type": "phase",
+            "phase": "media_extract_tpops",
+            "message": "TPOPS 主包已解压",
+        },
+    )
 
     find_dir_cmd = (
         "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
@@ -439,39 +530,83 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
 
     q_sub = _shell_quote("%s/%s" % (data_dir, tpops_subdir))
 
-    ds_glob_cmd = (
+    ds_skip_cmd = (
         "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
-        "set -e; cd %s && "
-        'for f in DBS-*docker-service*.tar.gz DBS-*docker-service*.tgz; do '
-        'if [ -f "$f" ]; then printf %%s\\n "$f"; exit 0; fi; done; exit 0' % q_sub
+        "if [ -d %s ]; then echo 1; else echo 0; fi"
+        % _shell_quote(deploy_root)
     )
-    ds_path, _ = run_remote_command_output(
+    ds_skip_out, _ = run_remote_command_output(
         h.hostname,
         h.port,
         h.username,
         h.auth_method,
         secret,
-        ds_glob_cmd,
-        timeout=60,
+        ds_skip_cmd,
+        timeout=30,
         get_pty=False,
     )
-    ds_path = (ds_path or "").strip().splitlines()[0].strip()
-    if ds_path and not ds_path.startswith("/"):
-        ds_path = "%s/%s/%s" % (data_dir, tpops_subdir, ds_path)
+    skip_ds_extract = (ds_skip_out or "").strip().startswith("1")
 
-    if ds_path:
-        q_ds = _shell_quote(ds_path)
+    ds_path = ""
+    if skip_ds_extract:
+        _emit(
+            task_id,
+            {
+                "type": "phase",
+                "phase": "media_extract_docker_service",
+                "message": "已存在部署根 %s，跳过解压 docker-service 包" % deploy_root,
+            },
+        )
         _emit(
             task_id,
             {
                 "type": "log",
-                "data": "[tpops-media] 开始解压 docker-service 包: %s → %s/\n"
+                "data": "[tpops-media] 远程已存在 %s，跳过解压 DBS-*docker-service* 包\n"
+                % deploy_root,
+            },
+        )
+    else:
+        ds_glob_cmd = (
+            "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
+            "set -e; cd %s && "
+            'for f in DBS-*docker-service*.tar.gz DBS-*docker-service*.tgz; do '
+            'if [ -f "$f" ]; then printf %%s\\n "$f"; exit 0; fi; done; exit 0' % q_sub
+        )
+        ds_glob_out, _ = run_remote_command_output(
+            h.hostname,
+            h.port,
+            h.username,
+            h.auth_method,
+            secret,
+            ds_glob_cmd,
+            timeout=60,
+            get_pty=False,
+        )
+        ds_path = (ds_glob_out or "").strip().splitlines()[0].strip()
+        if ds_path and not ds_path.startswith("/"):
+            ds_path = "%s/%s/%s" % (data_dir, tpops_subdir, ds_path)
+
+    if ds_path:
+        q_bn = _shell_quote(os.path.basename(ds_path))
+        _emit(
+            task_id,
+            {
+                "type": "phase",
+                "phase": "media_extract_docker_service",
+                "message": "解压 docker-service 包到 %s …" % data_dir,
+            },
+        )
+        _emit(
+            task_id,
+            {
+                "type": "log",
+                "data": "[tpops-media] 开始解压 docker-service 包: %s（在 TPOPS 目录内执行 tar）→ %s/\n"
                 % (os.path.basename(ds_path), data_dir),
             },
         )
         ds_tar_cmd = (
             "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
-            "set -e; tar -xzf %s -C %s" % (q_ds, q_data)
+            "set -e; cd %s && tar -xzf %s -C %s" % (q_sub, q_bn, q_data)
         )
         out_ds, code_ds = run_remote_command_output(
             h.hostname,
@@ -499,7 +634,23 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
             task_id,
             {"type": "log", "data": "[tpops-media] 已解压 docker-service 包\n"},
         )
-    else:
+        _emit(
+            task_id,
+            {
+                "type": "phase",
+                "phase": "media_extract_docker_service",
+                "message": "docker-service 包已解压",
+            },
+        )
+    elif not skip_ds_extract:
+        _emit(
+            task_id,
+            {
+                "type": "phase",
+                "phase": "media_extract_docker_service",
+                "message": "未找到 DBS-*docker-service* 包，跳过解压",
+            },
+        )
         _emit(
             task_id,
             {
@@ -509,6 +660,14 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
         )
 
     q_pkgs = _shell_quote(pkgs)
+    _emit(
+        task_id,
+        {
+            "type": "phase",
+            "phase": "media_move_to_pkgs",
+            "message": "将 TPOPS 目录内 DBS-* / GaussDB_* 移入 pkgs …",
+        },
+    )
     mv_cmd = (
         "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
         "set -e; cd %s && "
@@ -543,10 +702,26 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
         task_id,
         {"type": "log", "data": "[tpops-media] 已将 DBS-* / GaussDB_* 移至 %s\n" % pkgs},
     )
+    _emit(
+        task_id,
+        {
+            "type": "phase",
+            "phase": "media_move_to_pkgs",
+            "message": "TPOPS 目录内介质已移入 pkgs",
+        },
+    )
 
     for label, art in (("om-agent", om_art), ("OS 内核", os_art)):
         if not art:
             continue
+        _emit(
+            task_id,
+            {
+                "type": "phase",
+                "phase": "media_kernel_to_pkgs",
+                "message": "将 %s 包移入 pkgs …" % label,
+            },
+        )
         src = "%s/%s" % (data_dir, art.remote_basename)
         dst = "%s/%s" % (pkgs, art.remote_basename)
         mv_one = (
@@ -570,6 +745,14 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
             task_id,
             {"type": "log", "data": "[tpops-media] 已移入 pkgs: %s\n" % art.remote_basename},
         )
+        _emit(
+            task_id,
+            {
+                "type": "phase",
+                "phase": "media_kernel_to_pkgs",
+                "message": "%s 已移入 pkgs" % label,
+            },
+        )
 
     _emit(
         task_id,
@@ -587,13 +770,27 @@ def _sync_pkgs_to_remote(task_id: int, task, secret: str) -> tuple:
 
     if getattr(task, "skip_package_sync", False):
         _emit(task_id, {"type": "log", "data": "[pkgs] 已跳过安装包同步（使用环境已有包）\n"})
+        _emit(
+            task_id,
+            {"type": "phase", "phase": "media_prep_done", "message": "已跳过安装包同步"},
+        )
         return True, ""
 
     if _should_tpops_gaussdb_media_prep(task):
-        return _sync_tpops_gaussdb_media(task_id, task, secret)
+        ok, err = _sync_tpops_gaussdb_media(task_id, task, secret)
+        if ok:
+            _emit(
+                task_id,
+                {"type": "phase", "phase": "media_prep_done", "message": "安装包阶段完成"},
+            )
+        return ok, err
 
     ids = getattr(task, "package_artifact_ids", None) or []
     if not ids:
+        _emit(
+            task_id,
+            {"type": "phase", "phase": "media_prep_done", "message": "无需同步安装包"},
+        )
         return True, ""
 
     rel = getattr(task, "package_release", None)
@@ -625,7 +822,8 @@ def _sync_pkgs_to_remote(task_id: int, task, secret: str) -> tuple:
         if not local_path or not os.path.isfile(local_path):
             return False, "本地找不到安装包文件 id=%s" % art.id
         remote_path = "%s/%s" % (pkgs, art.remote_basename)
-        ok, msg = sftp_put_file(
+        ok, msg = _sftp_put_with_progress(
+            task_id,
             task.host.hostname,
             task.host.port,
             task.host.username,
@@ -633,6 +831,7 @@ def _sync_pkgs_to_remote(task_id: int, task, secret: str) -> tuple:
             secret,
             local_path,
             remote_path,
+            art.remote_basename,
         )
         if not ok:
             return False, "上传 %s 失败: %s" % (art.remote_basename, msg)
@@ -645,6 +844,10 @@ def _sync_pkgs_to_remote(task_id: int, task, secret: str) -> tuple:
             "data": "[pkgs] 已同步到 %s: %s\n"
             % (pkgs, ", ".join(uploaded) if uploaded else "(无)"),
         },
+    )
+    _emit(
+        task_id,
+        {"type": "phase", "phase": "media_prep_done", "message": "安装包阶段完成"},
     )
     return True, ""
 
@@ -743,10 +946,13 @@ def _run_task(task_id: int):
                 "failed to persist crash state for deployment task %s", task_id
             )
     finally:
+        _flush_log_batch_for_task(task_id)
+        close_task_log(task_id)
         close_old_connections()
 
 
 def _run_task_body(task_id: int):
+    open_task_log(task_id)
     task = (
         DeploymentTask.objects.select_related(
             "host", "host_node2", "host_node3", "package_release"

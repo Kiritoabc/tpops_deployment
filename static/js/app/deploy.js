@@ -170,6 +170,8 @@ window.TPOPSDeploy = {
     const lastAction = ref('');
     const phaseHint = ref('');
     const phaseBanner = ref('');
+    /** 安装包同步阶段：上传百分比或解压/移动的 indeterminate 条 */
+    const packageSyncProgress = ref(null);
     const flowS1 = ref('pending');
     const flowS2 = ref('pending');
     const flowS3 = ref('pending');
@@ -738,6 +740,7 @@ window.TPOPSDeploy = {
       flowS4.value = 'pending';
       phaseHint.value = '';
       phaseBanner.value = '';
+      packageSyncProgress.value = null;
       manifestPaths.value = [];
       manifestPayload.value = null;
       manifestSummary.value = null;
@@ -901,6 +904,27 @@ window.TPOPSDeploy = {
           if (msg.paths && msg.paths.length) phaseHint.value = '轮询: ' + msg.paths.join(', ');
           else if (msg.paths_tried && msg.paths_tried.length) phaseHint.value = '检测: ' + msg.paths_tried.join(', ');
           else phaseHint.value = msg.command || '';
+          if (msg.phase === 'media_upload') {
+            const pct = typeof msg.percent === 'number' ? msg.percent : 0;
+            packageSyncProgress.value = {
+              percent: Math.min(100, Math.max(0, pct)),
+              message: msg.message || '上传安装包',
+            };
+          } else if (
+            msg.phase === 'media_extract_tpops'
+            || msg.phase === 'media_extract_docker_service'
+            || msg.phase === 'media_move_to_pkgs'
+            || msg.phase === 'media_kernel_to_pkgs'
+          ) {
+            packageSyncProgress.value = {
+              percent: null,
+              message: msg.message || '',
+            };
+          } else if (msg.phase === 'media_prep_done') {
+            packageSyncProgress.value = null;
+          } else if (msg.phase === 'run_appctl') {
+            packageSyncProgress.value = null;
+          }
           if (msg.phase === 'run_appctl') flowS1.value = 'active';
           if (msg.phase === 'manifest_polling') {
             flowS1.value = 'active';
@@ -1097,6 +1121,7 @@ window.TPOPSDeploy = {
       lastAction,
       phaseHint,
       phaseBanner,
+      packageSyncProgress,
       flowS1,
       flowS2,
       flowS3,

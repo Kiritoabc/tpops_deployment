@@ -892,6 +892,16 @@ window.TPOPSApp.template = String.raw`
                 <span class="deploy-console-phase-lab">阶段</span>
                 <span class="deploy-console-phase-val" v-text="phaseBanner"></span>
               </div>
+              <div v-if="packageSyncProgress" class="deploy-package-sync-bar">
+                <el-progress
+                  :percentage="packageSyncProgress.percent != null ? packageSyncProgress.percent : 0"
+                  :indeterminate="packageSyncProgress.percent == null"
+                  :duration="1.6"
+                  :stroke-width="8"
+                  :format="() => (packageSyncProgress.percent != null ? packageSyncProgress.percent + '%' : '…')"
+                />
+                <div class="deploy-package-sync-msg hint" v-text="packageSyncProgress.message || ''"></div>
+              </div>
               <div class="deploy-console-body">
                 <div class="deploy-console-left">
                   <div class="deploy-console-left-scroll">

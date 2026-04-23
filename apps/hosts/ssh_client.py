@@ -142,10 +142,14 @@ def sftp_put_file(
     local_path: str,
     remote_path: str,
     timeout: int = 3600,
+    on_progress=None,
 ):
     """
     将本地文件上传到远端路径（原子替换：先写 .tmp 再 rename）。
     返回 (ok: bool, message: str)
+
+    ``on_progress``：可选 ``(transferred: int, total: int) -> None``，
+    由 Paramiko 在上传过程中回调（``total`` 为文件字节数）。
     """
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -166,7 +170,7 @@ def sftp_put_file(
     tmp = "%s.tmp.%d" % (remote_path, id(client))
     try:
         sftp = client.open_sftp()
-        sftp.put(local_path, tmp)
+        sftp.put(local_path, tmp, callback=on_progress)
         try:
             sftp.remove(remote_path)
         except IOError:
