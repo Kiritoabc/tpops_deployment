@@ -533,7 +533,7 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
         "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
         "set -e; cd %s && "
         'for f in DBS-*docker-service*.tar.gz DBS-*docker-service*.tgz; do '
-        'if [ -f "$f" ]; then printf %%s\\n "$f"; exit 0; fi; done; exit 0' % q_sub
+        'if [ -f "$f" ]; then echo "$f"; exit 0; fi; done; exit 0' % q_sub
     )
     ds_glob_out, _ = run_remote_command_output(
         h.hostname,
