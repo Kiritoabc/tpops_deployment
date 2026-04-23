@@ -10,7 +10,7 @@
    - `TPOPS-GaussDB-Server_{CPU}_*.tar.gz`（安装 / 升级且未跳过时 **可选**；勾选才走 `/data` 解压与汇聚，否则仅扁平同步其它包）
    - `DBS-GaussDB-Kernel_{CPU}_*.tar.gz`（om-agent，可选）
    - `DBS-GaussDB-{OS}-Kernel_{CPU}_*.tar.gz`（内核，可选）
-3. **执行机（节点 1）**：在 `install` / `upgrade`、未跳过同步且**勾选了 TPOPS 主包**时，于远端执行 `/data` 解压与 pkgs 汇聚；**未勾主包**则跳过该段，仅对已选 artifact 执行扁平 `pkgs/` 同步。其余动作仍使用原有扁平同步。
+3. **执行机（节点 1）**：runner 中 **先于** `user_edit_file.conf` 写入执行介质步骤（避免解压出的 `docker-service` 覆盖已写配置），再写配置、再 `appctl`。在 `install` / `upgrade`、未跳过同步且**勾选了 TPOPS 主包**时，于远端：`/data` 落盘 → 解压 TPOPS 包 → 解压包内 `DBS-*docker-service*.tar.gz`（若存在）→ 将 TPOPS 目录下 `DBS-*` / `GaussDB_*` 移入 `<部署根>/pkgs/` → 将所选内核包移入 `pkgs/`。**未勾主包**则跳过 `/data` 解压段，仅对已选 artifact 执行扁平 `pkgs/` 同步。其余动作仍使用原有扁平同步。
 
 ## 非目标（MVP）
 

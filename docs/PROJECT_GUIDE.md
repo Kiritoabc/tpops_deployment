@@ -10,7 +10,7 @@
 
 - 在 Web 上**纳管 SSH 主机**（部署根目录即 `appctl.sh` 所在目录，如 `/data/docker-service`）。
 - 创建**部署任务**：选择操作类型（前置检查 / 安装 / 升级 / 卸载等）、填写 `user_edit_file.conf` 内容、可选**安装包版本与文件**。
-- 服务端在**后台线程**中通过 **Paramiko** SSH 到**节点 1（执行机）**，写入配置、同步安装包到 `<部署根>/pkgs/`、执行 `sh appctl.sh ...`。
+- 服务端在**后台线程**中通过 **Paramiko** SSH 到**节点 1（执行机）**，**先**同步/解压安装介质（含 TPOPS 时在 `<部署根>` 外 `/data` 准备，避免覆盖已写配置），**再**写入 `user_edit_file.conf`、执行 `sh appctl.sh ...`。
 - 通过 **Django Channels WebSocket** 向浏览器**实时推送**标准输出、manifest 解析结果、任务状态；可选连接**文件日志 tail**。
 
 **非目标（当前 MVP）：** 不替代 `appctl.sh` 的业务逻辑；不在此项目内实现集群编排引擎；默认单机 SQLite 仅适合演示/小规模（生产建议 PostgreSQL 等）。
@@ -49,7 +49,7 @@ apps/
   logs/                    # WebSocket：部署事件 + 远程日志 tail
 
 apps/manifest/parser.py    # TPOPS manifest YAML → 前端用树/流水线结构（含多文件合并）
-apps/deployment/runner.py  # 任务线程：写配置、同步 pkgs、appctl、轮询 manifest、发 WS 消息
+apps/deployment/runner.py  # 任务线程：同步 pkgs（含 TPOPS 解压）、写配置、appctl、轮询 manifest、发 WS 消息
 apps/hosts/ssh_client.py   # SSH 命令、SFTP、探测 user_edit 路径等
 
 templates/index.html       # 完整前端 SPA（Vue setup）
@@ -140,9 +140,9 @@ plan/                      # 功能设计文档（plan-xxx.md）
 1. **加载任务** `select_related(host, host_node2, host_node3, package_release)`。
 2. **解密 SSH 凭证**；若无凭证则失败并 WS 通知。
 3. **`parse_user_edit_block`**：校验 `[user_edit]` 段落；得到 **kv**（含 `node1_ip` / `node2_ip` / `node3_ip` 等）供 manifest 路径使用。
-4. **`resolve_user_edit_conf_path`**：在远端探测 `user_edit_file.conf` 位于 `config/gaussdb/` 或 `config/`；失败则可在默认路径创建目录。
-5. **`write_remote_file_utf8`**：将 `user_edit_content` **原样**写入远程路径。
-6. **`_sync_pkgs_to_remote`**：若未勾选跳过且选了 artifact，则 SFTP 到 `<root>/pkgs/`。
+4. **`_sync_pkgs_to_remote`**：若未勾选跳过且选了 artifact，则同步介质（扁平到 `<root>/pkgs/`；或含 TPOPS 主包时在 `/data` 解压后再汇入 `pkgs/`）。**先于**写入 `user_edit`，避免解压出的 `docker-service` 覆盖刚写入的配置。
+5. **`resolve_user_edit_conf_path`**：在远端探测 `user_edit_file.conf` 位于 `config/gaussdb/` 或 `config/`；失败则可在默认路径创建目录。
+6. **`write_remote_file_utf8`**：将 `user_edit_content` **原样**写入远程路径。
 7. **`_build_appctl_command`**：拼出  
    `export LANG=...; cd <root> && yes y 2>/dev/null | sh appctl.sh <subcommand>`（install/upgrade/uninstall 自动答 y）。
 8. **`run_remote_command`**：流式读 stdout/stderr，**逐块 `_emit` type=`log`**。

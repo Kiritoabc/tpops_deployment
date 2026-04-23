@@ -386,6 +386,14 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
     q_arch = _shell_quote(tpops_archive)
     q_data = _shell_quote(data_dir)
 
+    _emit(
+        task_id,
+        {
+            "type": "log",
+            "data": "[tpops-media] 开始解压 TPOPS 主包: %s → %s/\n"
+            % (tpops_art.remote_basename, data_dir),
+        },
+    )
     tar_cmd = (
         "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
         "set -e; cd %s && tar -xzf %s -C %s" % (q_data, q_arch, q_data)
@@ -400,8 +408,13 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
         timeout=7200,
         get_pty=False,
     )
-    if out:
-        _emit(task_id, {"type": "log", "data": out})
+    if out and out.strip():
+        _emit(task_id, {"type": "log", "data": "[tpops-media] tar 输出:\n" + out})
+    elif code == 0:
+        _emit(
+            task_id,
+            {"type": "log", "data": "[tpops-media] TPOPS 主包解压完成（tar 无标准输出，退出码 0）\n"},
+        )
     if code != 0:
         return False, "解压 TPOPS 主包失败（退出码 %s）" % code
 
@@ -448,6 +461,14 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
 
     if ds_path:
         q_ds = _shell_quote(ds_path)
+        _emit(
+            task_id,
+            {
+                "type": "log",
+                "data": "[tpops-media] 开始解压 docker-service 包: %s → %s/\n"
+                % (os.path.basename(ds_path), data_dir),
+            },
+        )
         ds_tar_cmd = (
             "export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; "
             "set -e; tar -xzf %s -C %s" % (q_ds, q_data)
@@ -462,8 +483,16 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
             timeout=7200,
             get_pty=False,
         )
-        if out_ds:
-            _emit(task_id, {"type": "log", "data": out_ds})
+        if out_ds and out_ds.strip():
+            _emit(task_id, {"type": "log", "data": "[tpops-media] docker-service tar 输出:\n" + out_ds})
+        elif code_ds == 0:
+            _emit(
+                task_id,
+                {
+                    "type": "log",
+                    "data": "[tpops-media] docker-service 包解压完成（tar 无标准输出，退出码 0）\n",
+                },
+            )
         if code_ds != 0:
             return False, "解压 docker-service 包失败（退出码 %s）" % code_ds
         _emit(
@@ -499,7 +528,14 @@ def _sync_tpops_gaussdb_media(task_id: int, task, secret: str) -> tuple:
         timeout=600,
         get_pty=False,
     )
-    if out_mv:
+    _emit(
+        task_id,
+        {
+            "type": "log",
+            "data": "[tpops-media] 正在将 TPOPS 目录内介质移入 %s …\n" % pkgs,
+        },
+    )
+    if out_mv and out_mv.strip():
         _emit(task_id, {"type": "log", "data": out_mv})
     if code_mv != 0:
         return False, "移动 TPOPS 目录内介质到 pkgs 失败（退出码 %s）" % code_mv
@@ -581,6 +617,10 @@ def _sync_pkgs_to_remote(task_id: int, task, secret: str) -> tuple:
 
     uploaded = []
     for art in qs:
+        _emit(
+            task_id,
+            {"type": "log", "data": "[pkgs] 正在上传 %s …\n" % art.remote_basename},
+        )
         local_path = art.file.path if art.file else ""
         if not local_path or not os.path.isfile(local_path):
             return False, "本地找不到安装包文件 id=%s" % art.id
@@ -746,6 +786,33 @@ def _run_task_body(task_id: int):
 
     manifest_paths = _remote_manifest_paths_for_task(h, task.deploy_mode, kv)
 
+    if not getattr(task, "skip_package_sync", False):
+        _emit(
+            task_id,
+            {
+                "type": "phase",
+                "phase": "package_sync",
+                "message": "同步安装包（解压在写入 user_edit 之前，避免覆盖已写配置）",
+            },
+        )
+        _emit(
+            task_id,
+            {
+                "type": "log",
+                "data": "[步骤] ① 同步/解压安装介质 → ② 写入 user_edit_file.conf → ③ 执行 appctl。\n",
+            },
+        )
+    ok_pkg, perr = _sync_pkgs_to_remote(task_id, task, secret)
+    if not ok_pkg:
+        task.status = DeploymentTask.STATUS_FAILED
+        task.error_message = perr or "安装包同步失败"
+        task.finished_at = timezone.now()
+        task.save(
+            update_fields=["status", "error_message", "finished_at", "updated_at"]
+        )
+        _emit(task_id, {"type": "log", "data": (perr or "安装包同步失败") + "\n"})
+        return
+
     path, perr = resolve_user_edit_conf_path(
         h.hostname,
         h.port,
@@ -815,17 +882,6 @@ def _run_task_body(task_id: int):
     task.remote_user_edit_path = path
     task.save(update_fields=["remote_user_edit_path", "updated_at"])
     _emit(task_id, {"type": "log", "data": "配置文件已写入: %s\n" % path})
-
-    ok_pkg, perr = _sync_pkgs_to_remote(task_id, task, secret)
-    if not ok_pkg:
-        task.status = DeploymentTask.STATUS_FAILED
-        task.error_message = perr or "安装包同步失败"
-        task.finished_at = timezone.now()
-        task.save(
-            update_fields=["status", "error_message", "finished_at", "updated_at"]
-        )
-        _emit(task_id, {"type": "log", "data": (perr or "安装包同步失败") + "\n"})
-        return
 
     try:
         cmd = _build_appctl_command(h, task.action, task.target, task.deploy_mode)

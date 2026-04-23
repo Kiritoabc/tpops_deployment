@@ -88,12 +88,12 @@ export DJANGO_SECRET_KEY='你的密钥'
 
 1. 选择 **单节点** 或 **三节点**（**节点 1** 为执行 SSH、写入 `user_edit_file.conf` 与执行 appctl 的机器）。节点 2/3 可选，仅作登记；**不在后台改写配置文件中的 IP**。
 2. 填写 **`[user_edit]`** 段配置文本；**按填写内容原样写入远程文件**，不会用所选 SSH 节点的地址覆盖其中的 IP。向导中可先选节点 1，再使用 **「从节点 1 读取远程配置」** 调用 `GET /api/hosts/<id>/fetch_user_edit/`：在远端按与任务相同的规则探测上述路径之一，读出全文并通过 `[user_edit]` 校验后返回 JSON（`content`、`remote_path`），供粘贴到表单。
-3. 后端在节点 1 上检测存在的文件并覆盖（与脚本一致）：
+3. **Runner 顺序**（未勾选「跳过全部同步」时）：**①** 同步/解压安装包（`install` / `upgrade` 下若勾选了 **TPOPS-GaussDB-Server** 主包，在 `/data` 解压后再汇入 `<部署根>/pkgs/`；否则 **扁平 SFTP** 到 `pkgs/`。**先于**写入 `user_edit`，避免解压出的 `docker-service` 覆盖已写配置；详见 `plan/plan-tpops-gaussdb-package-selection.md`。
+4. **②** 在节点 1 上检测并写入 `user_edit_file.conf`（与脚本一致）：
    - `<部署根>/config/gaussdb/user_edit_file.conf`
    - `<部署根>/config/user_edit_file.conf`  
    若两个都不存在，则 **创建** 默认路径 `config/gaussdb/user_edit_file.conf`（自动 `mkdir -p`）。
-4. **安装包同步**（未勾选「跳过全部同步」时）：在 `install` / `upgrade` 下若勾选了 **TPOPS-GaussDB-Server** 主包，runner 会在节点 1 上走 `/data` 解压与介质汇聚；否则仅将已选文件 **扁平 SFTP** 到 `<部署根>/pkgs/`。其它任务类型为扁平同步。详见 `plan/plan-tpops-gaussdb-package-selection.md`。
-5. 再执行所选 `appctl.sh` 操作。
+5. **③** 再执行所选 `appctl.sh` 操作。WebSocket 的 appctl 日志区会打出 `[步骤]`、`[tpops-media]`、`[pkgs]` 等前缀行，便于对照传包与解压。
 
 ## 项目结构（摘要）
 
