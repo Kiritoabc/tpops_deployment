@@ -15,6 +15,7 @@
 | 3 | [**认证模块 `tpops_auth`**](chapters/03-auth-module.md) | 注册、登录、JWT、各 URL |
 | 4 | [**主机模块 `hosts`**](chapters/04-hosts-module.md) | SSH 主机、加密、测连、`fetch_user_edit` |
 | 5 | [**部署模块 `deployment`**](chapters/05-deployment-module.md) | 任务、runner、传包、appctl、manifest |
+| — | [**部署任务：API → runner 逐步调用链**](deployment-task-execution-flow.md) | `POST …/tasks/` 起经各函数到 `_emit` / WebSocket |
 | 6 | [**安装包模块 `packages`**](chapters/06-packages-module.md) | Release、Artifact、上传、与任务关联 |
 | 7 | [**清单模块 `manifest`**](chapters/07-manifest-module.md) | YAML 解析、调试 API |
 | 8 | [**日志与 WebSocket `logs`**](chapters/08-logs-websockets-module.md) | 实时推送、token 在 URL、消息类型 |

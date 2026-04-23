@@ -8,7 +8,9 @@
 
 **全站技术参考索引：** [`docs/PLATFORM_REFERENCE.md`](docs/PLATFORM_REFERENCE.md)  
 
-**按模块分章、小白向详细说明（推荐细读）：** [`docs/chapters/README.md`](docs/chapters/README.md)
+**按模块分章、小白向详细说明（推荐细读）：** [`docs/chapters/README.md`](docs/chapters/README.md)  
+
+**部署任务从接口到执行完毕（函数逐步调用）：** [`docs/deployment-task-execution-flow.md`](docs/deployment-task-execution-flow.md)
 
 ## 环境说明
 

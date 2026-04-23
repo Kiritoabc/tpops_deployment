@@ -10,6 +10,7 @@
 | 3 | [认证模块 tpops_auth](03-auth-module.md) | 注册、登录、JWT、个人资料 |
 | 4 | [主机模块 hosts](04-hosts-module.md) | SSH 主机、凭证加密、测连通、读远程配置 |
 | 5 | [部署模块 deployment](05-deployment-module.md) | 任务、runner、传包、写配置、appctl、manifest |
+| 5+ | [**部署任务逐步调用链（函数级）**](../deployment-task-execution-flow.md) | 从 `POST /api/deployment/tasks/` 到 `_run_task_body` 每一步调用的函数 |
 | 6 | [安装包模块 packages](06-packages-module.md) | 版本、上传文件、远端 pkgs 文件名 |
 | 7 | [清单模块 manifest](07-manifest-module.md) | YAML 解析、调试接口 |
 | 8 | [日志与 WebSocket 模块 logs](08-logs-websockets-module.md) | 实时推送、任务日志 tail |

@@ -129,6 +129,8 @@ plan/                      # 功能设计文档（plan-xxx.md）
 
 ## 6. 部署任务：从创建到结束的执行逻辑
 
+**函数级逐步调用链（含 Mermaid 时序图）：** [`deployment-task-execution-flow.md`](deployment-task-execution-flow.md)
+
 ### 6.1 入口：`DeploymentTaskViewSet.create`
 
 1. `DeploymentTaskCreateSerializer` 校验主机归属、user_edit、包与版本关系等。
